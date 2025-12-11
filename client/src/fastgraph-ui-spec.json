@@ -1,0 +1,50 @@
+{
+    "version": "1.1",
+    "description": "FastGraph Dynamic UI Specification",
+    "ui_engine": "capability_layout_mapper",
+    "capabilities": {
+        "chat": {
+            "layout": "single_col",
+            "components": [
+                "ChatBox"
+            ]
+        },
+        "trip-guardian": {
+            "layout": "split_view",
+            "components": [
+                "ChatBox",
+                "FeedPanel"
+            ],
+            "feed_types": [
+                "weather",
+                "safe_alert",
+                "cultural_tip",
+                "map_coord"
+            ]
+        },
+        "code-interpreter": {
+            "layout": "split_view",
+            "components": [
+                "ChatBox",
+                "Terminal"
+            ]
+        }
+    },
+    "component_definitions": {
+        "ChatBox": {
+            "props": {
+                "voice_enabled": false
+            }
+        },
+        "FeedPanel": {
+            "props": {
+                "api_endpoint": "/api/feed"
+            }
+        },
+        "Terminal": {
+            "props": {
+                "theme": "dark"
+            }
+        }
+    }
+}
