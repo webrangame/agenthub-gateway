@@ -94,12 +94,20 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
 
             {/* Content */}
             <div className="p-5">
-                {/* Category Badge */}
-                <div className="flex items-center gap-2 mb-3">
-                    <span className={`${categoryBgColor} text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide`}>
-                        {category}
-                    </span>
-                    <span className="text-xs text-gray-400 font-medium">{source}</span>
+                {/* Category Badge and Timestamp */}
+                <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                        <span className={`${categoryBgColor} text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide`}>
+                            {category}
+                        </span>
+                        <span className="text-xs text-gray-400 font-medium">{source}</span>
+                    </div>
+                    {timestamp && (
+                        <div className="flex items-center gap-1 text-xs text-gray-400">
+                            <Clock className="w-3 h-3" />
+                            <span>{formatTimestamp(timestamp)}</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Title */}
