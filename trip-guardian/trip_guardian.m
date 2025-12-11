@@ -69,7 +69,7 @@ agent TripGuardian {
     // Step 2: Digest the raw JSON reviews
     // Step 2: Digest the raw JSON reviews (Experience Wisdom)
     llm ReviewSummarizer {
-      model: "gpt-4"
+      model: "gpt-3.5-turbo"
       prompt: "Analyze these Google Reviews for '${input}': '${FetchReviews_output}'. \nProvide 'Experience Wisdom'.\nIMPORTANT: Start your response with 'REVIEW:'.\n1. Insider Tips.\n2. Hidden Warnings.\n3. The 'Real' Vibe."
     }
 
@@ -83,13 +83,13 @@ agent TripGuardian {
     // C. The "Spirit of the Place" (AI Guide)
     // C. The "Spirit of the Place" (Cultural Wisdom)
     llm GeniusLoci {
-      model: "gpt-4"
+      model: "gpt-3.5-turbo"
       prompt: "You are the 'Genius Loci' (Spirit of the Place). For: '${input}'. \nProvide 'Cultural Wisdom'.\nIMPORTANT: Start your response with 'CULTURE:'.\n1. Behavior: How to dress/act to show respect.\n2. Connection: A deep historical fact.\n3. Local Secret: One thing only locals do here."
     }
 
     // 4. Final Report
     llm GenerateReport {
-      model: "gpt-4"
+      model: "gpt-3.5-turbo"
       prompt: "Synthesize a 'Trip Guardian Report' for '${input}'. \n\nInputs:\n1. 🔍 Vibe: ${ReviewSummarizer_output}\n2. 🛡️ Safety: ${NewsAlert_output}\n3. 🧞 Context: ${GeniusLoci_output}\n4. 🌦️ Weather: ${CheckWeather_output}\n\nTask: Combine these into a strategic guide.\nIMPORTANT: Start your response with 'REPORT:'.\n- 🌦️ Sky Watch: Don't just list weather. Explain IMPACT on the plan.\n- 🛡️ Safety: Highlight Natural Disasters/Unrest.\n- 🧞 Norms: How to behave."
     }
   }
