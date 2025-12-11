@@ -105,7 +105,11 @@ FastGraph runs as a **process**.
 - **Requirement:** For Agent A to talk to Agent B, both must be running and registered.
 
 ### E. Streaming Support (Real-time Responses)
-**FastGraph now supports LLM streaming** (v0.2.0+).
+**FastGraph now supports LLM streaming** (v0.3.0+).
+
+**Provider Support:**
+- ✅ **OpenAI**: Full native streaming support (production-ready)
+- ⚠️ **Anthropic**: Fallback mode only (returns full response as single chunk, not true streaming)
 
 **Library Usage:**
 ```go
@@ -148,34 +152,34 @@ err := client.CompleteStream(ctx, "gpt-4", prompt, func(chunk string) error {
 **Purpose:** Gateway can programmatically discover agent capabilities for Server-Driven UI.
 
 **Command:**
-``bash
+```bash
 fastgraph inspect trip_guardian.m
-``
+```
 
 **Output:**
-``json
+```json
 {
-  \"name\": \"TripValidator\",
-  \"capabilities\": [\"trip-validator\"],
-  \"schedule\": {
-    \"interval\": \"30m\",
-    \"mode\": \"proactive\"
+  "name": "TripValidator",
+  "capabilities": ["trip-validator"],
+  "schedule": {
+    "interval": "30m",
+    "mode": "proactive"
   },
-  \"nodes\": [\"GetDate\", \"ExtractDetails\"],
-  \"inputs\": [\"text_input\"]
+  "nodes": ["GetDate", "ExtractDetails"],
+  "inputs": ["text_input"]
 }
-``
+```
 
 **Gateway Usage:**
-``go
+```go
 // Discover capabilities
-cmd := exec.Command(\"fastgraph\", \"inspect\", \"agent.m\")
+cmd := exec.Command("fastgraph", "inspect", "agent.m")
 output, _ := cmd.Output()
 var meta AgentMetadata
 json.Unmarshal(output, &meta)
 
 // Use for SDUI
-if contains(meta.Capabilities, \"trip-guardian\") {
+if contains(meta.Capabilities, "trip-guardian") {
     setupSplitScreenUI()
 }
 
@@ -183,24 +187,24 @@ if contains(meta.Capabilities, \"trip-guardian\") {
 if meta.Schedule != nil {
     setupPeriodicExecution(meta.Schedule)
 }
-``
+```
 
 ### G. Schedule Management (Proactive Agents)  NEW in v0.3.0
 **Purpose:** Agents can declare periodic execution schedules.
 
 **M Language:**
-``m
+```m
 agent WeatherMonitor {
   schedule {
-    interval: \"30m\"
-    mode: \"proactive\"
+    interval: "30m"
+    mode: "proactive"
   }
   nodes { ... }
 }
-``
+```
 
 **Gateway Implementation:**
-``go
+```go
 // On agent load
 agents := loadAgents()
 for _, agent := range agents {
@@ -217,7 +221,7 @@ func startScheduledExecution(agent Agent, schedule ScheduleInfo) {
     
     go func() {
         for range ticker.C {
-            result := runAgent(agent, \"proactive check\")
+            result := runAgent(agent, "proactive check")
             events := parseEvents(result)
             if len(events) > 0 {
                 broadcastToFrontend(events)
@@ -225,11 +229,11 @@ func startScheduledExecution(agent Agent, schedule ScheduleInfo) {
         }
     }()
 }
-``
+```
 
 **Concurrent Execution:**
-``
+```
 Gateway Process
- Thread 1: Cron (every 30m)  runAgent(\"proactive\")
- Thread 2: User Chat  runAgent(\"reactive\")
-``
+ Thread 1: Cron (every 30m)  → runAgent("proactive")
+ Thread 2: User Chat          → runAgent("reactive")
+```

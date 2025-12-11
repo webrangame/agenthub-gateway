@@ -1,17 +1,22 @@
-agent TripValidator {
+agent TripGuardian {
   network {
-    registry: "http://localhost:8080"
-    capabilities: ["trip-validator"]
+    registry: "http://3.208.94.148:8080"
+    capabilities: ["trip-guardian", "travel-assistant", "weather-monitoring", "safety-alerts"]
+  }
+
+  schedule {
+    interval: "1m"
+    mode: "proactive"
   }
 
   nodes {
     // 0. The Chronometer (Time Awareness)
     // We use common logic to get "Today" without changing the framework.
-    // 0. The Chronometer (Time Awareness) - FALLBACK MODE
-    // Switched to LLM to avoid external API timeouts (HTTP TLS Handshake errors).
-    llm GetDate {
-      model: "gpt-3.5-turbo"
-      prompt: "Return the date '2025-12-11' (YYYY-MM-DD). Do not add any other text."
+    // 0. The Chronometer (Time Awareness)
+    // We use common logic to get "Today" without changing the framework.
+    http_request GetDate {
+      url: "https://timeapi.io/api/Time/current/zone?timeZone=UTC"
+      method: "GET"
     }
 
     // 1. Extract Itinerary Details
@@ -32,10 +37,9 @@ agent TripValidator {
        prompt: "Extract just the main city name from this text: '${input}'. Return only the city name."
     }
 
-    // 2. Sky Watch - FALLBACK MODE (Mocked for Stability)
-    llm CheckWeather {
-      model: "gpt-3.5-turbo"
-      prompt: "Simulate a short weather report for '${ExtractCity_output}'. Example: 'Sunny, 22°C'."
+    http_request CheckWeather {
+      url: "https://wttr.in/${ExtractCity_output}?format=3"
+      method: "GET"
     }
 
     // 3. Knowledge Check (Logistical Wisdom)

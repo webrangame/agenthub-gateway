@@ -2,15 +2,29 @@ package runtime
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 )
 
+// AgentMetadata matches the JSON output of 'fastgraph inspect'
+type AgentMetadata struct {
+	Name         string        `json:"name"`
+	Capabilities []string      `json:"capabilities"`
+	Schedule     *ScheduleInfo `json:"schedule"`
+	Nodes        []string      `json:"nodes"`
+	Inputs       []string      `json:"inputs"`
+}
+
+type ScheduleInfo struct {
+	Interval string `json:"interval"`
+	Mode     string `json:"mode"`
+}
+
 // Real Engine Wrapper
 type Engine struct {
-	Callbacks map[string]func(string)
-	BinPath   string
+	BinPath string
 }
 
 func New() *Engine {
@@ -21,17 +35,27 @@ func New() *Engine {
 	}
 
 	return &Engine{
-		Callbacks: make(map[string]func(string)),
-		BinPath:   binPath,
+		BinPath: binPath,
 	}
 }
 
-func (e *Engine) OnEvent(callback func(string)) {
-	e.Callbacks["event"] = callback
+// Inspect runs 'fastgraph inspect' and returns metadata
+func (e *Engine) Inspect(agentPath string) (*AgentMetadata, error) {
+	cmd := exec.Command(e.BinPath, "inspect", agentPath)
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to inspect agent: %v", err)
+	}
+
+	var meta AgentMetadata
+	if err := json.Unmarshal(output, &meta); err != nil {
+		return nil, fmt.Errorf("failed to parse inspect output: %v", err)
+	}
+	return &meta, nil
 }
 
-// Run executes the agent via CLI
-func (e *Engine) Run(agentPath string, input string) error {
+// Run executes the agent via CLI and streams output to the callback
+func (e *Engine) Run(agentPath string, input string, onEvent func(string)) error {
 	fmt.Printf("CLI: Executing %s run %s\n", e.BinPath, agentPath)
 
 	cmd := exec.Command(e.BinPath, "run", agentPath, "--input", input)
@@ -47,8 +71,8 @@ func (e *Engine) Run(agentPath string, input string) error {
 		// Fallback for demo if binary missing:
 		if os.IsNotExist(err) {
 			fmt.Println("ERROR: fastgraph.exe missing. Using fallback stub event.")
-			if cb, ok := e.Callbacks["event"]; ok {
-				cb(`{"type": "log", "message": "ERROR: fastgraph.exe not found. Please upload to server root."}`)
+			if onEvent != nil {
+				onEvent(`{"type": "log", "message": "ERROR: fastgraph.exe not found. Please upload to server root."}`)
 			}
 			return nil
 		}
@@ -56,26 +80,26 @@ func (e *Engine) Run(agentPath string, input string) error {
 	}
 
 	// Stream Output
-	go func() {
-		scanner := bufio.NewScanner(stdout)
-		for scanner.Scan() {
-			line := scanner.Text()
-			// Forward CLI output to Frontend
-			// Assumption: CLI outputs JSON lines for events, or we wrap raw text
-			fmt.Println("CLI OUT:", line)
+	scanner := bufio.NewScanner(stdout)
+	for scanner.Scan() {
+		line := scanner.Text()
+		// Forward CLI output to Frontend
+		fmt.Println("CLI OUT:", line)
 
-			if cb, ok := e.Callbacks["event"]; ok {
-				// Try to determine if line is JSON or Log
-				if len(line) > 0 && line[0] == '{' {
-					cb(line)
-				} else {
-					// Wrap Log
-					cb(fmt.Sprintf(`{"type": "log", "message": "%s"}`, line))
-				}
+		if onEvent != nil {
+			// Try to determine if line is JSON or Log
+			if len(line) > 0 && line[0] == '{' {
+				onEvent(line)
+			} else {
+				// Wrap Log
+				onEvent(fmt.Sprintf(`{"type": "log", "message": "%s"}`, line))
 			}
 		}
-		cmd.Wait()
-	}()
+	}
+
+	if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("agent execution finished with error: %v", err)
+	}
 
 	return nil
 }

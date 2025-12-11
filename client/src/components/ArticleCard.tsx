@@ -36,7 +36,8 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
     videoUrl,
     url,
     category = 'Tips',
-    colorTheme = 'default'
+    colorTheme = 'default',
+    timestamp // <-- Added missing destructuring
 }) => {
     // Map color themes to gradient classes
     const gradientClasses = {
