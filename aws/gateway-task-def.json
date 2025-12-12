@@ -1,0 +1,33 @@
+{
+    "family": "fastgraph-gateway-task",
+    "networkMode": "awsvpc",
+    "executionRoleArn": "arn:aws:iam::582604091763:role/ecsTaskExecutionRole",
+    "taskRoleArn": "arn:aws:iam::582604091763:role/ecsTaskRole",
+    "containerDefinitions": [
+        {
+            "name": "guardian-gateway",
+            "image": "582604091763.dkr.ecr.us-east-1.amazonaws.com/fastgraph-gateway:latest",
+            "portMappings": [
+                {
+                    "containerPort": 8081,
+                    "hostPort": 8081,
+                    "protocol": "tcp"
+                }
+            ],
+            "essential": true,
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/fastgraph-gateway",
+                    "awslogs-region": "us-east-1",
+                    "awslogs-stream-prefix": "gateway"
+                }
+            }
+        }
+    ],
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "cpu": "256",
+    "memory": "512"
+}
