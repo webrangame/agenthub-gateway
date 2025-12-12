@@ -1,0 +1,10 @@
+﻿
+Hash                                                             FileName                          
+----                                                             --------                          
+67E2135958489334C38504B839A08B656150F8E9D27D28DD8AC47B0AC836859F fastgraph-v0.3.2-android-arm64.zip
+5818A3D9E02F848ACF2AF5750F7758852CA77BA16DDC3E10DFB0F6ED6546E75A fastgraph-v0.3.2-darwin-amd64.zip 
+F7C67E8862DB81E27C3CD2613D6BF7BAF22C511E50B530F3BAB7BD28A2F0501F fastgraph-v0.3.2-darwin-arm64.zip 
+28007C1FCADF5D434F8B4C411114EB66645C7C757859947C927493AB9D39E139 fastgraph-v0.3.2-linux-amd64.zip  
+943A8C8BA35A62914F6D74F61A921585DB3B66F63F071C8A55A27F3685557B53 fastgraph-v0.3.2-windows-amd64.zip
+
+

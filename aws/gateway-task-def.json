@@ -22,7 +22,17 @@
                     "awslogs-region": "us-east-1",
                     "awslogs-stream-prefix": "gateway"
                 }
-            }
+            },
+            "secrets": [
+                {
+                    "name": "OPENAI_API_KEY",
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:582604091763:secret:fastgraph-gateway/OPENAI_API_KEY"
+                },
+                {
+                    "name": "GOOGLE_MAPS_KEY",
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:582604091763:secret:fastgraph-gateway/GOOGLE_MAPS_KEY"
+                }
+            ]
         }
     ],
     "requiresCompatibilities": [

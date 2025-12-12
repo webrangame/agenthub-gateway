@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y ca-certificates curl && rm -rf /var/lib
 WORKDIR /app
 
 # Copy Linux binary from installer directory (Root Context)
-COPY installer_v0.3.1/linux/fastgraph /app/fastgraph
+COPY installer_v0.3.2/linux/fastgraph /app/fastgraph
 RUN chmod +x /app/fastgraph
 
 # Copy built Gateway binary
