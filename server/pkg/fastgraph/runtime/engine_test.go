@@ -1,24 +1,38 @@
 package runtime
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
 
-// NOTE: These tests need the real/mock 'fastgraph.exe' to be present.
-// We assume 'fastgraph.exe' is in the server root, which is "../../.." from here?
-// Actually Engine New() looks in "./fastgraph.exe" by default.
-// In tests, "PWD" is the package dir.
-// We should point it to the binary we copied.
+// getTestBinPath helps find the binary in a cross-platform way relative to this test file.
+func getTestBinPath() string {
+	base, _ := filepath.Abs("../../..")
+
+	// Try Linux/Mac binary first (standard for CI)
+	linuxPath := filepath.Join(base, "fastgraph")
+	if _, err := os.Stat(linuxPath); err == nil {
+		return linuxPath
+	}
+
+	// Fallback to Windows
+	winPath := filepath.Join(base, "fastgraph.exe")
+	if _, err := os.Stat(winPath); err == nil {
+		return winPath
+	}
+
+	// Default to assuming linux if neither found (for CI context where it might be created later)
+	return linuxPath
+}
 
 func TestInspect(t *testing.T) {
 	// Setup
-	binPath, _ := filepath.Abs("../../../fastgraph.exe")
+	binPath := getTestBinPath()
 	engine := &Engine{BinPath: binPath}
 
 	// We need a test agent.
-	// Let's assume one exists or create a temp one.
 	// We'll use the one in server/uploaded_trip_guardian.m if it exists, or skip.
 	agentPath, _ := filepath.Abs("../../../uploaded_trip_guardian.m")
 
@@ -45,7 +59,7 @@ func TestInspect(t *testing.T) {
 
 func TestRunStreaming(t *testing.T) {
 	// Setup
-	binPath, _ := filepath.Abs("../../../fastgraph.exe")
+	binPath := getTestBinPath()
 	engine := &Engine{BinPath: binPath}
 	agentPath, _ := filepath.Abs("../../../uploaded_trip_guardian.m")
 

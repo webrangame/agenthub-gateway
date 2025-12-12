@@ -8,6 +8,11 @@ on:
       - 'aws/gateway-task-def.json'
     branches:
       - master
+  pull_request:
+    paths:
+      - 'server/**'
+    branches:
+      - master
 
 env:
   AWS_REGION: us-east-1
@@ -18,8 +23,61 @@ env:
   CONTAINER_NAME: guardian-gateway
 
 jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.3'
+
+      - name: Setup Test Environment
+        run: |
+          cp installer_v0.3.2/linux/fastgraph ./fastgraph
+          chmod +x ./fastgraph
+          cp server/.env.example server/.env
+
+      - name: Run Tests
+        run: |
+          cd server
+          go test -v ./...
+
+  lint:
+    name: Run Linter
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.3'
+      - name: Run Linter
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+          working-directory: server
+          args: --timeout=5m
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Security Scan
+        uses: securego/gosec@master
+        with:
+          args: ./server/...
+
   deploy:
     name: Deploy
+    needs: [test, lint, security]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     environment: production
 
