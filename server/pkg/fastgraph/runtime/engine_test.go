@@ -33,8 +33,8 @@ func TestInspect(t *testing.T) {
 	engine := &Engine{BinPath: binPath}
 
 	// We need a test agent.
-	// We'll use the one in server/uploaded_trip_guardian.m if it exists, or skip.
-	agentPath, _ := filepath.Abs("../../../uploaded_trip_guardian.m")
+	// We'll use the one in server/testdata/uploaded_trip_guardian.m
+	agentPath, _ := filepath.Abs("../../../testdata/uploaded_trip_guardian.m")
 
 	meta, err := engine.Inspect(agentPath)
 	if err != nil {
@@ -61,7 +61,7 @@ func TestRunStreaming(t *testing.T) {
 	// Setup
 	binPath := getTestBinPath()
 	engine := &Engine{BinPath: binPath}
-	agentPath, _ := filepath.Abs("../../../uploaded_trip_guardian.m")
+	agentPath, _ := filepath.Abs("../../../testdata/uploaded_trip_guardian.m")
 
 	// Trigger a simple run (may fail if no API keys, but should at least start)
 	// We just want to see if callbacks fire.
