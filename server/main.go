@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 
@@ -58,190 +59,27 @@ func main() {
 	r := gin.Default()
 
 	// CORS Middleware
-	r.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
-		c.Writer.Header().Set("Referrer-Policy", "no-referrer-when-downgrade")
-		c.Writer.Header().Set("X-Content-Type-Options", "nosniff")
-
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-
-		c.Next()
-	})
+	// CORS Middleware
+	config := cors.DefaultConfig()
+	config.AllowAllOrigins = true
+	config.AllowCredentials = true
+	config.AddAllowHeaders("Authorization")
+	r.Use(cors.New(config))
 
 	// Health Check
-	// @Summary      Health Check
-	// @Description  Get service health status
-	// @Tags         system
-	// @Produce      json
-	// @Success      200  {object}  map[string]string
-	// @Router       /health [get]
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "guardian-gateway"})
-	})
+	r.GET("/health", HealthHandler)
 
 	// GET /api/feed
-	// @Summary      Get Feed
-	// @Description  Get the current insight stream feed
-	// @Tags         feed
-	// @Produce      json
-	// @Success      200  {array}   FeedItem
-	// @Router       /api/feed [get]
-	r.GET("/api/feed", func(c *gin.Context) {
-		c.JSON(http.StatusOK, currentFeed)
-	})
+	r.GET("/api/feed", GetFeedHandler)
 
 	// DELETE /api/feed
-	// @Summary      Clear Feed
-	// @Description  Clear the insight stream feed
-	// @Tags         feed
-	// @Produce      json
-	// @Success      200  {object}  map[string]string
-	// @Router       /api/feed [delete]
-	r.DELETE("/api/feed", func(c *gin.Context) {
-		currentFeed = []FeedItem{}
-		fmt.Println("Feed cleared")
-		c.JSON(http.StatusOK, gin.H{"status": "cleared", "message": "Feed has been reset"})
-	})
+	r.DELETE("/api/feed", ClearFeedHandler)
 
 	// POST /api/agent/upload
-	// @Summary      Upload Agent
-	// @Description  Upload an agent file (.m or .zip)
-	// @Tags         agent
-	// @Accept       multipart/form-data
-	// @Produce      json
-	// @Param        file  formData  file  true  "Agent File"
-	// @Success      200   {object}  map[string]interface{}
-	// @Failure      400   {object}  map[string]string
-	// @Failure      500   {object}  map[string]string
-	// @Router       /api/agent/upload [post]
-	r.POST("/api/agent/upload", func(c *gin.Context) {
-		file, err := c.FormFile("file")
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "No file uploaded"})
-			return
-		}
-
-		filename := "uploaded_" + file.Filename
-		savePath := filepath.Join(".", filename)
-		if err := c.SaveUploadedFile(file, savePath); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
-			return
-		}
-
-		// Inspect Agent
-		meta, err := engine.Inspect(savePath)
-		if err != nil {
-			// Fallback if inspection fails (old binary or bad agent)
-			fmt.Println("Warning: Inspection failed:", err)
-			meta = &runtime.AgentMetadata{Name: "Unknown Agent"}
-		}
-
-		// Start Scheduled Execution if present
-		if meta.Schedule != nil && meta.Schedule.Mode == "proactive" {
-			go startScheduledExecution(savePath, meta.Schedule)
-		}
-
-		// Initial Run (Reactive)
-		go func() {
-			if err := engine.Run(savePath, "Start Analysis", func(eventJSON string) {
-				processAndAppendFeed(eventJSON)
-			}); err != nil {
-				fmt.Printf("Error running initial analysis for %s: %v\n", savePath, err)
-			}
-		}()
-
-		c.JSON(http.StatusOK, gin.H{
-			"status":       "success",
-			"message":      "Agent uploaded and execution started",
-			"filename":     filename,
-			"capabilities": meta.Capabilities,
-			"schedule":     meta.Schedule,
-		})
-	})
+	r.POST("/api/agent/upload", UploadAgentHandler)
 
 	// POST /api/chat/stream
-	// @Summary      Chat with Agent
-	// @Description  Send a message to an agent and stream the response
-	// @Tags         chat
-	// @Accept       json
-	// @Produce      text/event-stream
-	// @Param        request body      object  true  "Chat Request"
-	// @Success      200     {string}  string  "SSE Stream"
-	// @Failure      400     {object}  map[string]string
-	// @Router       /api/chat/stream [post]
-	r.POST("/api/chat/stream", func(c *gin.Context) {
-		var req struct {
-			Message   string `json:"message"`
-			AgentPath string `json:"agent_path"` // Optional, defaults to latest uploaded?
-		}
-		if err := c.BindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
-			return
-		}
-
-		// For now, assume a single active agent or pass path.
-		// If path empty, find first .m or .zip in root?
-		agentPath := req.AgentPath
-		if agentPath == "" {
-			// Default to trip_guardian.m if available
-			defaultAgent := "agents/trip-guardian/trip_guardian.m"
-			if _, err := filepath.Abs(defaultAgent); err == nil {
-				// Check if file exists
-				if _, err := filepath.Glob(defaultAgent); err == nil {
-					agentPath = defaultAgent
-				}
-			}
-
-			// Fallback: pick the last uploaded one
-			if agentPath == "" {
-				matches, _ := filepath.Glob("uploaded_*.m")
-				if len(matches) > 0 {
-					agentPath = matches[0]
-				} else {
-					// Try zip
-					zipMatches, _ := filepath.Glob("uploaded_*.zip")
-					if len(zipMatches) > 0 {
-						agentPath = zipMatches[0]
-					}
-				}
-			}
-		}
-
-		if agentPath == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "No agent found. Upload one first."})
-			return
-		}
-
-		// Set SSE headers
-		c.Writer.Header().Set("Content-Type", "text/event-stream")
-		c.Writer.Header().Set("Cache-Control", "no-cache")
-		c.Writer.Header().Set("Connection", "keep-alive")
-		c.Writer.Flush()
-
-		// Run Agent and Stream
-		err := engine.Run(agentPath, req.Message, func(eventJSON string) {
-			// Broadcast to Feed as well? Maybe yes, so history is kept.
-			// But for chat, we might want direct response.
-			// Let's do BOTH: Update feed AND stream to client.
-			processAndAppendFeed(eventJSON)
-
-			// Parse to see if it's a message chunk or just internal event
-			// For simplicity, stream everything as data
-			c.SSEvent("message", eventJSON)
-			c.Writer.Flush()
-		})
-
-		if err != nil {
-			c.SSEvent("error", err.Error())
-		}
-		c.SSEvent("done", "true")
-	})
+	r.POST("/api/chat/stream", ChatStreamHandler)
 
 	// Swagger Redirects
 	r.GET("/docs", func(c *gin.Context) {
@@ -463,4 +301,173 @@ func cleanMessage(msg string) string {
 
 func contains(s, substr string) bool {
 	return strings.Contains(s, substr)
+}
+
+// HealthHandler godoc
+// @Summary      Health Check
+// @Description  Get service health status
+// @Tags         system
+// @Produce      json
+// @Success      200  {object}  map[string]string
+// @Router       /health [get]
+func HealthHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "guardian-gateway"})
+}
+
+// GetFeedHandler godoc
+// @Summary      Get Feed
+// @Description  Get the current insight stream feed
+// @Tags         feed
+// @Produce      json
+// @Success      200  {array}   FeedItem
+// @Router       /api/feed [get]
+func GetFeedHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, currentFeed)
+}
+
+// ClearFeedHandler godoc
+// @Summary      Clear Feed
+// @Description  Clear the insight stream feed
+// @Tags         feed
+// @Produce      json
+// @Success      200  {object}  map[string]string
+// @Router       /api/feed [delete]
+func ClearFeedHandler(c *gin.Context) {
+	currentFeed = []FeedItem{}
+	fmt.Println("Feed cleared")
+	c.JSON(http.StatusOK, gin.H{"status": "cleared", "message": "Feed has been reset"})
+}
+
+// UploadAgentHandler godoc
+// @Summary      Upload Agent
+// @Description  Upload an agent file (.m or .zip)
+// @Tags         agent
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        file  formData  file  true  "Agent File"
+// @Success      200   {object}  map[string]interface{}
+// @Failure      400   {object}  map[string]string
+// @Failure      500   {object}  map[string]string
+// @Router       /api/agent/upload [post]
+func UploadAgentHandler(c *gin.Context) {
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No file uploaded"})
+		return
+	}
+
+	filename := "uploaded_" + file.Filename
+	savePath := filepath.Join(".", filename)
+	if err := c.SaveUploadedFile(file, savePath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
+		return
+	}
+
+	// Inspect Agent
+	meta, err := engine.Inspect(savePath)
+	if err != nil {
+		// Fallback if inspection fails (old binary or bad agent)
+		fmt.Println("Warning: Inspection failed:", err)
+		meta = &runtime.AgentMetadata{Name: "Unknown Agent"}
+	}
+
+	// Start Scheduled Execution if present
+	if meta.Schedule != nil && meta.Schedule.Mode == "proactive" {
+		go startScheduledExecution(savePath, meta.Schedule)
+	}
+
+	// Initial Run (Reactive)
+	go func() {
+		if err := engine.Run(savePath, "Start Analysis", func(eventJSON string) {
+			processAndAppendFeed(eventJSON)
+		}); err != nil {
+			fmt.Printf("Error running initial analysis for %s: %v\n", savePath, err)
+		}
+	}()
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":       "success",
+		"message":      "Agent uploaded and execution started",
+		"filename":     filename,
+		"capabilities": meta.Capabilities,
+		"schedule":     meta.Schedule,
+	})
+}
+
+// ChatStreamHandler godoc
+// @Summary      Chat with Agent
+// @Description  Send a message to an agent and stream the response
+// @Tags         chat
+// @Accept       json
+// @Produce      text/event-stream
+// @Param        request body      object  true  "Chat Request"
+// @Success      200     {string}  string  "SSE Stream"
+// @Failure      400     {object}  map[string]string
+// @Router       /api/chat/stream [post]
+func ChatStreamHandler(c *gin.Context) {
+	var req struct {
+		Message   string `json:"message"`
+		AgentPath string `json:"agent_path"` // Optional, defaults to latest uploaded?
+	}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	// For now, assume a single active agent or pass path.
+	// If path empty, find first .m or .zip in root?
+	agentPath := req.AgentPath
+	if agentPath == "" {
+		// Default to trip_guardian.m if available
+		defaultAgent := "agents/trip-guardian/trip_guardian.m"
+		if _, err := filepath.Abs(defaultAgent); err == nil {
+			// Check if file exists
+			if _, err := filepath.Glob(defaultAgent); err == nil {
+				agentPath = defaultAgent
+			}
+		}
+
+		// Fallback: pick the last uploaded one
+		if agentPath == "" {
+			matches, _ := filepath.Glob("uploaded_*.m")
+			if len(matches) > 0 {
+				agentPath = matches[0]
+			} else {
+				// Try zip
+				zipMatches, _ := filepath.Glob("uploaded_*.zip")
+				if len(zipMatches) > 0 {
+					agentPath = zipMatches[0]
+				}
+			}
+		}
+	}
+
+	if agentPath == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No agent found. Upload one first."})
+		return
+	}
+
+	// Set SSE headers
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache")
+	c.Writer.Header().Set("Connection", "keep-alive")
+	c.Writer.Flush()
+
+	// Run Agent and Stream
+	err := engine.Run(agentPath, req.Message, func(eventJSON string) {
+		// Broadcast to Feed as well? Maybe yes, so history is kept.
+		// But for chat, we might want direct response.
+		// Let's do BOTH: Update feed AND stream to client.
+		processAndAppendFeed(eventJSON)
+
+		// Parse to see if it's a message chunk or just internal event
+		// For simplicity, stream everything as data
+		c.SSEvent("message", eventJSON)
+		c.Writer.Flush()
+	})
+
+	if err != nil {
+		c.SSEvent("error", err.Error())
+	}
+	c.SSEvent("done", "true")
 }
