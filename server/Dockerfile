@@ -1,5 +1,5 @@
 # Build Stage
-FROM golang:1.25.3-alpine AS builder
+FROM golang:1.23-alpine AS builder
 WORKDIR /app
 # Context is Root (e.g. docker build -f server/Dockerfile .)
 # Copy go.mod/sum from server directory
