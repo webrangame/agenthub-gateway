@@ -12,6 +12,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
+	_ "guardian-gateway/docs" // Import generated docs
 )
 
 // FeedItem represents a card in the Insight Stream
@@ -30,6 +35,12 @@ var eventCounter int64
 
 // Global Feed - Start empty, only show real agent output
 var currentFeed = []FeedItem{}
+
+// @title           AiGuardian Gateway API
+// @version         1.0
+// @description     This is the gateway service for the AiGuardian application.
+// @host            localhost:8081
+// @BasePath        /
 
 func main() {
 	// Load .env file if it exists
@@ -63,16 +74,34 @@ func main() {
 	})
 
 	// Health Check
+	// @Summary      Health Check
+	// @Description  Get service health status
+	// @Tags         system
+	// @Produce      json
+	// @Success      200  {object}  map[string]string
+	// @Router       /health [get]
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "guardian-gateway"})
 	})
 
 	// GET /api/feed
+	// @Summary      Get Feed
+	// @Description  Get the current insight stream feed
+	// @Tags         feed
+	// @Produce      json
+	// @Success      200  {array}   FeedItem
+	// @Router       /api/feed [get]
 	r.GET("/api/feed", func(c *gin.Context) {
 		c.JSON(http.StatusOK, currentFeed)
 	})
 
 	// DELETE /api/feed
+	// @Summary      Clear Feed
+	// @Description  Clear the insight stream feed
+	// @Tags         feed
+	// @Produce      json
+	// @Success      200  {object}  map[string]string
+	// @Router       /api/feed [delete]
 	r.DELETE("/api/feed", func(c *gin.Context) {
 		currentFeed = []FeedItem{}
 		fmt.Println("Feed cleared")
@@ -80,6 +109,16 @@ func main() {
 	})
 
 	// POST /api/agent/upload
+	// @Summary      Upload Agent
+	// @Description  Upload an agent file (.m or .zip)
+	// @Tags         agent
+	// @Accept       multipart/form-data
+	// @Produce      json
+	// @Param        file  formData  file  true  "Agent File"
+	// @Success      200   {object}  map[string]interface{}
+	// @Failure      400   {object}  map[string]string
+	// @Failure      500   {object}  map[string]string
+	// @Router       /api/agent/upload [post]
 	r.POST("/api/agent/upload", func(c *gin.Context) {
 		file, err := c.FormFile("file")
 		if err != nil {
@@ -126,6 +165,15 @@ func main() {
 	})
 
 	// POST /api/chat/stream
+	// @Summary      Chat with Agent
+	// @Description  Send a message to an agent and stream the response
+	// @Tags         chat
+	// @Accept       json
+	// @Produce      text/event-stream
+	// @Param        request body      object  true  "Chat Request"
+	// @Success      200     {string}  string  "SSE Stream"
+	// @Failure      400     {object}  map[string]string
+	// @Router       /api/chat/stream [post]
 	r.POST("/api/chat/stream", func(c *gin.Context) {
 		var req struct {
 			Message   string `json:"message"`
@@ -194,7 +242,9 @@ func main() {
 		c.SSEvent("done", "true")
 	})
 
-	// Start Server
+	// Swagger Handler
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	// Start Server
 	if err := r.Run(":8081"); err != nil {
 		fmt.Printf("Fatal: Server failed to start: %v\n", err)

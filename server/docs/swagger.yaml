@@ -1,0 +1,9 @@
+basePath: /
+host: localhost:8081
+info:
+  contact: {}
+  description: This is the gateway service for the AiGuardian application.
+  title: AiGuardian Gateway API
+  version: "1.0"
+paths: {}
+swagger: "2.0"
