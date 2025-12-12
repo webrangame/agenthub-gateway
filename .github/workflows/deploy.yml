@@ -73,14 +73,13 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.23'
-      - name: Vendor Dependencies
+      - name: Install Gosec
+        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
+
+      - name: Security Scan
         run: |
           cd server
-          go mod vendor
-      - name: Security Scan
-        uses: securego/gosec@v2.21.4
-        with:
-          args: ./server/...
+          gosec ./...
 
   deploy:
     name: Deploy
