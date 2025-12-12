@@ -28,10 +28,14 @@ type Engine struct {
 }
 
 func New() *Engine {
-	// Check if binary exists, default to ./fastgraph.exe
-	binPath := "./fastgraph.exe"
+	// Check if binary exists, try Linux binary first, then Windows
+	binPath := "./fastgraph"
 	if _, err := os.Stat(binPath); os.IsNotExist(err) {
-		fmt.Println("WARNING: fastgraph.exe not found at", binPath)
+		// Fallback to Windows executable
+		binPath = "./fastgraph.exe"
+		if _, err := os.Stat(binPath); os.IsNotExist(err) {
+			fmt.Println("WARNING: fastgraph binary not found at ./fastgraph or ./fastgraph.exe")
+		}
 	}
 
 	return &Engine{
@@ -70,9 +74,9 @@ func (e *Engine) Run(agentPath string, input string, onEvent func(string)) error
 	if err := cmd.Start(); err != nil {
 		// Fallback for demo if binary missing:
 		if os.IsNotExist(err) {
-			fmt.Println("ERROR: fastgraph.exe missing. Using fallback stub event.")
+			fmt.Println("ERROR: fastgraph binary missing. Using fallback stub event.")
 			if onEvent != nil {
-				onEvent(`{"type": "log", "message": "ERROR: fastgraph.exe not found. Please upload to server root."}`)
+				onEvent(`{"type": "log", "message": "ERROR: fastgraph binary not found. Please ensure fastgraph is in the server root."}`)
 			}
 			return nil
 		}

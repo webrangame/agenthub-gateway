@@ -51,6 +51,8 @@ func main() {
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
+		c.Writer.Header().Set("Referrer-Policy", "no-referrer-when-downgrade")
+		c.Writer.Header().Set("X-Content-Type-Options", "nosniff")
 
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
@@ -136,15 +138,26 @@ func main() {
 		// If path empty, find first .m or .zip in root?
 		agentPath := req.AgentPath
 		if agentPath == "" {
-			// Quick hack: pick the last uploaded one or a default
-			matches, _ := filepath.Glob("uploaded_*.m")
-			if len(matches) > 0 {
-				agentPath = matches[0]
-			} else {
-				// Try zip
-				zipMatches, _ := filepath.Glob("uploaded_*.zip")
-				if len(zipMatches) > 0 {
-					agentPath = zipMatches[0]
+			// Default to trip_guardian.m if available
+			defaultAgent := "agents/trip-guardian/trip_guardian.m"
+			if _, err := filepath.Abs(defaultAgent); err == nil {
+				// Check if file exists
+				if _, err := filepath.Glob(defaultAgent); err == nil {
+					agentPath = defaultAgent
+				}
+			}
+			
+			// Fallback: pick the last uploaded one
+			if agentPath == "" {
+				matches, _ := filepath.Glob("uploaded_*.m")
+				if len(matches) > 0 {
+					agentPath = matches[0]
+				} else {
+					// Try zip
+					zipMatches, _ := filepath.Glob("uploaded_*.zip")
+					if len(zipMatches) > 0 {
+						agentPath = zipMatches[0]
+					}
 				}
 			}
 		}

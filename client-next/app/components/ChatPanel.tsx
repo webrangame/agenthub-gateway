@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Upload } from 'lucide-react';
 import DragDropZone from './DragDropZone';
+import { API_ENDPOINTS } from '../utils/api';
 
 interface Message {
     id: string;
@@ -47,7 +48,7 @@ const ChatPanel: React.FC = () => {
         setIsStreaming(true);
 
         try {
-            const response = await fetch('http://localhost:8081/api/chat/stream', {
+            const response = await fetch(API_ENDPOINTS.chat, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -210,6 +211,7 @@ const ChatPanel: React.FC = () => {
 };
 
 export default ChatPanel;
+
 
 
 
