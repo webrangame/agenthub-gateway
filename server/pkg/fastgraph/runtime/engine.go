@@ -120,27 +120,27 @@ func (e *Engine) Run(agentPath string, input string, onEvent func(string)) error
 		}
 	}()
 
-	// Stream Stdout (Chunks) - Tagless Mode
+	// Stream Stdout (Chunks) - Line-based to preserve prefixes
 	go func() {
 		defer close(done)
 
-		buf := make([]byte, 1024)
-		for {
-			n, err := stdout.Read(buf)
-			if n > 0 {
-				chunk := string(buf[:n])
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			chunk := scanner.Text()
 
-				// Emit raw chunk immediately
-				if onEvent != nil {
-					chunkEvent := map[string]string{"type": "chunk", "message": chunk}
-					if jsonBytes, err := json.Marshal(chunkEvent); err == nil {
-						onEvent(string(jsonBytes))
-					}
+			// Emit chunk immediately (line by line)
+			if onEvent != nil {
+				// We append a newline because Scan() strips it, and we want to preserve form if needed,
+				// but for JSON/Prefix detection, the line itself is what matters.
+				// Let's send the line.
+				chunkEvent := map[string]string{"type": "chunk", "message": chunk + "\n"}
+				if jsonBytes, err := json.Marshal(chunkEvent); err == nil {
+					onEvent(string(jsonBytes))
 				}
 			}
-			if err != nil {
-				break
-			}
+		}
+		if err := scanner.Err(); err != nil {
+			fmt.Println("CLI: Error reading stdout:", err)
 		}
 	}()
 

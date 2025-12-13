@@ -204,7 +204,7 @@ func processAndAppendFeed(eventJSON string) {
 
 	// No bucket – create a new FeedItem and store it
 	uniqueID := atomic.AddInt64(&eventCounter, 1)
-	if incomingNode != "" && (data["title"] == "Agent Activity" || data["title"] == "Trip Guardian") {
+	if incomingNode != "" {
 		data["title"] = incomingNode
 	}
 	newItem := FeedItem{
@@ -285,68 +285,72 @@ func mapToCard(message string) (string, string, map[string]interface{}) {
 		"summary": message,
 	}
 
-	// Default Title and Metadata
-	data["title"] = "Agent Activity"
-	data["source"] = "System"
+	// Default Title
+	data["title"] = "TripGuardian"
+	data["source"] = "Analysis"
 	data["category"] = "Tips"
 	data["colorTheme"] = "default"
 
-	// 1. Safety Alerts (NewsAlert)
-	if contains(message, "SAFETY:") || contains(message, "NB:") || contains(message, "Safety Briefing") || contains(message, "NewsAlert_output") || contains(message, "Warning") || contains(message, "Alert") {
+	// PREFIX DETECTION LOGIC
+	// We check for "NodeName: Content" pattern
+	prefixMap := map[string]string{
+		"NewsAlert:":        "NewsAlert",
+		"CheckWeather:":     "CheckWeather",
+		"KnowledgeCheck:":   "KnowledgeCheck",
+		"ReviewSummarizer:": "ReviewSummarizer",
+		"GeniusLoci:":       "GeniusLoci",
+		"GenerateReport:":   "GenerateReport",
+	}
+
+	for prefix, nodeTitle := range prefixMap {
+		if strings.HasPrefix(strings.TrimSpace(message), prefix) || strings.Contains(message, prefix) {
+			data["title"] = nodeTitle
+			// Clean the message by removing the prefix
+			cleanMsg := strings.Replace(message, prefix, "", 1)
+			data["summary"] = strings.TrimSpace(cleanMsg)
+			message = cleanMsg // Update for further processing
+			break
+		}
+	}
+
+	// CARD TYPE MAPPING (based on the now-known title or content)
+	title, _ := data["title"].(string)
+
+	if title == "NewsAlert" || contains(message, "SAFETY:") || contains(message, "Warning") {
 		cardType = "safe_alert"
 		priority = "high"
-		data = map[string]interface{}{
-			"message": cleanMessage(message),
-			"level":   "warning",
-		}
-	} else if contains(message, "Weather") || contains(message, "CheckWeather_output") || contains(message, "Sky Watch") {
-		// 2. Weather (Text Mode) - Use Article but styled as Weather Report
+		data["message"] = data["summary"]
+		data["level"] = "warning"
+		data["category"] = "Safety"
+		data["colorTheme"] = "red"
+	} else if title == "CheckWeather" || contains(message, "Weather") {
 		cardType = "weather"
-		data["title"] = "Sky Watch"
 		data["source"] = "Weather Agent"
 		data["category"] = "Weather"
 		data["colorTheme"] = "blue"
-		data["imageUrl"] = "https://images.unsplash.com/photo-1592210454359-9043f067919b?auto=format&fit=crop&w=800&q=80" // Rain/Cloud
-		data["description"] = cleanMessage(message)
-		data["temp"] = "22°C" // Mock for now, or extract regex
+		data["imageUrl"] = "https://images.unsplash.com/photo-1592210454359-9043f067919b?auto=format&fit=crop&w=800&q=80"
+		data["description"] = data["summary"]
+		data["temp"] = "22°C"
 		data["location"] = "Destination"
 		data["condition"] = "Cloudy"
-	} else if contains(message, "CULTURE:") || contains(message, "REVIEW:") || contains(message, "Wisdom") || contains(message, "GeniusLoci_output") || contains(message, "Tip") || contains(message, "Culture") {
-		// 3. Wisdom/Tips - Enhanced with videos
+	} else if title == "GeniusLoci" || title == "KnowledgeCheck" || title == "ReviewSummarizer" {
 		cardType = "cultural_tip"
-		data["title"] = "Travel Wisdom"
 		data["source"] = "Genius Loci"
 		data["category"] = "Culture"
 		data["colorTheme"] = "purple"
-		data["imageUrl"] = "https://images.unsplash.com/photo-1528642474498-1af0c17fd8c3?auto=format&fit=crop&w=800&q=80" // Kyoto culture
-		data["summary"] = cleanMessage(message)
+		data["imageUrl"] = "https://images.unsplash.com/photo-1528642474498-1af0c17fd8c3?auto=format&fit=crop&w=800&q=80"
 
-		// Add video for cultural tips (example YouTube embed)
 		if contains(message, "temple") || contains(message, "shrine") {
-			data["videoUrl"] = "https://www.youtube.com/embed/s-VRyQprlu8" // Sample cultural video
+			data["videoUrl"] = "https://www.youtube.com/embed/s-VRyQprlu8"
 		}
-	} else if contains(message, "REPORT:") || contains(message, "Report") || contains(message, "GenerateReport_output") {
-		// 4. Final Report
-		data["title"] = "Trip Guardian Report"
+	} else if title == "GenerateReport" {
+		cardType = "article"
 		data["source"] = "Final Synthesis"
 		data["category"] = "Report"
 		data["colorTheme"] = "green"
-		data["imageUrl"] = "https://images.unsplash.com/photo-1526481280693-3bfa7568e0f3?auto=format&fit=crop&w=800&q=80" // Travel map
-		data["summary"] = cleanMessage(message)
-	} else if contains(message, "News") || contains(message, "Breaking") {
-		// 5. News Articles
-		data["title"] = "Latest News"
-		data["source"] = "News Agent"
-		data["category"] = "Safety"
-		data["colorTheme"] = "red"
-		data["imageUrl"] = "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80" // News
-	} else {
-		// Default
-		data["title"] = "Trip Guardian"
-		data["source"] = "Analysis"
-		data["category"] = "Tips"
-		data["colorTheme"] = "default"
+		data["imageUrl"] = "https://images.unsplash.com/photo-1526481280693-3bfa7568e0f3?auto=format&fit=crop&w=800&q=80"
 	}
+
 	return cardType, priority, data
 }
 
