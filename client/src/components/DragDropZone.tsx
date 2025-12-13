@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Upload, FileUp } from 'lucide-react';
 import { cn } from '../utils/cn';
+import { API_BASE_URL } from '../config';
 
 const DragDropZone: React.FC = () => {
     const [isDragging, setIsDragging] = useState(false);
@@ -38,7 +39,7 @@ const DragDropZone: React.FC = () => {
         formData.append('file', file);
 
         try {
-            const response = await fetch('http://localhost:8081/api/agent/upload', {
+            const response = await fetch(`${API_BASE_URL}/api/agent/upload`, {
                 method: 'POST',
                 body: formData,
             });

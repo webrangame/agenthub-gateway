@@ -96,6 +96,30 @@ else
         --region ${AWS_REGION}
 fi
 
+# SSL Cert Path (Optional)
+if [ -n "$SSL_CERT_PATH" ]; then
+  aws secretsmanager create-secret \
+    --name fastgraph-gateway/SSL_CERT_PATH \
+    --secret-string "${SSL_CERT_PATH}" \
+    --region ${AWS_REGION} \
+    || aws secretsmanager update-secret \
+        --secret-id fastgraph-gateway/SSL_CERT_PATH \
+        --secret-string "${SSL_CERT_PATH}" \
+        --region ${AWS_REGION}
+fi
+
+# SSL Key Path (Optional)
+if [ -n "$SSL_KEY_PATH" ]; then
+  aws secretsmanager create-secret \
+    --name fastgraph-gateway/SSL_KEY_PATH \
+    --secret-string "${SSL_KEY_PATH}" \
+    --region ${AWS_REGION} \
+    || aws secretsmanager update-secret \
+        --secret-id fastgraph-gateway/SSL_KEY_PATH \
+        --secret-string "${SSL_KEY_PATH}" \
+        --region ${AWS_REGION}
+fi
+
 # Step 4: Create ECS Cluster
 echo "🚀 Creating ECS cluster..."
 aws ecs create-cluster \

@@ -4,6 +4,7 @@ import WeatherCard from './WeatherCard';
 import AlertWidget from './AlertWidget';
 import VideoCard from './VideoCard';
 import ArticleCard from './ArticleCard';
+import { API_BASE_URL } from '../config';
 
 interface FeedItem {
     id: string;
@@ -20,7 +21,7 @@ const FeedPanel: React.FC = () => {
     useEffect(() => {
         const fetchFeed = async () => {
             try {
-                const res = await fetch('http://localhost:8081/api/feed');
+                const res = await fetch(`${API_BASE_URL}/api/feed`);
                 if (res.ok) {
                     const data = await res.json();
                     setFeed(data);

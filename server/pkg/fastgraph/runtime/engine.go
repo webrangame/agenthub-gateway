@@ -30,12 +30,21 @@ type Engine struct {
 
 func New() *Engine {
 	// Check if binary exists, try Linux binary first, then Windows
-	binPath := "./fastgraph"
+	// Check if binary exists, try Linux binary first, then Windows
+	binPath := "./installer_v0.3.3/linux/fastgraph"
 	if _, err := os.Stat(binPath); os.IsNotExist(err) {
 		// Fallback to Windows executable
-		binPath = "./fastgraph.exe"
+		binPath = "./installer_v0.3.3/windows/fastgraph.exe"
 		if _, err := os.Stat(binPath); os.IsNotExist(err) {
-			fmt.Println("WARNING: fastgraph binary not found at ./fastgraph or ./fastgraph.exe")
+			// Fallback to root (legacy Windows)
+			binPath = "./fastgraph.exe"
+			if _, err := os.Stat(binPath); os.IsNotExist(err) {
+				// Fallback to root (Linux)
+				binPath = "./fastgraph"
+				if _, err := os.Stat(binPath); os.IsNotExist(err) {
+					fmt.Println("WARNING: fastgraph binary not found")
+				}
+			}
 		}
 	}
 
@@ -115,26 +124,27 @@ func (e *Engine) Run(agentPath string, input string, onEvent func(string)) error
 		}
 	}()
 
-	// Stream Stdout (Chunks) - Raw Bytes
+	// Stream Stdout (Chunks) - Line-based to preserve prefixes
 	go func() {
 		defer close(done)
-		buf := make([]byte, 1024)
-		for {
-			n, err := stdout.Read(buf)
-			if n > 0 {
-				chunk := string(buf[:n])
-				fmt.Print("CLI CHUNK:", chunk) // Debug
-				if onEvent != nil {
-					// Wrap as Chunk event
-					chunkEvent := map[string]string{"type": "chunk", "message": chunk}
-					if jsonBytes, err := json.Marshal(chunkEvent); err == nil {
-						onEvent(string(jsonBytes))
-					}
+
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			chunk := scanner.Text()
+
+			// Emit chunk immediately (line by line)
+			if onEvent != nil {
+				// We append a newline because Scan() strips it, and we want to preserve form if needed,
+				// but for JSON/Prefix detection, the line itself is what matters.
+				// Let's send the line.
+				chunkEvent := map[string]string{"type": "chunk", "message": chunk + "\n"}
+				if jsonBytes, err := json.Marshal(chunkEvent); err == nil {
+					onEvent(string(jsonBytes))
 				}
 			}
-			if err != nil {
-				break
-			}
+		}
+		if err := scanner.Err(); err != nil {
+			fmt.Println("CLI: Error reading stdout:", err)
 		}
 	}()
 

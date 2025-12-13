@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Upload } from 'lucide-react';
 import DragDropZone from './DragDropZone';
+import { API_BASE_URL } from '../config';
 
 interface Message {
     id: string;
@@ -45,7 +46,7 @@ const ChatPanel: React.FC = () => {
         setIsStreaming(true);
 
         try {
-            const response = await fetch('http://localhost:8081/api/chat/stream', {
+            const response = await fetch(`${API_BASE_URL}/api/chat/stream`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -154,8 +155,8 @@ const ChatPanel: React.FC = () => {
                     >
                         <div
                             className={`max-w-[80%] rounded-2xl px-5 py-3 shadow-sm ${msg.role === 'user'
-                                    ? 'bg-blue-600 text-white rounded-br-none'
-                                    : 'bg-gray-100 text-gray-800 rounded-bl-none'
+                                ? 'bg-blue-600 text-white rounded-br-none'
+                                : 'bg-gray-100 text-gray-800 rounded-bl-none'
                                 }`}
                         >
                             <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>

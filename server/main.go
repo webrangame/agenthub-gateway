@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -23,11 +24,12 @@ import (
 
 // FeedItem represents a card in the Insight Stream
 type FeedItem struct {
-	ID        string                 `json:"id"`
-	CardType  string                 `json:"card_type"` // weather | safe_alert | cultural_tip | map_coord | article
-	Priority  string                 `json:"priority"`  // high | medium | low
-	Timestamp string                 `json:"timestamp"` // ISO 8601 timestamp
-	Data      map[string]interface{} `json:"data"`
+	ID         string                 `json:"id"`
+	CardType   string                 `json:"card_type"`   // weather | safe_alert | cultural_tip | map_coord | article
+	Priority   string                 `json:"priority"`    // high | medium | low
+	Timestamp  string                 `json:"timestamp"`   // ISO 8601 timestamp
+	SourceNode string                 `json:"source_node"` // ID of the agent node producing this item
+	Data       map[string]interface{} `json:"data"`
 }
 
 var engine *runtime.Engine
@@ -36,7 +38,11 @@ var engine *runtime.Engine
 var eventCounter int64
 
 // Global Feed - Start empty, only show real agent output
-var currentFeed = []FeedItem{}
+var currentFeed = []*FeedItem{}
+
+// nodeBuckets holds the latest FeedItem for each source node
+var nodeBuckets = map[string]*FeedItem{}
+var bucketMutex sync.Mutex
 
 // @title           AiGuardian Gateway API
 // @version         1.0
@@ -96,9 +102,20 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	fmt.Printf("Server starting on port %s...\n", port)
-	if err := r.Run(":" + port); err != nil {
-		fmt.Printf("Fatal: Server failed to start: %v\n", err)
+
+	certPath := os.Getenv("SSL_CERT_PATH")
+	keyPath := os.Getenv("SSL_KEY_PATH")
+
+	if certPath != "" && keyPath != "" {
+		fmt.Printf("Server starting on port %s (HTTPS)...\n", port)
+		if err := r.RunTLS(":"+port, certPath, keyPath); err != nil {
+			fmt.Printf("Fatal: Server failed to start (HTTPS): %v\n", err)
+		}
+	} else {
+		fmt.Printf("Server starting on port %s (HTTP)...\n", port)
+		if err := r.Run(":" + port); err != nil {
+			fmt.Printf("Fatal: Server failed to start: %v\n", err)
+		}
 	}
 }
 
@@ -131,32 +148,78 @@ func processAndAppendFeed(eventJSON string) {
 		Message string `json:"message"`
 	}
 
-	message := eventJSON // Default fallback
+	message := eventJSON // fallback
 	if err := json.Unmarshal([]byte(eventJSON), &evt); err == nil {
 		if evt.Message != "" {
 			message = evt.Message
 		}
 	}
 
-	// FILTER OUT USELESS MESSAGES calls
+	// Skip useless messages
 	if shouldSkipMessage(message, evt.Type, eventJSON) {
 		return
 	}
 
-	// Heuristic Mapping for "Nicer" UI
+	// Default UI mapping
 	cardType, priority, data := mapToCard(message)
 
-	// Generate truly unique ID to avoid collision in fast loops
-	uniqueID := atomic.AddInt64(&eventCounter, 1)
-	newItem := FeedItem{
-		ID:        fmt.Sprintf("evt-%d-%d", time.Now().UnixNano(), uniqueID),
-		CardType:  cardType,
-		Priority:  priority,
-		Timestamp: time.Now().Format(time.RFC3339),
-		Data:      data,
+	// Try to extract node information
+	var nodeInfo struct {
+		Node string `json:"node"`
+		Text string `json:"text"`
 	}
-	// Prepend to feed
-	currentFeed = append([]FeedItem{newItem}, currentFeed...)
+	incomingNode := ""
+	cleanText := message
+
+	if err := json.Unmarshal([]byte(message), &nodeInfo); err == nil && nodeInfo.Node != "" {
+		incomingNode = nodeInfo.Node
+		cleanText = nodeInfo.Text
+		cardType, priority, data = mapToCard(cleanText)
+		data["source_node"] = incomingNode
+	} else {
+		cleanText = cleanMessage(message)
+		data["summary"] = cleanText
+	}
+
+	// FILTER: Hide internal utility nodes from the public feed to prevent clutter
+	if incomingNode == "ExtractDetails" || incomingNode == "ExtractCity" || incomingNode == "KnowledgeCheck" || incomingNode == "FetchReviews" {
+		return
+	}
+
+	// ---------- MAP‑BASED BUCKET LOGIC ----------
+	bucketMutex.Lock()
+	defer bucketMutex.Unlock()
+
+	if incomingNode != "" {
+		if existing, ok := nodeBuckets[incomingNode]; ok {
+			// Append to existing bucket
+			lastSummary, _ := existing.Data["summary"].(string)
+			if len(lastSummary) < 10000 {
+				existing.Data["summary"] = lastSummary + cleanText
+				existing.Timestamp = time.Now().Format(time.RFC3339)
+			}
+			return
+		}
+	}
+
+	// No bucket – create a new FeedItem and store it
+	uniqueID := atomic.AddInt64(&eventCounter, 1)
+	if incomingNode != "" {
+		data["title"] = incomingNode
+	}
+	newItem := FeedItem{
+		ID:         fmt.Sprintf("evt-%d-%d", time.Now().UnixNano(), uniqueID),
+		CardType:   cardType,
+		Priority:   priority,
+		Timestamp:  time.Now().Format(time.RFC3339),
+		SourceNode: incomingNode,
+		Data:       data,
+	}
+	if incomingNode != "" {
+		nodeBuckets[incomingNode] = &newItem
+	}
+	// Prepend to feed slice (most recent first)
+	currentFeed = append([]*FeedItem{&newItem}, currentFeed...)
 }
 
 func shouldSkipMessage(message, eventType, rawJSON string) bool {
@@ -222,68 +285,72 @@ func mapToCard(message string) (string, string, map[string]interface{}) {
 		"summary": message,
 	}
 
-	// Default Title and Metadata
-	data["title"] = "Agent Activity"
-	data["source"] = "System"
+	// Default Title
+	data["title"] = "TripGuardian"
+	data["source"] = "Analysis"
 	data["category"] = "Tips"
 	data["colorTheme"] = "default"
 
-	// 1. Safety Alerts (NewsAlert)
-	if contains(message, "SAFETY:") || contains(message, "NB:") || contains(message, "Safety Briefing") || contains(message, "NewsAlert_output") || contains(message, "Warning") || contains(message, "Alert") {
+	// PREFIX DETECTION LOGIC
+	// We check for "NodeName: Content" pattern
+	prefixMap := map[string]string{
+		"NewsAlert:":        "NewsAlert",
+		"CheckWeather:":     "CheckWeather",
+		"KnowledgeCheck:":   "KnowledgeCheck",
+		"ReviewSummarizer:": "ReviewSummarizer",
+		"GeniusLoci:":       "GeniusLoci",
+		"GenerateReport:":   "GenerateReport",
+	}
+
+	for prefix, nodeTitle := range prefixMap {
+		if strings.HasPrefix(strings.TrimSpace(message), prefix) || strings.Contains(message, prefix) {
+			data["title"] = nodeTitle
+			// Clean the message by removing the prefix
+			cleanMsg := strings.Replace(message, prefix, "", 1)
+			data["summary"] = strings.TrimSpace(cleanMsg)
+			message = cleanMsg // Update for further processing
+			break
+		}
+	}
+
+	// CARD TYPE MAPPING (based on the now-known title or content)
+	title, _ := data["title"].(string)
+
+	if title == "NewsAlert" || contains(message, "SAFETY:") || contains(message, "Warning") {
 		cardType = "safe_alert"
 		priority = "high"
-		data = map[string]interface{}{
-			"message": cleanMessage(message),
-			"level":   "warning",
-		}
-	} else if contains(message, "Weather") || contains(message, "CheckWeather_output") || contains(message, "Sky Watch") {
-		// 2. Weather (Text Mode) - Use Article but styled as Weather Report
+		data["message"] = data["summary"]
+		data["level"] = "warning"
+		data["category"] = "Safety"
+		data["colorTheme"] = "red"
+	} else if title == "CheckWeather" || contains(message, "Weather") {
 		cardType = "weather"
-		data["title"] = "Sky Watch"
 		data["source"] = "Weather Agent"
 		data["category"] = "Weather"
 		data["colorTheme"] = "blue"
-		data["imageUrl"] = "https://images.unsplash.com/photo-1592210454359-9043f067919b?auto=format&fit=crop&w=800&q=80" // Rain/Cloud
-		data["description"] = cleanMessage(message)
-		data["temp"] = "22°C" // Mock for now, or extract regex
+		data["imageUrl"] = "https://images.unsplash.com/photo-1592210454359-9043f067919b?auto=format&fit=crop&w=800&q=80"
+		data["description"] = data["summary"]
+		data["temp"] = "22°C"
 		data["location"] = "Destination"
 		data["condition"] = "Cloudy"
-	} else if contains(message, "CULTURE:") || contains(message, "REVIEW:") || contains(message, "Wisdom") || contains(message, "GeniusLoci_output") || contains(message, "Tip") || contains(message, "Culture") {
-		// 3. Wisdom/Tips - Enhanced with videos
+	} else if title == "GeniusLoci" || title == "KnowledgeCheck" || title == "ReviewSummarizer" {
 		cardType = "cultural_tip"
-		data["title"] = "Travel Wisdom"
 		data["source"] = "Genius Loci"
 		data["category"] = "Culture"
 		data["colorTheme"] = "purple"
-		data["imageUrl"] = "https://images.unsplash.com/photo-1528642474498-1af0c17fd8c3?auto=format&fit=crop&w=800&q=80" // Kyoto culture
-		data["summary"] = cleanMessage(message)
+		data["imageUrl"] = "https://images.unsplash.com/photo-1528642474498-1af0c17fd8c3?auto=format&fit=crop&w=800&q=80"
 
-		// Add video for cultural tips (example YouTube embed)
 		if contains(message, "temple") || contains(message, "shrine") {
-			data["videoUrl"] = "https://www.youtube.com/embed/s-VRyQprlu8" // Sample cultural video
+			data["videoUrl"] = "https://www.youtube.com/embed/s-VRyQprlu8"
 		}
-	} else if contains(message, "REPORT:") || contains(message, "Report") || contains(message, "GenerateReport_output") {
-		// 4. Final Report
-		data["title"] = "Trip Guardian Report"
+	} else if title == "GenerateReport" {
+		cardType = "article"
 		data["source"] = "Final Synthesis"
 		data["category"] = "Report"
 		data["colorTheme"] = "green"
-		data["imageUrl"] = "https://images.unsplash.com/photo-1526481280693-3bfa7568e0f3?auto=format&fit=crop&w=800&q=80" // Travel map
-		data["summary"] = cleanMessage(message)
-	} else if contains(message, "News") || contains(message, "Breaking") {
-		// 5. News Articles
-		data["title"] = "Latest News"
-		data["source"] = "News Agent"
-		data["category"] = "Safety"
-		data["colorTheme"] = "red"
-		data["imageUrl"] = "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80" // News
-	} else {
-		// Default
-		data["title"] = "Trip Guardian"
-		data["source"] = "Analysis"
-		data["category"] = "Tips"
-		data["colorTheme"] = "default"
+		data["imageUrl"] = "https://images.unsplash.com/photo-1526481280693-3bfa7568e0f3?auto=format&fit=crop&w=800&q=80"
 	}
+
 	return cardType, priority, data
 }
 
@@ -333,7 +400,7 @@ func GetFeedHandler(c *gin.Context) {
 // @Success      200  {object}  map[string]string
 // @Router       /api/feed [delete]
 func ClearFeedHandler(c *gin.Context) {
-	currentFeed = []FeedItem{}
+	currentFeed = []*FeedItem{}
 	fmt.Println("Feed cleared")
 	c.JSON(http.StatusOK, gin.H{"status": "cleared", "message": "Feed has been reset"})
 }

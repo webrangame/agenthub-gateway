@@ -31,6 +31,10 @@
                 {
                     "name": "GOOGLE_MAPS_KEY",
                     "valueFrom": "arn:aws:secretsmanager:us-east-1:582604091763:secret:fastgraph-gateway/GOOGLE_MAPS_KEY"
+                },
+                {
+                    "name": "GOOGLE_API_KEY",
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:582604091763:secret:fastgraph-gateway/GOOGLE_API_KEY"
                 }
             ]
         }

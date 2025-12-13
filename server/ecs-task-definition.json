@@ -40,7 +40,7 @@
       "secrets": [
         {
           "name": "OPENAI_API_KEY",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:582604091763:secret:fastgraph-gateway/OPENAI_API_KEY-4mE3Jq"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:582604091763:secret:fastgraph-gateway/OPENAI_API_KEY"
         },
         {
           "name": "GOOGLE_API_KEY",
@@ -48,15 +48,23 @@
         },
         {
           "name": "GOOGLE_MAPS_KEY",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:582604091763:secret:fastgraph-gateway/GOOGLE_MAPS_KEY-43RDty"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:582604091763:secret:fastgraph-gateway/GOOGLE_MAPS_KEY"
         },
         {
           "name": "AWS_ACCESS_KEY_ID",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:582604091763:secret:fastgraph-gateway/AWS_ACCESS_KEY_ID-sVe6Q6"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:582604091763:secret:fastgraph-gateway/AWS_ACCESS_KEY_ID"
         },
         {
           "name": "AWS_SECRET_ACCESS_KEY",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:582604091763:secret:fastgraph-gateway/AWS_SECRET_ACCESS_KEY-aFdIZS"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:582604091763:secret:fastgraph-gateway/AWS_SECRET_ACCESS_KEY"
+        },
+        {
+          "name": "SSL_CERT_PATH",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:582604091763:secret:fastgraph-gateway/SSL_CERT_PATH"
+        },
+        {
+          "name": "SSL_KEY_PATH",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:582604091763:secret:fastgraph-gateway/SSL_KEY_PATH"
         }
       ],
       "logConfiguration": {
