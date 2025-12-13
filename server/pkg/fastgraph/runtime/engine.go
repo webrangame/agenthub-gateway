@@ -37,10 +37,14 @@ func New() *Engine {
 		// Fallback to Windows executable
 		binPath = "./installer_v0.3.3/windows/fastgraph.exe"
 		if _, err := os.Stat(binPath); os.IsNotExist(err) {
-			// Fallback to root (legacy)
+			// Fallback to root (legacy Windows)
 			binPath = "./fastgraph.exe"
 			if _, err := os.Stat(binPath); os.IsNotExist(err) {
-				fmt.Println("WARNING: fastgraph binary not found")
+				// Fallback to root (Linux)
+				binPath = "./fastgraph"
+				if _, err := os.Stat(binPath); os.IsNotExist(err) {
+					fmt.Println("WARNING: fastgraph binary not found")
+				}
 			}
 		}
 	}
