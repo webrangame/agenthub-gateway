@@ -3,8 +3,8 @@
 // Proxy routes are at /api/proxy/* and handle HTTPS -> HTTP conversion
 const USE_PROXY = typeof window !== 'undefined' && window.location.protocol === 'https:';
 
-// API URL: http://54.196.193.42:8081
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://54.196.193.42:8081';
+// API URL: http://44.200.192.118:8081
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://44.200.192.118:8081';
 const PROXY_BASE = '/api/proxy';
 
 export const API_ENDPOINTS = {

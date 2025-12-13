@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 // Use environment variable for API URL, fallback to hardcoded IP
-const API_BASE_URL = (process.env.BACKEND_API_URL || 'http://54.196.193.42:8081').trim();
+const API_BASE_URL = (process.env.BACKEND_API_URL || 'http://44.200.192.118:8081').trim();
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
