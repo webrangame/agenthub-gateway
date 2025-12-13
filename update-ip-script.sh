@@ -73,3 +73,5 @@ echo ""
 echo "⚠️  Note: This IP will change when the ECS task restarts."
 echo "💡 Consider setting up an Application Load Balancer for a stable endpoint."
 
+
+

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 
 // Use environment variable for API URL, fallback to hardcoded IP
-const API_BASE_URL = (process.env.BACKEND_API_URL || 'http://52.204.105.193:8081').trim();
+const API_BASE_URL = (process.env.BACKEND_API_URL || 'http://54.196.193.42:8081').trim();
 
 export async function POST(request: NextRequest) {
   let timeoutId: NodeJS.Timeout | null = null;
@@ -84,9 +84,10 @@ export async function POST(request: NextRequest) {
     
     const errorMessage = error?.message || 'Unknown error';
     const errorName = error?.name || 'Error';
+    const errorCause = error?.cause;
     
     // Check if it's a timeout or connection error
-    if (errorName === 'AbortError' || errorMessage.includes('timeout')) {
+    if (errorName === 'AbortError' || errorMessage.includes('timeout') || errorMessage.includes('aborted')) {
       return new Response(
         JSON.stringify({ 
           error: 'Request timeout',
@@ -101,13 +102,16 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('ENOTFOUND')) {
+    // Check for fetch errors (network issues)
+    if (errorMessage.includes('fetch failed') || errorMessage.includes('ECONNREFUSED') || errorMessage.includes('ENOTFOUND') || 
+        (errorCause && (errorCause.code === 'ECONNREFUSED' || errorCause.code === 'ENOTFOUND' || errorCause.code === 'ETIMEDOUT'))) {
       return new Response(
         JSON.stringify({ 
-          error: 'Connection refused',
-          message: 'Cannot connect to backend API. The service may be down or the IP address has changed.',
+          error: 'Connection failed',
+          message: 'Cannot connect to backend API. The service may be down or the IP address has changed. Please try again in a moment.',
           type: 'ConnectionError',
-          apiUrl: API_BASE_URL
+          apiUrl: API_BASE_URL,
+          details: errorCause?.code || errorMessage
         }),
         { 
           status: 503,
@@ -121,7 +125,8 @@ export async function POST(request: NextRequest) {
         error: 'Internal server error',
         details: errorMessage,
         type: errorName,
-        apiUrl: API_BASE_URL
+        apiUrl: API_BASE_URL,
+        cause: errorCause?.code || errorCause?.message || undefined
       }),
       { 
         status: 500,

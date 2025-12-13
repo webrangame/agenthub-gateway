@@ -321,3 +321,5 @@ aws ecr delete-repository \
 4. Configure VPC endpoints for better security
 5. Set up CI/CD pipeline for automated deployments
 
+
+

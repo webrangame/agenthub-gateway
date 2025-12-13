@@ -1,0 +1,51 @@
+name: Deploy Client-Next to Vercel (Simple)
+
+# Simpler version using Vercel CLI directly (more reliable for free accounts)
+on:
+  push:
+    paths:
+      - 'client-next/**'
+      - '.github/workflows/deploy-client-next-simple.yml'
+    branches:
+      - master
+      - main
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  deploy:
+    name: Deploy to Vercel
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client-next
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: client-next/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Deploy to Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          echo "🚀 Deploying to Vercel..."
+          vercel --prod --yes --token $VERCEL_TOKEN
+          
+      - name: Deployment Status
+        run: |
+          echo "✅ Deployment completed!"
+          echo "Check your Vercel dashboard for the deployment status."
+

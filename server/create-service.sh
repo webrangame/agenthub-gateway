@@ -72,3 +72,5 @@ echo "✅ Service created/updated!"
 echo "📊 Check service status:"
 echo "   aws ecs describe-services --cluster ${ECS_CLUSTER_NAME} --services ${ECS_SERVICE_NAME} --region ${AWS_REGION}"
 
+
+
