@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 )
 
 // AgentMetadata matches the JSON output of 'fastgraph inspect'
@@ -121,147 +120,21 @@ func (e *Engine) Run(agentPath string, input string, onEvent func(string)) error
 		}
 	}()
 
-	// Stream Stdout (Chunks) - with Tag Parsing
+	// Stream Stdout (Chunks) - Tagless Mode
 	go func() {
 		defer close(done)
 
-		buf := make([]byte, 256) // Smaller buffer for responsiveness
-		var buffer strings.Builder
-		state := "IDLE" // IDLE, REPORT, INSIGHT
-		currentTag := ""
-
+		buf := make([]byte, 1024)
 		for {
 			n, err := stdout.Read(buf)
 			if n > 0 {
 				chunk := string(buf[:n])
-				buffer.WriteString(chunk)
 
-				// specific logic to handle the stream
-				for {
-					str := buffer.String()
-
-					if state == "IDLE" {
-						// Look for start tag
-						idxStart := strings.Index(str, "[[")
-						if idxStart == -1 {
-							// No tag start, discard junk (intermediate nodes without tags)
-							// Unless we want to keep a tail in case split tag
-							if len(str) > 10 { // Keep last few chars overlap
-								buffer.Reset()
-								buffer.WriteString(str[len(str)-2:])
-							}
-							break
-						} else {
-							// Found [[, need ]]
-							idxEnd := strings.Index(str[idxStart:], "]]")
-							if idxEnd == -1 {
-								break // Wait for more data
-							}
-							idxEnd += idxStart // Absolute pos
-
-							// Extract Tag
-							tag := str[idxStart+2 : idxEnd]
-
-							// Remove processed part
-							// Discard BEFORE tag (junk)
-							remaining := str[idxEnd+2:]
-							buffer.Reset()
-							buffer.WriteString(remaining)
-
-							if tag == "REPORT" {
-								state = "REPORT"
-							} else {
-								state = "INSIGHT"
-								currentTag = tag // e.g. SAFETY, CULTURE
-							}
-						}
-					} else if state == "REPORT" {
-						// Streaming mode
-						endTag := "[[END_REPORT]]"
-						idx := strings.Index(str, "[[END") // Optimization: Just check for end marker start
-
-						if idx != -1 {
-							// Possible end
-							if strings.Contains(str, endTag) {
-								// Found pure end
-								idxEndToken := strings.Index(str, endTag)
-								content := str[:idxEndToken]
-
-								// Emit content
-								if len(content) > 0 && onEvent != nil {
-									chunkEvent := map[string]string{"type": "chunk", "message": content}
-									if jsonBytes, err := json.Marshal(chunkEvent); err == nil {
-										onEvent(string(jsonBytes))
-									}
-								}
-
-								// Reset
-								remaining := str[idxEndToken+len(endTag):]
-								buffer.Reset()
-								buffer.WriteString(remaining)
-								state = "IDLE"
-							} else {
-								break // Wait for full tag
-							}
-						} else {
-							// Safe to stream?
-							// Stream all BUT last few chars (overlap protection)
-							safeLen := len(str) - 8 // len("[[END_R")
-							if safeLen > 0 {
-								toEmit := str[:safeLen]
-								if onEvent != nil {
-									chunkEvent := map[string]string{"type": "chunk", "message": toEmit}
-									if jsonBytes, err := json.Marshal(chunkEvent); err == nil {
-										onEvent(string(jsonBytes))
-									}
-								}
-								buffer.Reset()
-								buffer.WriteString(str[safeLen:])
-							}
-							break
-						}
-					} else if state == "INSIGHT" {
-						// Buffering mode
-						endTag := "[[END_" + currentTag + "]]"
-						if strings.Contains(str, endTag) {
-							idxEndToken := strings.Index(str, endTag)
-							content := str[:idxEndToken]
-
-							// Emit Log Event for Insight
-							if onEvent != nil {
-								// Format message so processAndAppendFeed picks it up
-								// e.g. "SAFETY: ..."
-								prefix := ""
-								switch currentTag {
-								case "SAFETY":
-									prefix = "SAFETY: "
-								case "GetDate":
-									prefix = "DATE: " // If we tagged it
-								case "WISDOM":
-									prefix = "Wisdom: "
-								case "REVIEWS":
-									prefix = "REVIEW: "
-								case "CULTURE":
-									prefix = "CULTURE: "
-								case "CITY":
-									prefix = "CITY: "
-								}
-
-								logMsg := prefix + content
-								logEvent := map[string]string{"type": "log", "message": logMsg}
-								if jsonBytes, err := json.Marshal(logEvent); err == nil {
-									onEvent(string(jsonBytes))
-								}
-							}
-
-							// Reset
-							remaining := str[idxEndToken+len(endTag):]
-							buffer.Reset()
-							buffer.WriteString(remaining)
-							state = "IDLE"
-						} else {
-							break // Wait for more
-						}
+				// Emit raw chunk immediately
+				if onEvent != nil {
+					chunkEvent := map[string]string{"type": "chunk", "message": chunk}
+					if jsonBytes, err := json.Marshal(chunkEvent); err == nil {
+						onEvent(string(jsonBytes))
 					}
 				}
 			}

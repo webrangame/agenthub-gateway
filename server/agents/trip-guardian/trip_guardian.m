@@ -6,7 +6,7 @@ agent TripGuardian {
   // }
 
   schedule {
-    interval: "30m"
+    interval: "1m"
     mode: "proactive"
   }
 
