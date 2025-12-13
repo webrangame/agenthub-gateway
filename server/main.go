@@ -38,7 +38,7 @@ var engine *runtime.Engine
 var eventCounter int64
 
 // Global Feed - Start empty, only show real agent output
-var currentFeed = []FeedItem{}
+var currentFeed = []*FeedItem{}
 
 // nodeBuckets holds the latest FeedItem for each source node
 var nodeBuckets = map[string]*FeedItem{}
@@ -181,6 +181,11 @@ func processAndAppendFeed(eventJSON string) {
 		data["summary"] = cleanText
 	}
 
+	// FILTER: Hide internal utility nodes from the public feed to prevent clutter
+	if incomingNode == "ExtractDetails" || incomingNode == "ExtractCity" || incomingNode == "KnowledgeCheck" || incomingNode == "FetchReviews" {
+		return
+	}
+
 	// ---------- MAP‑BASED BUCKET LOGIC ----------
 	bucketMutex.Lock()
 	defer bucketMutex.Unlock()
@@ -214,7 +219,7 @@ func processAndAppendFeed(eventJSON string) {
 		nodeBuckets[incomingNode] = &newItem
 	}
 	// Prepend to feed slice (most recent first)
-	currentFeed = append([]FeedItem{newItem}, currentFeed...)
+	currentFeed = append([]*FeedItem{&newItem}, currentFeed...)
 }
 
 func shouldSkipMessage(message, eventType, rawJSON string) bool {
@@ -391,7 +396,7 @@ func GetFeedHandler(c *gin.Context) {
 // @Success      200  {object}  map[string]string
 // @Router       /api/feed [delete]
 func ClearFeedHandler(c *gin.Context) {
-	currentFeed = []FeedItem{}
+	currentFeed = []*FeedItem{}
 	fmt.Println("Feed cleared")
 	c.JSON(http.StatusOK, gin.H{"status": "cleared", "message": "Feed has been reset"})
 }
