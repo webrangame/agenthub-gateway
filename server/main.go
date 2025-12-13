@@ -23,11 +23,12 @@ import (
 
 // FeedItem represents a card in the Insight Stream
 type FeedItem struct {
-	ID        string                 `json:"id"`
-	CardType  string                 `json:"card_type"` // weather | safe_alert | cultural_tip | map_coord | article
-	Priority  string                 `json:"priority"`  // high | medium | low
-	Timestamp string                 `json:"timestamp"` // ISO 8601 timestamp
-	Data      map[string]interface{} `json:"data"`
+	ID         string                 `json:"id"`
+	CardType   string                 `json:"card_type"`   // weather | safe_alert | cultural_tip | map_coord | article
+	Priority   string                 `json:"priority"`    // high | medium | low
+	Timestamp  string                 `json:"timestamp"`   // ISO 8601 timestamp
+	SourceNode string                 `json:"source_node"` // ID of the agent node producing this item
+	Data       map[string]interface{} `json:"data"`
 }
 
 var engine *runtime.Engine
