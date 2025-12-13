@@ -158,37 +158,78 @@ func processAndAppendFeed(eventJSON string) {
 	// Heuristic Mapping for "Nicer" UI
 	cardType, priority, data := mapToCard(message)
 
-	// CHUNK AGGREGATION LOGIC
-	// If the new item is "Agent Activity" (default/streaming) and matches the last item's type,
-	// we try to append to it instead of creating a new one.
-	if len(currentFeed) > 0 {
-		lastItem := &currentFeed[0]
+	// Check if the message is structured (JSON with node info)
+	var nodeInfo struct {
+		Node string `json:"node"`
+		Text string `json:"text"`
+	}
+	incomingNode := ""
+	cleanText := message
 
-		// Check if both are generic agent activity or same card type
-		if lastItem.CardType == cardType && lastItem.Data["title"] == data["title"] {
-			// Extract current and new summary/message
-			lastSummary, _ := lastItem.Data["summary"].(string)
-			newSummary, _ := data["summary"].(string)
+	// Try parsing message as node-structured JSON
+	if err := json.Unmarshal([]byte(message), &nodeInfo); err == nil && nodeInfo.Node != "" {
+		incomingNode = nodeInfo.Node
+		cleanText = nodeInfo.Text
+		// Remap card type based on clean text if needed
+		cardType, priority, data = mapToCard(cleanText)
+		data["source_node"] = incomingNode
+	} else {
+		// Just clean the text if it's raw
+		cleanText = cleanMessage(message)
+		data["summary"] = cleanText
+	}
 
-			// Simple check: are we just streaming text?
-			// If message is short or looks like a chunk, append.
-			// (Limit size to avoid infinite cards)
-			if len(lastSummary) < 5000 {
-				lastItem.Data["summary"] = lastSummary + newSummary
-				lastItem.Timestamp = time.Now().Format(time.RFC3339) // Update time
-				return                                               // UPDATE DONE
+	// CHUNK AGGREGATION & DEMULTIPLEXING LOGIC
+	// Search in recent items (e.g. last 5) for a card that matches this Node.
+	searchLimit := 5
+	if len(currentFeed) < searchLimit {
+		searchLimit = len(currentFeed)
+	}
+
+	for i := 0; i < searchLimit; i++ {
+		item := &currentFeed[i]
+
+		match := false
+		if incomingNode != "" {
+			// 1. Exact Node Match (Preferred)
+			if item.SourceNode == incomingNode {
+				match = true
+			}
+		} else {
+			// 2. Fallback: Generic Match (only for top item)
+			if i == 0 && item.CardType == cardType && item.Data["title"] == data["title"] && item.SourceNode == "" {
+				match = true
+			}
+		}
+
+		if match {
+			// Found the card! Append.
+			lastSummary, _ := item.Data["summary"].(string)
+
+			// Safety break for infinite loops
+			if len(lastSummary) < 10000 {
+				item.Data["summary"] = lastSummary + cleanText
+				item.Timestamp = time.Now().Format(time.RFC3339)
+				return
 			}
 		}
 	}
 
-	// Generate truly unique ID to avoid collision in fast loops
+	// If no match found, CREATE NEW ITEM
 	uniqueID := atomic.AddInt64(&eventCounter, 1)
+
+	// Enhance Data with Node Name for UI title if generic
+	if incomingNode != "" && (data["title"] == "Agent Activity" || data["title"] == "Trip Guardian") {
+		data["title"] = incomingNode // Use Node Name as Title! e.g. "ReviewSummarizer"
+	}
+
 	newItem := FeedItem{
-		ID:        fmt.Sprintf("evt-%d-%d", time.Now().UnixNano(), uniqueID),
-		CardType:  cardType,
-		Priority:  priority,
-		Timestamp: time.Now().Format(time.RFC3339),
-		Data:      data,
+		ID:         fmt.Sprintf("evt-%d-%d", time.Now().UnixNano(), uniqueID),
+		CardType:   cardType,
+		Priority:   priority,
+		Timestamp:  time.Now().Format(time.RFC3339),
+		SourceNode: incomingNode,
+		Data:       data,
 	}
 	// Prepend to feed
 	currentFeed = append([]FeedItem{newItem}, currentFeed...)
