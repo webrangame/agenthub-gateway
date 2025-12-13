@@ -12,15 +12,21 @@ func getTestBinPath() string {
 	base, _ := filepath.Abs("../../..")
 
 	// Try Linux/Mac binary first (standard for CI)
-	linuxPath := filepath.Join(base, "fastgraph")
+	linuxPath := filepath.Join(base, "installer_v0.3.3/linux/fastgraph")
 	if _, err := os.Stat(linuxPath); err == nil {
 		return linuxPath
 	}
 
 	// Fallback to Windows
-	winPath := filepath.Join(base, "fastgraph.exe")
+	winPath := filepath.Join(base, "installer_v0.3.3/windows/fastgraph.exe")
 	if _, err := os.Stat(winPath); err == nil {
 		return winPath
+	}
+
+	// Fallback to wrapper
+	legacyPath := filepath.Join(base, "fastgraph.exe")
+	if _, err := os.Stat(legacyPath); err == nil {
+		return legacyPath
 	}
 
 	// Default to assuming linux if neither found (for CI context where it might be created later)

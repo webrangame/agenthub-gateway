@@ -23,13 +23,13 @@ agent TripGuardian {
     // 1. Extract Itinerary Details
     llm ExtractDetails {
       model: "gemini-flash-latest"
-      prompt: "Extract the core events from this itinerary: '${input}'. Return a JSON list with 'event', 'location', 'time', and 'date'. Start output with '[[DETAILS]]' and end with '[[END_DETAILS]]'. If information is missing, infer it or mark as 'unknown'."
+      prompt: "Extract the core events from this itinerary: '${input}'. Return a JSON list with 'event', 'location', 'time', and 'date'. If information is missing, infer it or mark as 'unknown'."
     }
 
     // 2. Sky Watch (Direct Fetch)
     llm ExtractCity {
        model: "gemini-flash-latest"
-       prompt: "Extract just the main city name from this text: '${input}'. Return only the city name. Start output with '[[CITY]]' and end with '[[END_CITY]]'."
+       prompt: "Extract just the main city name from this text: '${input}'. Return only the city name."
     }
 
     http_request CheckWeather {
@@ -42,7 +42,7 @@ agent TripGuardian {
     // 3. Knowledge Check (Logistical Wisdom)
     llm KnowledgeCheck {
       model: "gemini-flash-latest"
-      prompt: "You are a Logistical Master. Review strict facts for: '${input}'. \nContext: Today's date info: ${GetDate_output}. \nCheck for: 1. Start/End times vs Opening Hours. 2. Holidays/Closures (considering current date). \nOutput as 'Travel Wisdom': Warn about tight connections, closed venues, or timing traps. Start output with '[[WISDOM]]' and end with '[[END_WISDOM]]'."
+      prompt: "You are a Logistical Master. Review strict facts for: '${input}'. \nContext: Today's date info: ${GetDate_output}. \nCheck for: 1. Start/End times vs Opening Hours. 2. Holidays/Closures (considering current date). \nOutput as 'Travel Wisdom': Warn about tight connections, closed venues, or timing traps."
     }
 
     // A. Real Review Analysis (Google Places)
@@ -62,25 +62,25 @@ agent TripGuardian {
     // A2. Digest Reviews
     llm ReviewSummarizer {
       model: "gemini-flash-latest"
-      prompt: "Analyze these Google Reviews for '${input}': '${FetchReviews_output}'. \nProvide 'Experience Wisdom':\n1. Insider Tips (e.g. 'Ask for a room on the top floor').\n2. Hidden Warnings (e.g. 'Construction noise starts at 7AM').\n3. The 'Real' Vibe (is it touristy or authentic?). Start output with '[[REVIEWS]]' and end with '[[END_REVIEWS]]'."
+      prompt: "Analyze these Google Reviews for '${input}': '${FetchReviews_output}'. \nProvide 'Experience Wisdom':\n1. Insider Tips (e.g. 'Ask for a room on the top floor').\n2. Hidden Warnings (e.g. 'Construction noise starts at 7AM').\n3. The 'Real' Vibe (is it touristy or authentic?)."
     }
 
     // B. News & Safety Beacon
     llm NewsAlert {
       model: "gemini-flash-latest"
-      prompt: "Check for any recent breaking news, natural disasters (floods, cyclones), strikes, protests, or safety alerts for the location in: '${input}'. Provide a 'Safety Briefing'. Start output with '[[SAFETY]]' and end with '[[END_SAFETY]]'."
+      prompt: "Check for any recent breaking news, natural disasters (floods, cyclones), strikes, protests, or safety alerts for the location in: '${input}'. Provide a 'Safety Briefing'."
     }
 
     // C. The "Spirit of the Place" (Cultural Wisdom)
     llm GeniusLoci {
       model: "gemini-flash-latest"
-      prompt: "You are the 'Genius Loci' (Spirit of the Place). For: '${input}'. \nProvide 'Cultural Wisdom':\n1. Behavior: How to dress/act to show respect (e.g. 'Cover knees at temple').\n2. Connection: A deep historical fact that connects the traveler to the soul of the place.\n3. Local Secret: One thing only locals do here. Start output with '[[CULTURE]]' and end with '[[END_CULTURE]]'."
+      prompt: "You are the 'Genius Loci' (Spirit of the Place). For: '${input}'. \nProvide 'Cultural Wisdom':\n1. Behavior: How to dress/act to show respect (e.g. 'Cover knees at temple').\n2. Connection: A deep historical fact that connects the traveler to the soul of the place.\n3. Local Secret: One thing only locals do here."
     }
 
     // 4. Final Report
     llm GenerateReport {
       model: "gemini-flash-latest"
-      prompt: "Synthesize a 'Trip Guardian Report' for '${input}'. \n\nInputs:\n1. 🔍 Vibe: ${ReviewSummarizer_output}\n2. 🛡️ Safety: ${NewsAlert_output}\n3. 🧞 Context: ${GeniusLoci_output}\n4. 🌦️ Weather: ${CheckWeather_output}\n\nTask: Combine these into a strategic guide.\n- 🌦️ Sky Watch: Don't just list weather. Explain IMPACT on the plan (e.g. 'Heavy rain makes the monastery path slippery'). practical 'PREPARATION' (Pack leech socks, umbrella).\n- 🛡️ Safety: Highlight Natural Disasters or Unrest with 🛑.\n- 🧞 Norms: How to behave.\n\nStart output with '[[REPORT]]' and end with '[[END_REPORT]]'."
+      prompt: "Synthesize a 'Trip Guardian Report' for '${input}'. \n\nInputs:\n1. 🔍 Vibe: ${ReviewSummarizer_output}\n2. 🛡️ Safety: ${NewsAlert_output}\n3. 🧞 Context: ${GeniusLoci_output}\n4. 🌦️ Weather: ${CheckWeather_output}\n\nTask: Combine these into a strategic guide.\n- 🌦️ Sky Watch: Don't just list weather. Explain IMPACT on the plan (e.g. 'Heavy rain makes the monastery path slippery'). practical 'PREPARATION' (Pack leech socks, umbrella).\n- 🛡️ Safety: Highlight Natural Disasters or Unrest with 🛑.\n- 🧞 Norms: How to behave."
     }
   }
 

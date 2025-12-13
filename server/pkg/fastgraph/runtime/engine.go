@@ -31,12 +31,17 @@ type Engine struct {
 
 func New() *Engine {
 	// Check if binary exists, try Linux binary first, then Windows
-	binPath := "./fastgraph"
+	// Check if binary exists, try Linux binary first, then Windows
+	binPath := "./installer_v0.3.3/linux/fastgraph"
 	if _, err := os.Stat(binPath); os.IsNotExist(err) {
 		// Fallback to Windows executable
-		binPath = "./fastgraph.exe"
+		binPath = "./installer_v0.3.3/windows/fastgraph.exe"
 		if _, err := os.Stat(binPath); os.IsNotExist(err) {
-			fmt.Println("WARNING: fastgraph binary not found at ./fastgraph or ./fastgraph.exe")
+			// Fallback to root (legacy)
+			binPath = "./fastgraph.exe"
+			if _, err := os.Stat(binPath); os.IsNotExist(err) {
+				fmt.Println("WARNING: fastgraph binary not found")
+			}
 		}
 	}
 
