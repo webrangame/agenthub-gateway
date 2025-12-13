@@ -104,40 +104,67 @@ FastGraph runs as a **process**.
 - **Protocol:** Agents talk via **HTTP/WebSocket**.
 - **Requirement:** For Agent A to talk to Agent B, both must be running and registered.
 
-### E. Streaming Support (Real-time Responses)
-**FastGraph now supports LLM streaming** (v0.3.0+).
+### E. Streaming Support (Real-time Responses) -- NEW in v0.3.2
+**FastGraph now supports full End-to-End LLM streaming.**
 
-**Provider Support:**
-- ✅ **OpenAI**: Full native streaming support (production-ready)
-- ⚠️ **Anthropic**: Fallback mode only (returns full response as single chunk, not true streaming)
+**1. API Endpoint**
+- **URL:** `POST /api/chat/stream`
+- **Headers:** `Content-Type: application/json`
+- **Body:**
+  ```json
+  {
+    "input": "User query here",
+    "m_code": "agent MyAgent { ... }"  // Optional: Execute ad-hoc agent
+    // "agent_id": "agent-123"        // Optional: Execute registered agent (Coming Soon)
+  }
+  ```
 
-**Library Usage:**
-```go
-client := llm.NewOpenAIClient(apiKey)
+**2. Response Format (Server-Sent Events)**
+The server streams events using standard SSE format (`text/event-stream`).
 
-err := client.CompleteStream(ctx, "gpt-4", prompt, func(chunk string) error {
-    // Send chunk to your frontend (e.g., via SSE, WebSocket)
-    fmt.Fprint(sseWriter, "data: "+chunk+"\n\n")
-    return nil
-})
+**Event Types:**
+- `chunk`: Contains a partial text fragment from the LLM.
+- `error`: Indicates a failure.
+- `done`: Indicates the stream has finished.
+
+**Example Stream:**
+```
+event: chunk
+data: {"text": "Hello"}
+
+event: chunk
+data: {"text": " world"}
+
+event: done
+data: {"output": "Hello world"}
 ```
 
-**Gateway Implementation (Recommended):**
-- Expose `POST /api/chat/stream` endpoint
-- Use Server-Sent Events (SSE) to stream chunks to frontend
-- Example response format:
-  ```
-  data: {"chunk": "Hello"}
-  
-  data: {"chunk": " world"}
-  
-  data: {"done": true}
-  ```
+**3. UI Implementation Guidelines (Frontend)**
+To maximize the user benefit, the UI should:
+1.  **Thinking State:** Show a "Connecting..." or "Thinking..." state immediately after sending the request.
+2.  **Accumulate & Render:** Append `data.text` from `chunk` events to the message bubble *as they arrive*. Do not wait for `done`.
+3.  **Auto-Scroll:** Valid streaming text often pushes the bottom of the chat; ensure the view auto-scrolls to keep the latest text visible.
+4.  **Typing Effect:** The natural arrival of network packets serves as a "typing effect". No artificial delay is needed.
+5.  **Markdown:** Parse Markdown incrementally if possible, or re-render the accumulation on every chunk (efficiently).
 
-**Benefits:**
-- Real-time user feedback (no waiting for full response)
-- Better UX for long agent executions
-- Lower perceived latency
+**Sample Client Code (JavaScript):**
+```javascript
+const response = await fetch('/api/chat/stream', {
+  method: 'POST',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({input: "Plan a trip", m_code: "..."})
+});
+
+const reader = response.body.getReader();
+const decoder = new TextDecoder();
+
+while (true) {
+  const {value, done} = await reader.read();
+  if (done) break;
+  const text = decoder.decode(value);
+  // Parse 'event: chunk\ndata: {...}' and append to UI
+}
+```
 
 
 

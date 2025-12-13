@@ -1,0 +1,36 @@
+﻿=== RUN   TestIntegration_RouterWiring
+    integration_test.go:39: 
+        	Error Trace:	C:/Users/Antigravity/AiGuardian/server/integration_test.go:39
+        	Error:      	"event:done\ndata:{\"output\":\"\"}\n\n" does not contain "event: done"
+        	Test:       	TestIntegration_RouterWiring
+--- FAIL: TestIntegration_RouterWiring (0.00s)
+=== RUN   TestHealthHandler
+--- PASS: TestHealthHandler (0.00s)
+=== RUN   TestChatStreamHandler
+ENGINE EVENT: {"type": "chunk", "message": "Hello"}
+ENGINE EVENT: {"type": "chunk", "message": " World"}
+    main_test.go:56: 
+        	Error Trace:	C:/Users/Antigravity/AiGuardian/server/main_test.go:56
+        	Error:      	"event:chunk\ndata:{\"text\":\"Hello\"}\n\nevent:chunk\ndata:{\"text\":\" World\"}\n\nevent:done\ndata:{\"output\":\"Hello World\"}\n\n" does not contain "event: done"
+        	Test:       	TestChatStreamHandler
+    main_test.go:57: Response Body: event:chunk
+        data:{"text":"Hello"}
+        
+        event:chunk
+        data:{"text":" World"}
+        
+        event:done
+        data:{"output":"Hello World"}
+        
+    main_test.go:59: 
+        	Error Trace:	C:/Users/Antigravity/AiGuardian/server/main_test.go:59
+        	Error:      	"event:chunk\ndata:{\"text\":\"Hello\"}\n\nevent:chunk\ndata:{\"text\":\" World\"}\n\nevent:done\ndata:{\"output\":\"Hello World\"}\n\n" does not contain "event: chunk"
+        	Test:       	TestChatStreamHandler
+    main_test.go:60: 
+        	Error Trace:	C:/Users/Antigravity/AiGuardian/server/main_test.go:60
+        	Error:      	"event:chunk\ndata:{\"text\":\"Hello\"}\n\nevent:chunk\ndata:{\"text\":\" World\"}\n\nevent:done\ndata:{\"output\":\"Hello World\"}\n\n" does not contain "data: {\"text\":\"Hello\"}"
+        	Test:       	TestChatStreamHandler
+--- FAIL: TestChatStreamHandler (0.00s)
+FAIL
+FAIL	guardian-gateway	0.187s
+FAIL

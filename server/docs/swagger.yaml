@@ -62,7 +62,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Send a message to an agent and stream the response
+      description: Send a message to an agent and stream the response via SSE
       parameters:
       - description: Chat Request
         in: body
@@ -83,7 +83,7 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: Chat with Agent
+      summary: Chat with Agent (Streaming)
       tags:
       - chat
   /api/feed:

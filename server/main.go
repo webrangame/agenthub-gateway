@@ -395,8 +395,8 @@ func UploadAgentHandler(c *gin.Context) {
 }
 
 // ChatStreamHandler godoc
-// @Summary      Chat with Agent
-// @Description  Send a message to an agent and stream the response
+// @Summary      Chat with Agent (Streaming)
+// @Description  Send a message to an agent and stream the response via SSE
 // @Tags         chat
 // @Accept       json
 // @Produce      text/event-stream
@@ -406,7 +406,7 @@ func UploadAgentHandler(c *gin.Context) {
 // @Router       /api/chat/stream [post]
 func ChatStreamHandler(c *gin.Context) {
 	var req struct {
-		Message   string `json:"message"`
+		Input     string `json:"input"`
 		AgentPath string `json:"agent_path"` // Optional, defaults to latest uploaded?
 	}
 	if err := c.BindJSON(&req); err != nil {
@@ -453,21 +453,39 @@ func ChatStreamHandler(c *gin.Context) {
 	c.Writer.Header().Set("Connection", "keep-alive")
 	c.Writer.Flush()
 
+	// Accumulate full output for "done" event
+	var fullOutput strings.Builder
+
 	// Run Agent and Stream
-	err := engine.Run(agentPath, req.Message, func(eventJSON string) {
+	err := engine.Run(agentPath, req.Input, func(eventJSON string) {
 		// Broadcast to Feed as well? Maybe yes, so history is kept.
-		// But for chat, we might want direct response.
-		// Let's do BOTH: Update feed AND stream to client.
 		processAndAppendFeed(eventJSON)
 
-		// Parse to see if it's a message chunk or just internal event
-		// For simplicity, stream everything as data
-		c.SSEvent("message", eventJSON)
-		c.Writer.Flush()
+		// Parse the JSON event to extract text
+		var evt struct {
+			Type    string `json:"type"`
+			Message string `json:"message"`
+		}
+		if err := json.Unmarshal([]byte(eventJSON), &evt); err == nil {
+			if evt.Message != "" {
+				fullOutput.WriteString(evt.Message)
+				// Emit Chunk
+				chunkData := map[string]string{"text": evt.Message}
+				if chunkBytes, err := json.Marshal(chunkData); err == nil {
+					c.SSEvent("chunk", string(chunkBytes))
+					c.Writer.Flush()
+				}
+			}
+		}
 	})
 
 	if err != nil {
 		c.SSEvent("error", err.Error())
 	}
-	c.SSEvent("done", "true")
+
+	// Emit Done
+	doneData := map[string]string{"output": fullOutput.String()}
+	if doneBytes, err := json.Marshal(doneData); err == nil {
+		c.SSEvent("done", string(doneBytes))
+	}
 }

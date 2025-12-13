@@ -25,6 +25,7 @@ type ScheduleInfo struct {
 // Real Engine Wrapper
 type Engine struct {
 	BinPath string
+	MockRun func(agentPath, input string, onEvent func(string)) error
 }
 
 func New() *Engine {
@@ -60,6 +61,10 @@ func (e *Engine) Inspect(agentPath string) (*AgentMetadata, error) {
 
 // Run executes the agent via CLI and streams output to the callback
 func (e *Engine) Run(agentPath string, input string, onEvent func(string)) error {
+	if e.MockRun != nil {
+		return e.MockRun(agentPath, input, onEvent)
+	}
+
 	fmt.Printf("CLI: Executing %s run %s\n", e.BinPath, agentPath)
 
 	cmd := exec.Command(e.BinPath, "run", agentPath, "--input", input) // #nosec G204

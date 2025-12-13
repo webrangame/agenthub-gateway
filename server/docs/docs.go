@@ -68,7 +68,7 @@ const docTemplate = `{
         },
         "/api/chat/stream": {
             "post": {
-                "description": "Send a message to an agent and stream the response",
+                "description": "Send a message to an agent and stream the response via SSE",
                 "consumes": [
                     "application/json"
                 ],
@@ -78,7 +78,7 @@ const docTemplate = `{
                 "tags": [
                     "chat"
                 ],
-                "summary": "Chat with Agent",
+                "summary": "Chat with Agent (Streaming)",
                 "parameters": [
                     {
                         "description": "Chat Request",
