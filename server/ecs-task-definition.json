@@ -57,6 +57,14 @@
         {
           "name": "AWS_SECRET_ACCESS_KEY",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:582604091763:secret:fastgraph-gateway/AWS_SECRET_ACCESS_KEY"
+        },
+        {
+          "name": "SSL_CERT_PATH",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:582604091763:secret:fastgraph-gateway/SSL_CERT_PATH"
+        },
+        {
+          "name": "SSL_KEY_PATH",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:582604091763:secret:fastgraph-gateway/SSL_KEY_PATH"
         }
       ],
       "logConfiguration": {

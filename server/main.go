@@ -96,9 +96,20 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	fmt.Printf("Server starting on port %s...\n", port)
-	if err := r.Run(":" + port); err != nil {
-		fmt.Printf("Fatal: Server failed to start: %v\n", err)
+
+	certPath := os.Getenv("SSL_CERT_PATH")
+	keyPath := os.Getenv("SSL_KEY_PATH")
+
+	if certPath != "" && keyPath != "" {
+		fmt.Printf("Server starting on port %s (HTTPS)...\n", port)
+		if err := r.RunTLS(":"+port, certPath, keyPath); err != nil {
+			fmt.Printf("Fatal: Server failed to start (HTTPS): %v\n", err)
+		}
+	} else {
+		fmt.Printf("Server starting on port %s (HTTP)...\n", port)
+		if err := r.Run(":" + port); err != nil {
+			fmt.Printf("Fatal: Server failed to start: %v\n", err)
+		}
 	}
 }
 
