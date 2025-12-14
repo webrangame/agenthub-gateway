@@ -165,12 +165,12 @@ const ChatPanel: React.FC = () => {
                     >
                         <div
                             className={`max-w-[80%] rounded-2xl px-5 py-3 shadow-sm ${msg.role === 'user'
-                                ? 'bg-blue-600 text-white rounded-br-none'
-                                : 'bg-gray-100 text-gray-800 rounded-bl-none'
+                                ? 'bg-[#d1e2ff] text-[#003580] rounded-br-none'
+                                : 'bg-[#E6EEF9] text-[#003580] rounded-bl-none'
                                 }`}
                         >
                             <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                            <span className={`text-[10px] block mt-2 opacity-70 ${msg.role === 'user' ? 'text-blue-100' : 'text-gray-400'}`}>
+                            <span className={`text-[10px] block mt-2 opacity-70 ${msg.role === 'user' ? 'text-[#003580]/70' : 'text-gray-400'}`}>
                                 {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                         </div>
@@ -178,7 +178,7 @@ const ChatPanel: React.FC = () => {
                 ))}
                 {isStreaming && (
                     <div className="flex justify-start">
-                        <div className="bg-gray-100 rounded-2xl rounded-bl-none px-4 py-3 flex items-center gap-2">
+                        <div className="bg-[#E6EEF9] rounded-2xl rounded-bl-none px-4 py-3 flex items-center gap-2">
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
@@ -190,7 +190,7 @@ const ChatPanel: React.FC = () => {
 
             {/* Input Area */}
             <div className="p-4 border-t border-gray-100 bg-white">
-                <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400 transition-all shadow-sm">
+                <div className="flex items-center gap-2 bg-[#EEF5FF] border border-blue-200 rounded-xl px-4 py-2 focus-within:ring-2 focus-within:ring-blue-200 focus-within:border-blue-300 transition-all shadow-sm">
                     <input
                         type="text"
                         value={inputValue}
