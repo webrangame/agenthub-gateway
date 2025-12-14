@@ -60,7 +60,8 @@ const FeedPanel: React.FC = () => {
                 case 'cultural_tip':
                     return <VideoCard
                         title={item.data.title}
-                        videoUrl={item.data.video_url}
+                        videoUrl={item.data.videoUrl || item.data.video_url}
+                        summary={item.data.summary}
                     />;
                 case 'article':
                     return <ArticleCard

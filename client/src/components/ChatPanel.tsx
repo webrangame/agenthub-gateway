@@ -58,7 +58,7 @@ const ChatPanel: React.FC = () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ message: userMsg.content }),
+                body: JSON.stringify({ input: userMsg.content }),
             });
 
             if (!response.ok) {
@@ -70,13 +70,14 @@ const ChatPanel: React.FC = () => {
 
             if (!reader) return;
 
+            const currentStreamingId = Date.now().toString();
+
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
                 const chunk = decoder.decode(value);
 
-                // DEBUG LOGGING
                 if (showDebugRef.current) {
                     setMessages(prev => [...prev, {
                         id: Date.now().toString() + Math.random().toString(),
@@ -89,19 +90,38 @@ const ChatPanel: React.FC = () => {
                 const lines = chunk.split('\n');
 
                 for (const line of lines) {
-                    if (line.startsWith('event: message')) {
-                        // Next line is data
-                        continue;
-                    }
                     if (line.startsWith('data:')) {
                         const dataContent = line.replace('data:', '').trim();
                         try {
                             const parsed = JSON.parse(dataContent);
-                            if (parsed.message) {
-                                // Logic for handling parsed messages
+                            if (parsed.text) {
+                                // Append the streamed text as a chat message
+                                setMessages(prev => [...prev, {
+                                    id: Date.now().toString() + Math.random().toString(),
+                                    role: 'assistant',
+                                    content: parsed.text,
+                                    timestamp: new Date()
+                                }]);
+                            } else if (parsed.message && parsed.type === 'chunk') {
+                                setMessages(prev => {
+                                    const lastMsg = prev[prev.length - 1];
+                                    if (lastMsg && lastMsg.role === 'assistant' && lastMsg.id === currentStreamingId) {
+                                        return [
+                                            ...prev.slice(0, -1),
+                                            { ...lastMsg, content: lastMsg.content + parsed.message }
+                                        ];
+                                    } else {
+                                        return [...prev, {
+                                            id: currentStreamingId,
+                                            role: 'assistant',
+                                            content: parsed.message,
+                                            timestamp: new Date()
+                                        }];
+                                    }
+                                });
                             }
                         } catch (e) {
-                            // dataContent might be a raw string if not JSON
+                            // ignore parsing errors
                         }
                     }
                 }
@@ -116,12 +136,6 @@ const ChatPanel: React.FC = () => {
             }]);
         } finally {
             setIsStreaming(false);
-            setMessages(prev => [...prev, {
-                id: Date.now().toString() + '-done',
-                role: 'assistant',
-                content: "✅ Analysis complete. Check the Insight Stream for details.",
-                timestamp: new Date()
-            }]);
         }
     };
 
