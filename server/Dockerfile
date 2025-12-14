@@ -20,7 +20,7 @@ RUN chmod +x /app/fastgraph
 
 # Copy built Gateway binary
 COPY --from=builder /app/guardian-gateway /app/guardian-gateway
-COPY server/.env.example .env 
+
 
 # Copy Agents directory
 COPY server/agents/ /app/agents/
