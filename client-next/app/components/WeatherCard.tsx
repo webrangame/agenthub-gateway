@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { CloudRain, Sun, Cloud, Wind, CloudSnow, CloudDrizzle, Cloudy } from 'lucide-react';
+import { CloudRain, Sun, Cloud, Wind, CloudSnow, CloudDrizzle, Cloudy, Activity, MapPin } from 'lucide-react';
 
 interface WeatherCardProps {
     location: string;
@@ -25,34 +25,60 @@ const WeatherCard: React.FC<WeatherCardProps> = ({ location, temp, condition, de
     const Icon = getIcon(condition);
 
     return (
-        <div className="bg-[#EEF5FF] border border-[#9DBEF8] rounded-xl p-6 text-[#003580] shadow-sm hover:shadow-md hover:shadow-[#003580]/5 transition-all duration-300 hover:scale-[1.01] relative overflow-hidden group">
-            {/* Decorative background circle */}
-            <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#9DBEF8]/20 rounded-full blur-3xl group-hover:bg-[#9DBEF8]/30 transition-colors"></div>
-
-            <div className="relative z-10">
-                <div className="flex justify-between items-start mb-4">
-                    <div>
-                        <h3 className="text-2xl font-bold mb-1 tracking-tight">{location}</h3>
-                        <p className="text-xs text-[#003580]/70 font-semibold uppercase tracking-wide">Current Conditions</p>
-                    </div>
-                    <div className="p-3 bg-white rounded-full shadow-sm border border-[#9DBEF8]/30">
+        <div className="group relative bg-[#EEF5FF] border border-[#9DBEF8] rounded-2xl p-6 transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,53,128,0.1)] hover:border-[#003580]/20 overflow-hidden cursor-default">
+            
+            {/* Dynamic Background Elements */}
+            <div className="absolute -right-20 -top-20 w-64 h-64 bg-gradient-to-br from-white/80 to-[#9DBEF8]/20 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+            
+            <div className="flex justify-between items-start mb-6 relative z-10">
+                <div>
+                     <div className="flex items-center gap-2 mb-2">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white border border-[#9DBEF8]/30 text-[10px] font-bold text-[#003580] uppercase tracking-wider shadow-sm">
+                            <Activity className="w-3 h-3 text-[#003580]" /> 
+                            <span>Live</span>
+                        </span>
+                        <span className="text-[10px] font-semibold text-[#003580]/50 flex items-center gap-0.5">
+                            <MapPin className="w-3 h-3" />
+                            Station 1
+                        </span>
+                     </div>
+                     <h3 className="text-2xl font-bold text-[#003580] tracking-tight group-hover:translate-x-1 transition-transform duration-300">{location}</h3>
+                </div>
+                
+                {/* Icon Container */}
+                <div className="relative group/icon">
+                    <div className="absolute inset-0 bg-[#9DBEF8] rounded-2xl blur-xl opacity-0 group-hover:opacity-30 transition-opacity duration-300" />
+                    <div className="relative p-4 bg-white rounded-2xl shadow-sm border border-[#9DBEF8]/20 group-hover:-translate-y-1 group-hover:rotate-3 transition-all duration-300 group-hover:shadow-md">
                         <Icon className="w-8 h-8 text-[#003580]" />
                     </div>
                 </div>
+            </div>
 
-                <div className="flex items-baseline gap-3 mb-3">
-                    <span className="text-5xl font-black tracking-tighter">{temp}</span>
-                    <span className="text-lg text-[#003580]/80 font-medium">{condition}</span>
+            <div className="relative z-10">
+                <div className="flex items-baseline gap-1 mb-5">
+                    <div className="text-6xl font-black text-[#003580] tracking-tighter leading-none group-hover:scale-105 transition-transform duration-300 origin-left">
+                        {temp}
+                    </div>
+                    <div className="flex flex-col ml-2">
+                        <span className="text-sm font-bold text-[#003580]/80 uppercase tracking-wide">
+                            {condition}
+                        </span>
+                        <span className="text-[10px] text-[#003580]/40 font-semibold">
+                            Feels like {temp}
+                        </span>
+                    </div>
                 </div>
 
+                {/* Description Box */}
                 {description && (
-                    <div className="mt-4 pt-4 border-t border-[#9DBEF8]/30">
-                        <p className="text-sm text-[#003580]/80 leading-relaxed font-medium">
+                    <div className="relative overflow-hidden rounded-xl bg-white/40 border border-[#9DBEF8]/20 p-4 transition-colors duration-300 group-hover:bg-white/60 group-hover:border-[#9DBEF8]/40">
+                        <p className="text-sm text-[#003580]/90 leading-relaxed font-medium">
                             {description}
                         </p>
                     </div>
                 )}
             </div>
+            
         </div>
     );
 };
