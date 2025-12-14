@@ -165,7 +165,7 @@ const ChatPanel: React.FC = () => {
                     >
                         <div
                             className={`max-w-[80%] rounded-2xl px-5 py-3 shadow-sm ${msg.role === 'user'
-                                ? 'bg-[#d1e2ff] text-[#003580] rounded-br-none'
+                                ? 'bg-[#9dbef8] text-[#003580] rounded-br-none'
                                 : 'bg-[#E6EEF9] text-[#003580] rounded-bl-none'
                                 }`}
                         >

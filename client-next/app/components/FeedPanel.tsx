@@ -7,6 +7,7 @@ import AlertWidget from './AlertWidget';
 import VideoCard from './VideoCard';
 import ArticleCard from './ArticleCard';
 import { API_ENDPOINTS } from '../utils/api';
+import { buildMockFeed } from '../mock/mockFeed';
 
 interface FeedItem {
     id: string;
@@ -19,10 +20,29 @@ const FeedPanel: React.FC = () => {
     const [feed, setFeed] = useState<FeedItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [showLogs, setShowLogs] = useState(false); // Default: Hide Logs
+    const [mockTick, setMockTick] = useState(0);
 
     useEffect(() => {
+        // Default behavior: use mock feed in dev so you can observe all card types.
+        // Override:
+        // - ?mockFeed=0 forces real backend
+        // - ?mockFeed=1 forces mock
+        const useMock = (() => {
+            if (typeof window === 'undefined') return process.env.NEXT_PUBLIC_USE_MOCK_FEED === 'true';
+            const param = new URLSearchParams(window.location.search).get('mockFeed');
+            if (param === '0') return false;
+            if (param === '1') return true;
+            return process.env.NEXT_PUBLIC_USE_MOCK_FEED === 'true' || process.env.NODE_ENV !== 'production';
+        })();
+
         const fetchFeed = async () => {
             try {
+                if (useMock) {
+                    setFeed(buildMockFeed(mockTick) as any);
+                    setLoading(false);
+                    return;
+                }
+
                 const res = await fetch(API_ENDPOINTS.feed);
                 if (res.ok) {
                     const data = await res.json();
@@ -37,9 +57,12 @@ const FeedPanel: React.FC = () => {
 
         fetchFeed();
         // Poll every 10s for now (simulating stream)
-        const interval = setInterval(fetchFeed, 3000); // Faster polling for demo
+        const interval = setInterval(() => {
+            if (useMock) setMockTick((t) => t + 1);
+            fetchFeed();
+        }, 3000); // Faster polling for demo
         return () => clearInterval(interval);
-    }, []);
+    }, [mockTick]);
 
     const renderCard = (item: FeedItem) => {
         // Filter Logs if toggle is off
