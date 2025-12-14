@@ -15,8 +15,6 @@ const AlertWidget: React.FC<AlertWidgetProps> = ({ message, level }) => {
         warning: {
             icon: AlertTriangle,
             badgeText: "WARNING",
-            // Amber/Orange theme
-            stripColor: "bg-[#FFAB00]",
             stripColorHex: "#FFAB00", 
             iconColor: "text-[#FFAB00]",
             badgeBg: "bg-[#FFF4E5]",
@@ -25,8 +23,6 @@ const AlertWidget: React.FC<AlertWidgetProps> = ({ message, level }) => {
         danger: {
             icon: AlertCircle,
             badgeText: "ALERT",
-            // Red theme
-            stripColor: "bg-[#FF3B30]",
             stripColorHex: "#FF3B30",
             iconColor: "text-[#FF3B30]",
             badgeBg: "bg-[#FFEBEE]",
@@ -35,8 +31,6 @@ const AlertWidget: React.FC<AlertWidgetProps> = ({ message, level }) => {
         info: {
             icon: Info,
             badgeText: "INFO",
-            // Blue theme
-            stripColor: "bg-[#003580]",
             stripColorHex: "#003580",
             iconColor: "text-[#003580]",
             badgeBg: "bg-[#003580]",
@@ -46,6 +40,7 @@ const AlertWidget: React.FC<AlertWidgetProps> = ({ message, level }) => {
 
     const style = config[level] || config.info;
     const Icon = style.icon;
+    const shouldPulse = level === 'danger' || level === 'warning';
 
     // Define variants for parent-controlled animations
     const cardVariants: Variants = {
@@ -64,24 +59,26 @@ const AlertWidget: React.FC<AlertWidgetProps> = ({ message, level }) => {
 
     return (
         <motion.div 
-            className="relative w-full rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden mb-2 group"
+            className="relative w-full rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden mb-2 group border-2"
             variants={cardVariants}
             whileHover="hover"
-            initial={{ backgroundColor: style.stripColorHex + "30" }}
-            animate={{ backgroundColor: "#ffffff" }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
+            initial={{ 
+                backgroundColor: style.stripColorHex + "30",
+                borderColor: style.stripColorHex 
+            }}
+            animate={{ 
+                backgroundColor: "#ffffff",
+                borderColor: shouldPulse 
+                    ? [style.stripColorHex, style.stripColorHex + "40", style.stripColorHex] 
+                    : style.stripColorHex 
+            }}
+            transition={{ 
+                backgroundColor: { duration: 0.8, ease: "easeOut" },
+                borderColor: shouldPulse 
+                    ? { duration: 2, repeat: Infinity, ease: "easeInOut" }
+                    : { duration: 0.3 }
+            }}
         >
-            {/* Left Accent Strip - Pulsing if danger */}
-            <motion.div 
-                className={cn("absolute left-0 top-0 bottom-0 w-1", style.stripColor)}
-                animate={level === 'danger' ? { opacity: [1, 0.4, 1] } : { opacity: 1 }}
-                transition={{ 
-                    duration: 1.5, 
-                    repeat: Infinity, 
-                    ease: "easeInOut" 
-                }}
-            />
-
             <div className="flex flex-row items-start p-3 pl-4 gap-2">
                 {/* Icon Circle - Shakes on card hover via variants */}
                 <motion.div 
