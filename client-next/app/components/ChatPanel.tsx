@@ -190,7 +190,7 @@ const ChatPanel: React.FC = () => {
 
             {/* Input Area */}
             <div className="p-4 border-t border-gray-100 bg-white">
-                <div className="flex items-center gap-2 bg-[#EEF5FF] border border-blue-200 rounded-xl px-4 py-2 focus-within:ring-2 focus-within:ring-blue-200 focus-within:border-blue-300 transition-all shadow-sm">
+                <div className="flex items-center gap-2 bg-[#EEF5FF] border border-blue-200 rounded-xl px-4 py-2 focus-within:border-[#003580] transition-all shadow-sm">
                     <input
                         type="text"
                         value={inputValue}
@@ -203,7 +203,7 @@ const ChatPanel: React.FC = () => {
                     <button
                         onClick={handleSend}
                         disabled={!inputValue.trim() || isStreaming}
-                        className="p-2 bg-[#003580] hover:bg-[#002a66] disabled:bg-[#003580]/40 text-white rounded-lg transition-colors shadow-sm"
+                        className="p-2 bg-[#003580] hover:bg-[#002a66] disabled:bg-[#003580] disabled:hover:bg-[#003580] disabled:text-white/60 text-white rounded-lg transition-colors shadow-sm"
                     >
                         <Send className="w-4 h-4" />
                     </button>
