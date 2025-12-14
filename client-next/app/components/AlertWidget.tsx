@@ -10,53 +10,68 @@ interface AlertWidgetProps {
 }
 
 const AlertWidget: React.FC<AlertWidgetProps> = ({ message, level }) => {
-    const styles = {
+    const config = {
         warning: {
-            gradient: "gradient-alert-warning",
-            textColor: "text-amber-900",
             icon: AlertTriangle,
-            iconColor: "text-amber-900",
-            badgeText: "Warning"
+            badgeText: "Warning",
+            accentColor: "text-amber-600",
+            borderColor: "border-amber-200",
+            bgColor: "bg-amber-50"
         },
         danger: {
-            gradient: "gradient-alert-danger",
-            textColor: "text-red-900",
             icon: AlertCircle,
-            iconColor: "text-red-900",
-            badgeText: "Alert"
+            badgeText: "Alert",
+            accentColor: "text-red-600",
+            borderColor: "border-red-200",
+            bgColor: "bg-red-50"
         },
         info: {
-            gradient: "gradient-wisdom",
-            textColor: "text-blue-900",
             icon: Info,
-            iconColor: "text-blue-900",
-            badgeText: "Info"
+            badgeText: "Info",
+            accentColor: "text-[#003580]",
+            borderColor: "border-[#9DBEF8]",
+            bgColor: "bg-[#EEF5FF]"
         },
     };
 
-    const currentStyle = styles[level] || styles.info;
-    const Icon = currentStyle.icon;
+    // To strictly follow the "blue variant" request while keeping semantic meaning,
+    // we will use the blue theme as the base structure but use semantic accents.
+    // However, for a "super professional" look, we can mute the semantic colors 
+    // or use them as subtle indicators alongside the primary blue branding.
+    
+    // Let's use the blue theme for the card body, but accent the icon and badge.
+    
+    const style = config[level] || config.info;
+    const Icon = style.icon;
 
     return (
-        <div className={`${currentStyle.gradient} rounded-xl p-5 shadow-lg hover-lift relative overflow-hidden`}>
-            {/* Decorative background icon */}
-            <div className="absolute top-0 right-0 opacity-10">
-                <Icon className="w-24 h-24 -mt-4 -mr-4" />
-            </div>
+        <div className="bg-[#EEF5FF] border border-[#9DBEF8] rounded-xl p-5 shadow-sm hover:shadow-md hover:shadow-[#003580]/5 transition-all duration-300 hover:-translate-y-0.5 relative overflow-hidden group">
+             {/* Left accent bar */}
+            <div className={cn("absolute left-0 top-0 bottom-0 w-1.5", 
+                level === 'danger' ? 'bg-red-500' : 
+                level === 'warning' ? 'bg-amber-500' : 'bg-[#003580]'
+            )} />
 
-            {/* Content */}
-            <div className="relative z-10 flex items-start gap-4">
-                <div className="flex-shrink-0">
-                    <Icon className={cn("w-7 h-7 animate-pulse", currentStyle.iconColor)} />
+            <div className="flex items-start gap-4 pl-2">
+                <div className={cn("p-2 rounded-full bg-white border border-[#9DBEF8]/50 shadow-sm shrink-0", 
+                     level === 'danger' ? 'text-red-600' : 
+                     level === 'warning' ? 'text-amber-600' : 'text-[#003580]'
+                )}>
+                    <Icon className="w-5 h-5" />
                 </div>
+                
                 <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                        <span className="bg-white/30 text-white text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
-                            {currentStyle.badgeText}
+                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide border",
+                            level === 'danger' ? 'bg-red-100 text-red-700 border-red-200' : 
+                            level === 'warning' ? 'bg-amber-100 text-amber-700 border-amber-200' : 
+                            'bg-[#003580] text-white border-[#003580]'
+                        )}>
+                            {style.badgeText}
                         </span>
                     </div>
-                    {/* Full message - NO TRUNCATION */}
-                    <p className={cn("text-sm font-semibold leading-relaxed whitespace-pre-wrap", currentStyle.textColor)}>
+                    
+                    <p className="text-sm font-semibold text-[#003580] leading-relaxed whitespace-pre-wrap">
                         {message}
                     </p>
                 </div>
@@ -66,9 +81,3 @@ const AlertWidget: React.FC<AlertWidgetProps> = ({ message, level }) => {
 };
 
 export default AlertWidget;
-
-
-
-
-
-

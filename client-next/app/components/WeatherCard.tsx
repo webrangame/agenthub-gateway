@@ -22,45 +22,35 @@ const WeatherCard: React.FC<WeatherCardProps> = ({ location, temp, condition, de
         return Cloud;
     };
 
-    // Dynamic gradient based on condition
-    const getGradient = (cond: string) => {
-        const lowerCond = cond.toLowerCase();
-        if (lowerCond.includes('rain')) return 'from-slate-600 to-slate-800';
-        if (lowerCond.includes('sun') || lowerCond.includes('clear')) return 'from-orange-400 to-pink-500';
-        if (lowerCond.includes('cloud')) return 'from-blue-400 to-blue-600';
-        return 'from-cyan-500 to-blue-600'; // Default
-    };
-
     const Icon = getIcon(condition);
-    const gradientClass = getGradient(condition);
 
     return (
-        <div className={`bg-gradient-to-br ${gradientClass} rounded-xl p-6 text-white shadow-2xl hover-lift relative overflow-hidden`}>
-            {/* Decorative background pattern */}
-            <div className="absolute top-0 right-0 opacity-10">
-                <Icon className="w-32 h-32 -mt-8 -mr-8" />
-            </div>
+        <div className="bg-[#EEF5FF] border border-[#9DBEF8] rounded-xl p-6 text-[#003580] shadow-sm hover:shadow-md hover:shadow-[#003580]/5 transition-all duration-300 hover:scale-[1.01] relative overflow-hidden group">
+            {/* Decorative background circle */}
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#9DBEF8]/20 rounded-full blur-3xl group-hover:bg-[#9DBEF8]/30 transition-colors"></div>
 
-            {/* Content */}
             <div className="relative z-10">
                 <div className="flex justify-between items-start mb-4">
                     <div>
-                        <h3 className="text-2xl font-bold mb-1">{location}</h3>
-                        <p className="text-xs text-white/80 font-medium uppercase tracking-wide">Current Conditions</p>
+                        <h3 className="text-2xl font-bold mb-1 tracking-tight">{location}</h3>
+                        <p className="text-xs text-[#003580]/70 font-semibold uppercase tracking-wide">Current Conditions</p>
                     </div>
-                    <Icon className="w-12 h-12 text-white/90" />
+                    <div className="p-3 bg-white rounded-full shadow-sm border border-[#9DBEF8]/30">
+                        <Icon className="w-8 h-8 text-[#003580]" />
+                    </div>
                 </div>
 
-                <div className="flex items-baseline gap-3 mb-2">
-                    <span className="text-5xl font-black">{temp}</span>
-                    <span className="text-lg text-white/90 font-semibold">{condition}</span>
+                <div className="flex items-baseline gap-3 mb-3">
+                    <span className="text-5xl font-black tracking-tighter">{temp}</span>
+                    <span className="text-lg text-[#003580]/80 font-medium">{condition}</span>
                 </div>
 
-                {/* Full description if provided */}
                 {description && (
-                    <p className="text-sm text-white/90 mt-4 leading-relaxed">
-                        {description}
-                    </p>
+                    <div className="mt-4 pt-4 border-t border-[#9DBEF8]/30">
+                        <p className="text-sm text-[#003580]/80 leading-relaxed font-medium">
+                            {description}
+                        </p>
+                    </div>
                 )}
             </div>
         </div>
@@ -68,9 +58,3 @@ const WeatherCard: React.FC<WeatherCardProps> = ({ location, temp, condition, de
 };
 
 export default WeatherCard;
-
-
-
-
-
-

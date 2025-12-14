@@ -189,8 +189,8 @@ const ChatPanel: React.FC = () => {
             </div>
 
             {/* Input Area */}
-            <div className="p-4 border-t border-gray-100 bg-white">
-                <div className="flex items-center gap-2 bg-[#EEF5FF] border border-blue-200 rounded-xl px-4 py-2 focus-within:border-[#003580] transition-all shadow-sm">
+            <div className="p-4 border-t border-gray-300 bg-white">
+                <div className="flex items-center gap-2 border border-blue-200 rounded-xl px-4 py-2 focus-within:border-[#003580] transition-all shadow-[0_6px_18px_rgba(0,0,0,0.06)] focus-within:shadow-[0_8px_24px_rgba(0,53,128,0.18)]">
                     <input
                         type="text"
                         value={inputValue}

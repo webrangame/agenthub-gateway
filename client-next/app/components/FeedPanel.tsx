@@ -100,13 +100,13 @@ const FeedPanel: React.FC = () => {
                     />;
                 case 'log':
                     return (
-                        <div className="p-2 border border-gray-100 rounded bg-gray-50 text-[10px] font-mono text-gray-400 mb-2">
-                            <span className="font-bold text-gray-500">LOG:</span> {item.data.summary}
+                        <div className="p-3 border border-[#9DBEF8] rounded bg-[#EEF5FF] text-[10px] font-mono text-[#003580]/70 mb-2 shadow-sm">
+                            <span className="font-bold text-[#003580]">LOG:</span> {item.data.summary}
                         </div>
                     );
                 default:
                     return (
-                        <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 text-xs text-gray-500">
+                        <div className="p-4 border border-[#9DBEF8] rounded-lg bg-[#EEF5FF] text-xs text-[#003580]">
                             Unknown Content: {item.card_type}
                         </div>
                     );
@@ -118,10 +118,10 @@ const FeedPanel: React.FC = () => {
         return (
             <motion.div
                 key={item.id}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
                 layout // Smooth list reordering
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
             >
                 {content}
             </motion.div>
@@ -129,12 +129,16 @@ const FeedPanel: React.FC = () => {
     };
 
     return (
-        <div className="flex-1 flex flex-col p-4 bg-gray-50 overflow-y-auto h-full">
-            <div className="sticky top-0 bg-gray-50/95 backdrop-blur z-10 pb-4 mb-2 border-b border-gray-100 flex justify-between items-center">
-                <h2 className="text-lg font-bold text-gray-800 tracking-tight">Insight Stream</h2>
+        <div className="flex-1 flex flex-col p-4 bg-[#E6EEF9] overflow-y-auto h-full scrollbar-thin scrollbar-thumb-[#9DBEF8] scrollbar-track-transparent">
+            <div className="sticky top-0 bg-[#E6EEF9]/95 backdrop-blur-sm z-10 pb-4 mb-2 border-b border-[#9DBEF8]/30 flex justify-between items-center">
+                <h2 className="text-xl font-bold text-[#003580] tracking-tight">Insight Stream</h2>
                 <button
                     onClick={() => setShowLogs(!showLogs)}
-                    className={`text-[10px] px-2 py-1 rounded-full border transition-colors ${showLogs ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-white text-gray-400 border-gray-200 hover:bg-gray-100'}`}
+                    className={`text-[10px] px-3 py-1.5 rounded-full font-medium transition-all duration-300 border ${
+                        showLogs 
+                            ? 'bg-[#003580] text-white border-[#003580] shadow-md' 
+                            : 'bg-[#EEF5FF] text-[#003580] border-[#9DBEF8] hover:bg-white hover:shadow-sm'
+                    }`}
                 >
                     {showLogs ? 'Hide Logs' : 'Debug'}
                 </button>
@@ -142,13 +146,13 @@ const FeedPanel: React.FC = () => {
 
             <div className="space-y-4 pb-20">
                 {loading ? (
-                    <div className="text-center text-gray-400 py-8 animate-pulse text-xs">Syncing...</div>
+                    <div className="text-center text-[#003580]/50 py-12 animate-pulse text-xs uppercase tracking-widest font-semibold">Syncing Stream...</div>
                 ) : (
                     feed.map(renderCard)
                 )}
 
                 {!loading && feed.length === 0 && (
-                    <div className="text-center text-gray-400 py-8 italic text-sm">Quiet... for now.</div>
+                    <div className="text-center text-[#003580]/40 py-12 italic text-sm">Quiet... for now.</div>
                 )}
             </div>
         </div>
@@ -156,7 +160,3 @@ const FeedPanel: React.FC = () => {
 };
 
 export default FeedPanel;
-
-
-
-
