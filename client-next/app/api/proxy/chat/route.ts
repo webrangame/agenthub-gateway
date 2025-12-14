@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 
-// Use environment variable for API URL, fallback to hardcoded IP
-const API_BASE_URL = (process.env.BACKEND_API_URL || 'http://44.200.192.118:8081').trim();
+// Use environment variable for API URL, fallback to local dev backend
+const API_BASE_URL = (process.env.BACKEND_API_URL || 'http://localhost:8081').trim();
 
 export async function POST(request: NextRequest) {
   let timeoutId: NodeJS.Timeout | null = null;
