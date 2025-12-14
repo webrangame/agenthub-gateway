@@ -1,0 +1,34 @@
+🔑 VERCEL_TOKEN Setup Guide
+===========================
+
+STEP 1: Create Token in Vercel
+------------------------------
+1. Go to: https://vercel.com/account/tokens
+2. Click "Create Token"
+3. Name: "GitHub Actions"
+4. Expiration: "No expiration" (recommended)
+5. Click "Create"
+6. ⚠️ COPY THE TOKEN IMMEDIATELY (you can only see it once!)
+
+STEP 2: Add to GitHub Secrets
+------------------------------
+1. Go to: https://github.com/niyogen/agenthub-gateway/settings/secrets/actions
+2. Click "New repository secret"
+3. Name: VERCEL_TOKEN
+4. Value: Paste your token
+5. Click "Add secret"
+
+STEP 3: Verify All Secrets Are Set
+------------------------------------
+✅ VERCEL_TOKEN = (your token)
+✅ VERCEL_ORG_ID = team_3ABD9xuy4MGJKTHm4L3HD2Sh
+✅ VERCEL_PROJECT_ID = prj_yogugzXjOFH96JnPLFRD9C87o1gE
+✅ BACKEND_API_URL = http://54.196.193.42:8081 (optional)
+
+STEP 4: Test
+------------
+1. Go to: https://github.com/niyogen/agenthub-gateway/actions
+2. Trigger a workflow
+3. Check if deployment succeeds
+
+Need help? See: HOW_TO_GET_VERCEL_TOKEN.md
