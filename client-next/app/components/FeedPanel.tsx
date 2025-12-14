@@ -129,8 +129,8 @@ const FeedPanel: React.FC = () => {
     };
 
     return (
-        <div className="flex-1 flex flex-col p-4 bg-[#E6EEF9] overflow-y-auto h-full scrollbar-thin scrollbar-thumb-[#9DBEF8] scrollbar-track-transparent">
-            <div className="sticky top-0 bg-[#E6EEF9]/95 backdrop-blur-sm z-10 pb-4 mb-2 border-b border-[#9DBEF8]/30 flex justify-between items-center">
+        <div className="flex-1 flex flex-col p-4 overflow-y-auto h-full scrollbar-thin scrollbar-thumb-[#9DBEF8] scrollbar-track-transparent">
+            <div className="sticky top-0 backdrop-blur-sm z-10 pb-4 mb-2 border-b border-[#9DBEF8]/30 flex justify-between items-center">
                 <h2 className="text-xl font-bold text-[#003580] tracking-tight">Insight Stream</h2>
                 <button
                     onClick={() => setShowLogs(!showLogs)}
