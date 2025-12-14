@@ -144,9 +144,9 @@ const ChatPanel: React.FC = () => {
     return (
         <div className="flex-1 flex flex-col h-full bg-white relative">
             {/* Header */}
-            <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-white/50 backdrop-blur z-10 sticky top-0">
-                <h2 className="font-bold text-gray-800">Trip Guardian</h2>
-                <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full flex items-center gap-1">
+            <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#003580] z-10 sticky top-0">
+                <h2 className="font-bold text-white tracking-wider">Trip Guardian</h2>
+                <span className="text-xs px-2 py-1 bg-white/15 text-white rounded-full flex items-center gap-1 border border-white/20">
                     <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                     Online
                 </span>
@@ -165,12 +165,12 @@ const ChatPanel: React.FC = () => {
                     >
                         <div
                             className={`max-w-[80%] rounded-2xl px-5 py-3 shadow-sm ${msg.role === 'user'
-                                ? 'bg-blue-600 text-white rounded-br-none'
-                                : 'bg-gray-100 text-gray-800 rounded-bl-none'
+                                ? 'bg-[#9dbef8] text-[#003580] rounded-br-none'
+                                : 'bg-[#E6EEF9] text-[#003580] rounded-bl-none'
                                 }`}
                         >
                             <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                            <span className={`text-[10px] block mt-2 opacity-70 ${msg.role === 'user' ? 'text-blue-100' : 'text-gray-400'}`}>
+                            <span className={`text-[10px] block mt-2 opacity-70 ${msg.role === 'user' ? 'text-[#003580]/70' : 'text-gray-400'}`}>
                                 {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                         </div>
@@ -178,7 +178,7 @@ const ChatPanel: React.FC = () => {
                 ))}
                 {isStreaming && (
                     <div className="flex justify-start">
-                        <div className="bg-gray-100 rounded-2xl rounded-bl-none px-4 py-3 flex items-center gap-2">
+                        <div className="bg-[#E6EEF9] rounded-2xl rounded-bl-none px-4 py-3 flex items-center gap-2">
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
@@ -189,8 +189,8 @@ const ChatPanel: React.FC = () => {
             </div>
 
             {/* Input Area */}
-            <div className="p-4 border-t border-gray-100 bg-white">
-                <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400 transition-all shadow-sm">
+            <div className="p-4 border-t border-gray-300 bg-white">
+                <div className="flex items-center gap-2 border border-blue-200 rounded-xl px-4 py-2 focus-within:border-[#003580] transition-all shadow-[0_6px_18px_rgba(0,0,0,0.06)] focus-within:shadow-[0_8px_24px_rgba(0,53,128,0.18)]">
                     <input
                         type="text"
                         value={inputValue}
@@ -203,7 +203,7 @@ const ChatPanel: React.FC = () => {
                     <button
                         onClick={handleSend}
                         disabled={!inputValue.trim() || isStreaming}
-                        className="p-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg transition-colors shadow-sm"
+                        className="p-2 bg-[#003580] hover:bg-[#002a66] disabled:bg-[#003580] disabled:hover:bg-[#003580] disabled:text-white/60 text-white rounded-lg transition-colors shadow-sm"
                     >
                         <Send className="w-4 h-4" />
                     </button>
