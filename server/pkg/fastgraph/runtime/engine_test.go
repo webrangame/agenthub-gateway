@@ -8,29 +8,31 @@ import (
 )
 
 // getTestBinPath helps find the binary in a cross-platform way relative to this test file.
+// getTestBinPath helps find the binary in a cross-platform way relative to this test file.
 func getTestBinPath() string {
-	base, _ := filepath.Abs("../../..")
+	base, _ := filepath.Abs("../../..") // Base is server/
 
-	// Try Linux/Mac binary first (standard for CI)
-	linuxPath := filepath.Join(base, "installer_v0.3.3/linux/fastgraph")
+	// 1. Check for 'fastgraph' in server root (CI/CD setup copies it here)
+	ciPath := filepath.Join(base, "fastgraph")
+	if _, err := os.Stat(ciPath); err == nil {
+		return ciPath
+	}
+
+	// 2. Check for 'fastgraph.exe' in server root (Windows Dev)
+	winLocalPath := filepath.Join(base, "fastgraph.exe")
+	if _, err := os.Stat(winLocalPath); err == nil {
+		return winLocalPath
+	}
+
+	// 3. Try Linux/Mac binary in sibling directory (for local dev if running from server/)
+	// If base is 'server', parent is repo root.
+	repoRoot := filepath.Dir(base)
+	linuxPath := filepath.Join(repoRoot, "installer_v0.3.3/linux/fastgraph")
 	if _, err := os.Stat(linuxPath); err == nil {
 		return linuxPath
 	}
 
-	// Fallback to Windows
-	winPath := filepath.Join(base, "installer_v0.3.3/windows/fastgraph.exe")
-	if _, err := os.Stat(winPath); err == nil {
-		return winPath
-	}
-
-	// Fallback to wrapper
-	legacyPath := filepath.Join(base, "fastgraph.exe")
-	if _, err := os.Stat(legacyPath); err == nil {
-		return legacyPath
-	}
-
-	// Default to assuming linux if neither found (for CI context where it might be created later)
-	return linuxPath
+	return ciPath // Return default even if missing, to allow error to bubble up in test
 }
 
 func TestInspect(t *testing.T) {

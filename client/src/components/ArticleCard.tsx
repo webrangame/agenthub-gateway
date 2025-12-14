@@ -1,5 +1,6 @@
 import React from 'react';
 import { ExternalLink, Eye, Video, Clock } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 interface ArticleCardProps {
     title: string;
@@ -116,10 +117,10 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
                     {title}
                 </h3>
 
-                {/* Full Summary - NO TRUNCATION */}
-                <p className="text-sm text-gray-700 leading-relaxed mb-4 whitespace-pre-wrap">
-                    {summary}
-                </p>
+                {/* Full Summary - Markdown Rendered */}
+                <div className="prose prose-sm max-w-none text-gray-700 mb-4">
+                    <ReactMarkdown>{summary}</ReactMarkdown>
+                </div>
 
                 {/* Read More Link */}
                 {url && (

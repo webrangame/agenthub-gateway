@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"sync"
 )
 
 // AgentMetadata matches the JSON output of 'fastgraph inspect'
@@ -82,6 +83,20 @@ func (e *Engine) Run(agentPath string, input string, onEvent func(string)) error
 	// Pass environment variables to the subprocess (especially OPENAI_API_KEY)
 	cmd.Env = os.Environ()
 
+	// DEBUG: Print Key Prefixes
+	gKey := os.Getenv("GOOGLE_API_KEY")
+	gMap := os.Getenv("GOOGLE_MAPS_KEY")
+	if len(gKey) > 10 {
+		fmt.Printf("DEBUG: GOOGLE_API_KEY prefix: %s...\n", gKey[:10])
+	} else {
+		fmt.Printf("DEBUG: GOOGLE_API_KEY length: %d\n", len(gKey))
+	}
+	if len(gMap) > 10 {
+		fmt.Printf("DEBUG: GOOGLE_MAPS_KEY prefix: %s...\n", gMap[:10])
+	} else {
+		fmt.Printf("DEBUG: GOOGLE_MAPS_KEY length: %d\n", len(gMap))
+	}
+
 	// Create Pipes
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -106,10 +121,12 @@ func (e *Engine) Run(agentPath string, input string, onEvent func(string)) error
 	}
 
 	// WaitGroup for stream readers
-	done := make(chan struct{})
+	var wg sync.WaitGroup
 
 	// Stream Stderr (Logs) - Line-based
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
 			line := scanner.Text()
@@ -125,8 +142,9 @@ func (e *Engine) Run(agentPath string, input string, onEvent func(string)) error
 	}()
 
 	// Stream Stdout (Chunks) - Line-based to preserve prefixes
+	wg.Add(1)
 	go func() {
-		defer close(done)
+		defer wg.Done()
 
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
@@ -148,12 +166,15 @@ func (e *Engine) Run(agentPath string, input string, onEvent func(string)) error
 		}
 	}()
 
-	// Wait for Stdout to close (command finished writing output)
-	<-done
-
+	// Wait for Command to Finish First
 	if err := cmd.Wait(); err != nil {
+		// Even if command failed, we wait for streams to flush
+		wg.Wait()
 		return fmt.Errorf("agent execution finished with error: %v", err)
 	}
+
+	// Ensure all output is processed
+	wg.Wait()
 
 	return nil
 }

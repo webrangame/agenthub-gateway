@@ -1,4 +1,4 @@
-import React from 'react';
+
 import CapabilityLayoutMapper from './CapabilityLayoutMapper';
 import './index.css';
 

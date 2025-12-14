@@ -15,6 +15,12 @@
                 }
             ],
             "essential": true,
+            "environment": [
+                {
+                    "name": "PORT",
+                    "value": "8081"
+                }
+            ],
             "logConfiguration": {
                 "logDriver": "awslogs",
                 "options": {

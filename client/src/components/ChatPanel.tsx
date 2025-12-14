@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Upload } from 'lucide-react';
+import { Send } from 'lucide-react';
 import DragDropZone from './DragDropZone';
 import { API_BASE_URL } from '../config';
 
 interface Message {
     id: string;
-    role: 'user' | 'assistant';
+    role: 'user' | 'assistant' | 'debug';
     content: string;
     timestamp: Date;
 }
@@ -21,6 +21,8 @@ const ChatPanel: React.FC = () => {
     ]);
     const [inputValue, setInputValue] = useState('');
     const [isStreaming, setIsStreaming] = useState(false);
+    const [showDebug, setShowDebug] = useState(false);
+    const showDebugRef = useRef(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
@@ -30,6 +32,11 @@ const ChatPanel: React.FC = () => {
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
+
+    // Keep ref in sync with state for access in async loop
+    useEffect(() => {
+        showDebugRef.current = showDebug;
+    }, [showDebug]);
 
     const handleSend = async () => {
         if (!inputValue.trim()) return;
@@ -51,7 +58,7 @@ const ChatPanel: React.FC = () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ message: userMsg.content }),
+                body: JSON.stringify({ input: userMsg.content }),
             });
 
             if (!response.ok) {
@@ -63,43 +70,58 @@ const ChatPanel: React.FC = () => {
 
             if (!reader) return;
 
+            const currentStreamingId = Date.now().toString();
+
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
                 const chunk = decoder.decode(value);
+
+                if (showDebugRef.current) {
+                    setMessages(prev => [...prev, {
+                        id: Date.now().toString() + Math.random().toString(),
+                        role: 'debug',
+                        content: chunk,
+                        timestamp: new Date()
+                    }]);
+                }
+
                 const lines = chunk.split('\n');
 
                 for (const line of lines) {
-                    if (line.startsWith('event: message')) {
-                        // Next line is data
-                        continue;
-                    }
                     if (line.startsWith('data:')) {
                         const dataContent = line.replace('data:', '').trim();
                         try {
                             const parsed = JSON.parse(dataContent);
-                            // We only want to show the 'message' part of the event if it's meaningful
-                            // But actually, the backend sends the WHOLE event JSON as data.
-                            // Let's filter slightly - or just show raw logs for now to prove connection
-                            // Ideally, we'd accumulate the "final report" here.
-
-                            // For this demo, let's just log it to console and not clutter chat unless it's a specific "chat" type message.
-                            // BUT, the user wants to see "chats".
-                            // FastGraph v0.3.0 doesn't have a specific "chat response" node yet, it just logs.
-                            // So let's extract the "message" field.
-
-                            if (parsed.message) {
-                                // Optional: If message contains "Report" or "Summary", double post it as assistant message?
-                                // For now, let's just create a temporary 'log' style message or update the feed.
-                                // Actually, the FEED updates automatically. The CHAT should explicitly show the Agent's "Thought process" or Final Answer.
-
-                                // Let's simplify: Just print non-JSON simple updates as assistant messages?
-                                // No, that might be too noisy.
-                                // Let's look for "Trip Guardian Report" or large text blocks.
+                            if (parsed.text) {
+                                // Append the streamed text as a chat message
+                                setMessages(prev => [...prev, {
+                                    id: Date.now().toString() + Math.random().toString(),
+                                    role: 'assistant',
+                                    content: parsed.text,
+                                    timestamp: new Date()
+                                }]);
+                            } else if (parsed.message && parsed.type === 'chunk') {
+                                setMessages(prev => {
+                                    const lastMsg = prev[prev.length - 1];
+                                    if (lastMsg && lastMsg.role === 'assistant' && lastMsg.id === currentStreamingId) {
+                                        return [
+                                            ...prev.slice(0, -1),
+                                            { ...lastMsg, content: lastMsg.content + parsed.message }
+                                        ];
+                                    } else {
+                                        return [...prev, {
+                                            id: currentStreamingId,
+                                            role: 'assistant',
+                                            content: parsed.message,
+                                            timestamp: new Date()
+                                        }];
+                                    }
+                                });
                             }
                         } catch (e) {
-                            // dataContent might be a raw string if not JSON
+                            // ignore parsing errors
                         }
                     }
                 }
@@ -114,13 +136,6 @@ const ChatPanel: React.FC = () => {
             }]);
         } finally {
             setIsStreaming(false);
-            // Add a completion message
-            setMessages(prev => [...prev, {
-                id: Date.now().toString() + '-done',
-                role: 'assistant',
-                content: "✅ Analysis complete. Check the Insight Stream for details.",
-                timestamp: new Date()
-            }]);
         }
     };
 
@@ -135,11 +150,19 @@ const ChatPanel: React.FC = () => {
         <div className="flex-1 flex flex-col h-full bg-white relative">
             {/* Header */}
             <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-white/50 backdrop-blur z-10 sticky top-0">
-                <h2 className="font-bold text-gray-800">Trip Guardian</h2>
-                <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                    Online
-                </span>
+                <div className="flex items-center gap-2">
+                    <h2 className="font-bold text-gray-800">Trip Guardian</h2>
+                    <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                        Online
+                    </span>
+                </div>
+                <button
+                    onClick={() => setShowDebug(!showDebug)}
+                    className={`text-[10px] px-2 py-1 rounded-full border transition-colors ${showDebug ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-white text-gray-400 border-gray-200 hover:bg-gray-100'}`}
+                >
+                    {showDebug ? 'Debug: ON' : 'Debug'}
+                </button>
             </div>
 
             {/* Messages Area */}
@@ -148,24 +171,38 @@ const ChatPanel: React.FC = () => {
                     <DragDropZone />
                 </div>
 
-                {messages.map((msg) => (
-                    <div
-                        key={msg.id}
-                        className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
+                {messages.map((msg) => {
+                    if (msg.role === 'debug') {
+                        return (
+                            <div key={msg.id} className="w-full">
+                                <div className="bg-gray-900 rounded-lg p-2 my-1 overflow-x-auto">
+                                    <pre className="text-[10px] font-mono text-green-400 whitespace-pre-wrap break-all">
+                                        {msg.content}
+                                    </pre>
+                                </div>
+                            </div>
+                        );
+                    }
+
+                    return (
                         <div
-                            className={`max-w-[80%] rounded-2xl px-5 py-3 shadow-sm ${msg.role === 'user'
-                                ? 'bg-blue-600 text-white rounded-br-none'
-                                : 'bg-gray-100 text-gray-800 rounded-bl-none'
-                                }`}
+                            key={msg.id}
+                            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                         >
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                            <span className={`text-[10px] block mt-2 opacity-70 ${msg.role === 'user' ? 'text-blue-100' : 'text-gray-400'}`}>
-                                {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
+                            <div
+                                className={`max-w-[80%] rounded-2xl px-5 py-3 shadow-sm ${msg.role === 'user'
+                                    ? 'bg-blue-600 text-white rounded-br-none'
+                                    : 'bg-gray-100 text-gray-800 rounded-bl-none'
+                                    }`}
+                            >
+                                <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                                <span className={`text-[10px] block mt-2 opacity-70 ${msg.role === 'user' ? 'text-blue-100' : 'text-gray-400'}`}>
+                                    {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
                 {isStreaming && (
                     <div className="flex justify-start">
                         <div className="bg-gray-100 rounded-2xl rounded-bl-none px-4 py-3 flex items-center gap-2">

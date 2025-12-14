@@ -4,6 +4,87 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom Markdown Prose Styles */
+.prose {
+  @apply text-sm leading-relaxed;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4 {
+  @apply font-bold text-gray-900 mt-4 mb-2;
+}
+
+.prose h1 {
+  @apply text-xl;
+}
+
+.prose h2 {
+  @apply text-lg;
+}
+
+.prose h3 {
+  @apply text-base;
+}
+
+.prose h4 {
+  @apply text-sm;
+}
+
+.prose p {
+  @apply mb-3 text-gray-700;
+}
+
+.prose strong {
+  @apply font-bold text-gray-900;
+}
+
+.prose em {
+  @apply italic text-gray-800;
+}
+
+.prose ul,
+.prose ol {
+  @apply ml-4 mb-3 space-y-1;
+}
+
+.prose li {
+  @apply text-gray-700;
+}
+
+.prose ul li {
+  @apply list-disc;
+}
+
+.prose ol li {
+  @apply list-decimal;
+}
+
+.prose table {
+  @apply w-full border-collapse mb-4 text-xs;
+}
+
+.prose th {
+  @apply bg-gray-100 border border-gray-300 px-3 py-2 text-left font-semibold text-gray-900;
+}
+
+.prose td {
+  @apply border border-gray-300 px-3 py-2 text-gray-700;
+}
+
+.prose code {
+  @apply bg-gray-100 px-1.5 py-0.5 rounded text-xs font-mono text-pink-600;
+}
+
+.prose pre {
+  @apply bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto mb-4;
+}
+
+.prose blockquote {
+  @apply border-l-4 border-purple-500 pl-4 italic text-gray-600 my-4;
+}
+
 @layer base {
   html {
     -webkit-font-smoothing: antialiased;

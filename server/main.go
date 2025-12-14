@@ -169,7 +169,7 @@ func processAndAppendFeed(eventJSON string) {
 		Text string `json:"text"`
 	}
 	incomingNode := ""
-	cleanText := message
+	var cleanText string
 
 	if err := json.Unmarshal([]byte(message), &nodeInfo); err == nil && nodeInfo.Node != "" {
 		incomingNode = nodeInfo.Node
@@ -522,9 +522,13 @@ func ChatStreamHandler(c *gin.Context) {
 
 	// Accumulate full output for "done" event
 	var fullOutput strings.Builder
+	var mu sync.Mutex
 
 	// Run Agent and Stream
 	err := engine.Run(agentPath, req.Input, func(eventJSON string) {
+		mu.Lock()
+		defer mu.Unlock()
+
 		// Broadcast to Feed as well? Maybe yes, so history is kept.
 		processAndAppendFeed(eventJSON)
 
@@ -547,12 +551,16 @@ func ChatStreamHandler(c *gin.Context) {
 	})
 
 	if err != nil {
+		mu.Lock()
 		c.SSEvent("error", err.Error())
+		mu.Unlock()
 	}
 
 	// Emit Done
 	doneData := map[string]string{"output": fullOutput.String()}
 	if doneBytes, err := json.Marshal(doneData); err == nil {
+		mu.Lock()
 		c.SSEvent("done", string(doneBytes))
+		mu.Unlock()
 	}
 }
