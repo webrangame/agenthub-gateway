@@ -9,12 +9,18 @@
             "image": "582604091763.dkr.ecr.us-east-1.amazonaws.com/fastgraph-gateway:latest",
             "portMappings": [
                 {
-                    "containerPort": 8080,
+                    "containerPort": 8081,
                     "hostPort": 8081,
                     "protocol": "tcp"
                 }
             ],
             "essential": true,
+            "environment": [
+                {
+                    "name": "PORT",
+                    "value": "8081"
+                }
+            ],
             "logConfiguration": {
                 "logDriver": "awslogs",
                 "options": {
