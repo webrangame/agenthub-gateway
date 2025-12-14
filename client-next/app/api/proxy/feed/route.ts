@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 
 // Use environment variable for API URL, fallback to hardcoded IP
-// Note: IP changes when ECS tasks restart - consider using ALB or Cloudflare Tunnel
-const API_BASE_URL = (process.env.BACKEND_API_URL || 'http://52.204.105.193:8081').trim();
+const API_BASE_URL = (process.env.BACKEND_API_URL || 'http://44.200.192.118:8081').trim();
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;

@@ -56,6 +56,8 @@ func New() *Engine {
 // Inspect runs 'fastgraph inspect' and returns metadata
 func (e *Engine) Inspect(agentPath string) (*AgentMetadata, error) {
 	cmd := exec.Command(e.BinPath, "inspect", agentPath) // #nosec G204
+	// Pass environment variables to the subprocess
+	cmd.Env = os.Environ()
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("failed to inspect agent: %v", err)
@@ -77,6 +79,8 @@ func (e *Engine) Run(agentPath string, input string, onEvent func(string)) error
 	fmt.Printf("CLI: Executing %s run %s --stream\n", e.BinPath, agentPath)
 
 	cmd := exec.Command(e.BinPath, "run", agentPath, "--input", input, "--stream") // #nosec G204
+	// Pass environment variables to the subprocess (especially OPENAI_API_KEY)
+	cmd.Env = os.Environ()
 
 	// Create Pipes
 	stdout, err := cmd.StdoutPipe()
