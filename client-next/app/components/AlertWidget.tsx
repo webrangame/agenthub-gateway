@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { AlertCircle, AlertTriangle, Info } from 'lucide-react';
+import { motion, Variants } from 'framer-motion';
 import { cn } from '../utils/cn';
 
 interface AlertWidgetProps {
@@ -15,7 +16,8 @@ const AlertWidget: React.FC<AlertWidgetProps> = ({ message, level }) => {
             icon: AlertTriangle,
             badgeText: "WARNING",
             // Amber/Orange theme
-            stripColor: "bg-[#FFAB00]", 
+            stripColor: "bg-[#FFAB00]",
+            stripColorHex: "#FFAB00", 
             iconColor: "text-[#FFAB00]",
             badgeBg: "bg-[#FFF4E5]",
             badgeTextCol: "text-[#B76E00]"
@@ -25,6 +27,7 @@ const AlertWidget: React.FC<AlertWidgetProps> = ({ message, level }) => {
             badgeText: "ALERT",
             // Red theme
             stripColor: "bg-[#FF3B30]",
+            stripColorHex: "#FF3B30",
             iconColor: "text-[#FF3B30]",
             badgeBg: "bg-[#FFEBEE]",
             badgeTextCol: "text-[#C62828]"
@@ -34,6 +37,7 @@ const AlertWidget: React.FC<AlertWidgetProps> = ({ message, level }) => {
             badgeText: "INFO",
             // Blue theme
             stripColor: "bg-[#003580]",
+            stripColorHex: "#003580",
             iconColor: "text-[#003580]",
             badgeBg: "bg-[#003580]",
             badgeTextCol: "text-white"
@@ -43,18 +47,51 @@ const AlertWidget: React.FC<AlertWidgetProps> = ({ message, level }) => {
     const style = config[level] || config.info;
     const Icon = style.icon;
 
+    // Define variants for parent-controlled animations
+    const cardVariants: Variants = {
+        hover: {
+            y: -2,
+            transition: { duration: 0.2 }
+        }
+    };
+
+    const iconVariants: Variants = {
+        hover: {
+            rotate: [0, -15, 15, -15, 15, 0],
+            transition: { duration: 0.6, ease: "easeInOut" }
+        }
+    };
+
     return (
-        <div className="relative w-full rounded-lg bg-white shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 overflow-hidden mb-2">
-            {/* Left Accent Strip */}
-            <div className={cn("absolute left-0 top-0 bottom-0 w-1", style.stripColor)} />
+        <motion.div 
+            className="relative w-full rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden mb-2 group"
+            variants={cardVariants}
+            whileHover="hover"
+            initial={{ backgroundColor: style.stripColorHex + "30" }}
+            animate={{ backgroundColor: "#ffffff" }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+        >
+            {/* Left Accent Strip - Pulsing if danger */}
+            <motion.div 
+                className={cn("absolute left-0 top-0 bottom-0 w-1", style.stripColor)}
+                animate={level === 'danger' ? { opacity: [1, 0.4, 1] } : { opacity: 1 }}
+                transition={{ 
+                    duration: 1.5, 
+                    repeat: Infinity, 
+                    ease: "easeInOut" 
+                }}
+            />
 
             <div className="flex flex-row items-start p-3 pl-4 gap-2">
-                {/* Icon Circle */}
-                <div className="shrink-0 pt-0.5">
+                {/* Icon Circle - Shakes on card hover via variants */}
+                <motion.div 
+                    className="shrink-0 pt-0.5"
+                    variants={iconVariants}
+                >
                     <div className="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center shadow-sm ring-1 ring-inset ring-black/5">
                         <Icon className={cn("w-3.5 h-3.5", style.iconColor)} />
                     </div>
-                </div>
+                </motion.div>
 
                 {/* Content */}
                 <div className="flex flex-col items-start gap-0.5 min-w-0">
@@ -73,7 +110,7 @@ const AlertWidget: React.FC<AlertWidgetProps> = ({ message, level }) => {
                     </p>
                 </div>
             </div>
-        </div>
+        </motion.div>
     );
 };
 
