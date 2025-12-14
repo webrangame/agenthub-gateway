@@ -83,6 +83,20 @@ func (e *Engine) Run(agentPath string, input string, onEvent func(string)) error
 	// Pass environment variables to the subprocess (especially OPENAI_API_KEY)
 	cmd.Env = os.Environ()
 
+	// DEBUG: Print Key Prefixes
+	gKey := os.Getenv("GOOGLE_API_KEY")
+	gMap := os.Getenv("GOOGLE_MAPS_KEY")
+	if len(gKey) > 10 {
+		fmt.Printf("DEBUG: GOOGLE_API_KEY prefix: %s...\n", gKey[:10])
+	} else {
+		fmt.Printf("DEBUG: GOOGLE_API_KEY length: %d\n", len(gKey))
+	}
+	if len(gMap) > 10 {
+		fmt.Printf("DEBUG: GOOGLE_MAPS_KEY prefix: %s...\n", gMap[:10])
+	} else {
+		fmt.Printf("DEBUG: GOOGLE_MAPS_KEY length: %d\n", len(gMap))
+	}
+
 	// Create Pipes
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
