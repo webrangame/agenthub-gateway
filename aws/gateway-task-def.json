@@ -1,12 +1,12 @@
 {
     "family": "fastgraph-gateway-task",
     "networkMode": "awsvpc",
-    "executionRoleArn": "arn:aws:iam::724772062824:role/ecsTaskExecutionRole",
-    "taskRoleArn": "arn:aws:iam::724772062824:role/ecsTaskRole",
+    "executionRoleArn": "arn:aws:iam::582604091763:role/ecsTaskExecutionRole",
+    "taskRoleArn": "arn:aws:iam::582604091763:role/ecsTaskRole",
     "containerDefinitions": [
         {
             "name": "guardian-gateway",
-            "image": "724772062824.dkr.ecr.us-east-1.amazonaws.com/fastgraph-gateway:latest",
+            "image": "582604091763.dkr.ecr.us-east-1.amazonaws.com/fastgraph-gateway:latest",
             "portMappings": [
                 {
                     "containerPort": 8081,
@@ -26,15 +26,15 @@
             "secrets": [
                 {
                     "name": "OPENAI_API_KEY",
-                    "valueFrom": "arn:aws:secretsmanager:us-east-1:724772062824:secret:fastgraph-gateway/OPENAI_API_KEY"
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:582604091763:secret:fastgraph-gateway/OPENAI_API_KEY"
                 },
                 {
                     "name": "GOOGLE_MAPS_KEY",
-                    "valueFrom": "arn:aws:secretsmanager:us-east-1:724772062824:secret:fastgraph-gateway/GOOGLE_MAPS_KEY"
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:582604091763:secret:fastgraph-gateway/GOOGLE_MAPS_KEY"
                 },
                 {
                     "name": "GOOGLE_API_KEY",
-                    "valueFrom": "arn:aws:secretsmanager:us-east-1:724772062824:secret:fastgraph-gateway/GOOGLE_API_KEY"
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:582604091763:secret:fastgraph-gateway/GOOGLE_API_KEY"
                 }
             ]
         }
