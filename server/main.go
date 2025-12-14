@@ -169,7 +169,7 @@ func processAndAppendFeed(eventJSON string) {
 		Text string `json:"text"`
 	}
 	incomingNode := ""
-	cleanText := message
+	var cleanText string
 
 	if err := json.Unmarshal([]byte(message), &nodeInfo); err == nil && nodeInfo.Node != "" {
 		incomingNode = nodeInfo.Node
