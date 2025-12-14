@@ -129,8 +129,8 @@ const FeedPanel: React.FC = () => {
     };
 
     return (
-        <div className="flex-1 flex flex-col p-4 overflow-y-auto h-full scrollbar-thin scrollbar-thumb-[#9DBEF8] scrollbar-track-transparent">
-            <div className="sticky top-0 backdrop-blur-sm z-10 pb-4 mb-2 border-b border-[#9DBEF8]/30 flex justify-between items-center">
+        <div className="flex-1 flex flex-col overflow-y-auto h-full scrollbar-thin scrollbar-thumb-[#9DBEF8] scrollbar-track-transparent">
+            <div className="sticky top-0 z-10 p-4 mb-2 border-b border-[#9DBEF8]/30 flex justify-between items-center bg-white">
                 <h2 className="text-xl font-bold text-[#003580] tracking-tight">Insight Stream</h2>
                 <button
                     onClick={() => setShowLogs(!showLogs)}
@@ -144,7 +144,7 @@ const FeedPanel: React.FC = () => {
                 </button>
             </div>
 
-            <div className="space-y-4 pb-20">
+            <div className="space-y-4 px-4 pb-20">
                 {loading ? (
                     <div className="text-center text-[#003580]/50 py-12 animate-pulse text-xs uppercase tracking-widest font-semibold">Syncing Stream...</div>
                 ) : (
