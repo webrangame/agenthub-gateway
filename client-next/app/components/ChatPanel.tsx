@@ -144,9 +144,9 @@ const ChatPanel: React.FC = () => {
     return (
         <div className="flex-1 flex flex-col h-full bg-white relative">
             {/* Header */}
-            <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-white/50 backdrop-blur z-10 sticky top-0">
-                <h2 className="font-bold text-gray-800">Trip Guardian</h2>
-                <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full flex items-center gap-1">
+            <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#003580] z-10 sticky top-0">
+                <h2 className="font-bold text-white">Trip Guardian</h2>
+                <span className="text-xs px-2 py-1 bg-white/15 text-white rounded-full flex items-center gap-1 border border-white/20">
                     <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                     Online
                 </span>
