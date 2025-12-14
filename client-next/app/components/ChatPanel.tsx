@@ -203,7 +203,7 @@ const ChatPanel: React.FC = () => {
                     <button
                         onClick={handleSend}
                         disabled={!inputValue.trim() || isStreaming}
-                        className="p-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg transition-colors shadow-sm"
+                        className="p-2 bg-[#003580] hover:bg-[#002a66] disabled:bg-[#003580]/40 text-white rounded-lg transition-colors shadow-sm"
                     >
                         <Send className="w-4 h-4" />
                     </button>
