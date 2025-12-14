@@ -44,23 +44,23 @@ const AlertWidget: React.FC<AlertWidgetProps> = ({ message, level }) => {
     const Icon = style.icon;
 
     return (
-        <div className="relative w-full rounded-xl bg-white shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 overflow-hidden mb-3">
+        <div className="relative w-full rounded-lg bg-white shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 overflow-hidden mb-2">
             {/* Left Accent Strip */}
-            <div className={cn("absolute left-0 top-0 bottom-0 w-1.5", style.stripColor)} />
+            <div className={cn("absolute left-0 top-0 bottom-0 w-1", style.stripColor)} />
 
-            <div className="flex flex-row items-start p-4 pl-6 gap-3">
+            <div className="flex flex-row items-start p-3 pl-4 gap-2">
                 {/* Icon Circle */}
-                <div className="shrink-0">
-                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm">
-                        <Icon className={cn("w-5 h-5", style.iconColor)} />
+                <div className="shrink-0 pt-0.5">
+                    <div className="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center shadow-sm ring-1 ring-inset ring-black/5">
+                        <Icon className={cn("w-3.5 h-3.5", style.iconColor)} />
                     </div>
                 </div>
 
                 {/* Content */}
-                <div className="flex flex-col items-start gap-1">
+                <div className="flex flex-col items-start gap-0.5 min-w-0">
                     {/* Badge */}
                     <span className={cn(
-                        "text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider",
+                        "text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider leading-none",
                         style.badgeBg,
                         style.badgeTextCol
                     )}>
@@ -68,7 +68,7 @@ const AlertWidget: React.FC<AlertWidgetProps> = ({ message, level }) => {
                     </span>
 
                     {/* Message */}
-                    <p className="text-sm font-semibold text-[#003580] leading-snug mt-1">
+                    <p className="text-xs font-semibold text-black leading-normal mt-0.5">
                         {message}
                     </p>
                 </div>
