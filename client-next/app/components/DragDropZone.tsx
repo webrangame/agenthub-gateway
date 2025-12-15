@@ -65,7 +65,11 @@ const DragDropZone: React.FC = () => {
         <div
             className={cn(
                 "border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer",
-                isDragging ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-blue-400 hover:bg-gray-50",
+                uploadStatus === 'success'
+                    ? "border-green-500 bg-green-50"
+                    : isDragging
+                        ? "border-[#003580] bg-blue-50"
+                        : "border-blue-200 bg-blue-50/40 hover:border-blue-300 hover:bg-blue-50",
                 uploadStatus === 'success' && "border-green-500 bg-green-50"
             )}
             onDragOver={handleDragOver}
@@ -83,11 +87,11 @@ const DragDropZone: React.FC = () => {
 
             <div className="flex flex-col items-center gap-3">
                 <div className={cn(
-                    "p-3 rounded-full bg-gray-100 transition-colors",
-                    isDragging && "bg-blue-100",
+                    "p-3 rounded-full bg-blue-100 text-[#003580] transition-colors",
+                    isDragging && "bg-blue-200",
                     uploadStatus === 'success' && "bg-green-100 text-green-600"
                 )}>
-                    {uploadStatus === 'success' ? <FileUp className="w-6 h-6" /> : <Upload className="w-6 h-6 text-gray-500" />}
+                    {uploadStatus === 'success' ? <FileUp className="w-6 h-6" /> : <Upload className="w-6 h-6" />}
                 </div>
 
                 <div>

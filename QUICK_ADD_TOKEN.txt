@@ -1,0 +1,31 @@
+🚀 QUICK SETUP - Add VERCEL_TOKEN to GitHub
+============================================
+
+STEP 1: Add Token to GitHub (2 minutes)
+----------------------------------------
+1. Open: https://github.com/niyogen/agenthub-gateway/settings/secrets/actions
+2. Click "New repository secret"
+3. Name: VERCEL_TOKEN
+4. Value: Khxb6NvqeO29ZjNEedvTKeVv
+5. Click "Add secret"
+
+STEP 2: Test the Pipeline
+--------------------------
+Option A - Manual Trigger (Recommended for first test):
+1. Go to: https://github.com/niyogen/agenthub-gateway/actions
+2. Click "Deploy Client-Next to Vercel (Simple)"
+3. Click "Run workflow" button
+4. Select branch: master
+5. Click "Run workflow"
+
+Option B - Automatic Trigger:
+1. After adding token, I can push a test commit
+2. Workflow will trigger automatically
+
+STEP 3: Monitor
+---------------
+- Watch GitHub Actions for progress
+- Check Vercel dashboard for deployment
+- Should complete in 2-3 minutes
+
+✅ All Set! After adding token, the CI/CD will work!

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ExternalLink, Eye, Video, Clock } from 'lucide-react';
+import { ExternalLink, Eye, Video, Clock, Newspaper } from 'lucide-react';
 
 interface ArticleCardProps {
     title: string;
@@ -12,7 +12,7 @@ interface ArticleCardProps {
     url?: string;
     category?: 'Safety' | 'Weather' | 'Culture' | 'Tips' | 'Report';
     colorTheme?: 'blue' | 'red' | 'green' | 'purple' | 'default';
-    timestamp?: string; // ISO 8601 timestamp
+    timestamp?: string;
 }
 
 // Helper to format timestamp
@@ -39,33 +39,14 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
     url,
     category = 'Tips',
     colorTheme = 'default',
-    timestamp // <-- Added missing destructuring
+    timestamp
 }) => {
-    // Map color themes to gradient classes
-    const gradientClasses = {
-        blue: 'gradient-weather',
-        red: 'gradient-alert-danger',
-        green: 'gradient-safety',
-        purple: 'gradient-culture',
-        default: 'gradient-default'
-    };
-
-    const categoryColors = {
-        Safety: 'bg-red-500',
-        Weather: 'bg-blue-500',
-        Culture: 'bg-purple-500',
-        Tips: 'bg-cyan-500',
-        Report: 'bg-green-500'
-    };
-
-    const categoryBgColor = categoryColors[category] || 'bg-gray-500';
-    const gradientClass = gradientClasses[colorTheme];
-
+    
     return (
-        <div className="bg-white rounded-xl overflow-hidden shadow-lg hover-lift border border-gray-100">
+        <div className="bg-white border border-[#9DBEF8] rounded-xl overflow-hidden shadow-sm hover:shadow-xl hover:shadow-[#003580]/10 hover:border-[#003580]/30 transition-all duration-300 hover:-translate-y-1 group">
             {/* Hero Image or Video */}
             {videoUrl ? (
-                <div className="relative h-56 w-full bg-black">
+                <div className="relative h-48 w-full bg-black">
                     <iframe
                         src={videoUrl}
                         className="w-full h-full"
@@ -73,25 +54,27 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
                         allowFullScreen
                         title={title}
                     />
-                    <div className="absolute top-3 right-3 bg-black/60 text-white px-2 py-1 rounded-full flex items-center gap-1 text-xs">
+                    <div className="absolute top-3 right-3 bg-[#003580]/90 backdrop-blur-sm text-white px-2 py-1 rounded-md flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider border border-[#9DBEF8]/30">
                         <Video className="w-3 h-3" />
                         Video
                     </div>
                 </div>
             ) : imageUrl ? (
-                <div className="relative h-56 w-full overflow-hidden bg-gray-100 group">
+                <div className="relative h-48 w-full overflow-hidden bg-[#EEF5FF] group-hover:opacity-95 transition-opacity">
                     <img
                         src={imageUrl}
                         alt={title}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                     />
-                    {/* Gradient overlay for better text readability if needed */}
-                    <div className="absolute inset-0 gradient-overlay-dark opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className="absolute inset-0 bg-linear-to-t from-[#003580]/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </div>
             ) : (
-                // Fallback gradient background if no media
-                <div className={`h-16 w-full ${gradientClass} flex items-center justify-center`}>
-                    <Eye className="w-6 h-6 text-white/40" />
+                // Fallback elegant header
+                <div className="h-12 w-full bg-[#EEF5FF] border-b border-[#9DBEF8]/30 flex items-center px-4">
+                     <div className="flex items-center gap-2 text-[#003580]/60">
+                        <Newspaper className="w-4 h-4" />
+                        <span className="text-xs font-semibold uppercase tracking-wider">News Update</span>
+                     </div>
                 </div>
             )}
 
@@ -100,13 +83,13 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
                 {/* Category Badge and Timestamp */}
                 <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                        <span className={`${categoryBgColor} text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide`}>
+                        <span className="bg-[#003580] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wide shadow-sm">
                             {category}
                         </span>
-                        <span className="text-xs text-gray-400 font-medium">{source}</span>
+                        <span className="text-xs text-[#003580]/60 font-semibold">{source}</span>
                     </div>
                     {timestamp && (
-                        <div className="flex items-center gap-1 text-xs text-gray-400">
+                        <div className="flex items-center gap-1 text-xs text-[#003580]/50 font-medium">
                             <Clock className="w-3 h-3" />
                             <span>{formatTimestamp(timestamp)}</span>
                         </div>
@@ -114,12 +97,12 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
                 </div>
 
                 {/* Title */}
-                <h3 className="text-xl font-bold text-gray-900 mb-3 leading-tight">
+                <h3 className="text-lg font-bold text-[#003580] mb-3 leading-snug group-hover:text-[#003580]/80 transition-colors">
                     {title}
                 </h3>
 
-                {/* Full Summary - NO TRUNCATION */}
-                <p className="text-sm text-gray-700 leading-relaxed mb-4 whitespace-pre-wrap">
+                {/* Summary */}
+                <p className="text-sm text-[#003580]/70 leading-relaxed mb-4 whitespace-pre-wrap line-clamp-4">
                     {summary}
                 </p>
 
@@ -129,10 +112,10 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
                         href={url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors group"
+                        className="inline-flex items-center gap-2 text-sm font-bold text-[#003580] hover:text-[#9DBEF8] transition-colors group/link mt-auto"
                     >
                         <span>Read Full Article</span>
-                        <ExternalLink className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                        <ExternalLink className="w-3.5 h-3.5 group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5 transition-transform" />
                     </a>
                 )}
             </div>
@@ -141,9 +124,3 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
 };
 
 export default ArticleCard;
-
-
-
-
-
-
