@@ -1,3 +1,35 @@
 server/.env
 server/fastgraph
 .env
+
+# --- Generated files / caches (repo-wide) ---
+**/node_modules/
+
+# Frontend builds
+**/dist/
+**/dist-ssr/
+**/.next/
+**/out/
+**/build/
+**/coverage/
+**/.vercel/
+
+# Tool caches
+**/.turbo/
+**/.cache/
+**/.vite/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea

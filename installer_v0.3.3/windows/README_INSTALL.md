@@ -1,4 +1,4 @@
-# FastGraph v0.3.2 - Installation & Usage Guide
+# FastGraph v0.3.3 - Installation & Usage Guide
 
 ## 📦 What's Included
 - `fastgraph` / `fastgraph.exe`: Core CLI compiler and runner.
@@ -24,8 +24,14 @@
 Open a new terminal/command prompt and run:
 ```bash
 fastgraph --version
-# Output: 0.3.2
+# Output: 0.3.3
 ```
+
+## 🧩 Streaming Contract (Gateway/UI)
+When using streaming (SSE or `fastgraph run --stream`), each `chunk` event includes:
+- `node` (always non-empty; fallback: `"unknown"`)
+- `node_name` (alias of `node`)
+- `text` (the chunk text)
 
 ## 🏃 Quick Start
 

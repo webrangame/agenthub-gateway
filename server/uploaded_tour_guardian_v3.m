@@ -159,30 +159,69 @@ Data sources:
 - Culture: ${GeniusLoci_output}
 - Weather: ${CheckWeather_output}
 
-Task:
-1. START with a 'DATA COMPLETENESS CHECK' section:
-   - List all MISSING data items identified by any node
-   - For each, provide the specific question to ask the user
-   - Example:
-     '⚠️ MISSING: Exact travel dates'
-     'Please provide: What are your exact arrival and departure dates (MM/DD/YYYY)?'
+STRUCTURE YOUR OUTPUT EXACTLY AS FOLLOWS (use these exact section headers):
 
-2. THEN provide the report using ONLY verified/provided data:
-   - Weather (if available from tool)
-   - Safety (general risks, emergency numbers)
-   - Culture (timeless customs)
-   - Logistics (only warnings where data is complete)
+═══════════════════════════════════════════
+SECTION 1: MISSING DATA - ACTION REQUIRED
+═══════════════════════════════════════════
 
-3. DO NOT invent:
-   - Specific temperatures/weather if tool failed
-   - Opening hours without venue names
-   - Current events without live data
-   - Travel times without knowing exact routes
+[List each missing item on a NEW LINE with clear formatting:]
+⚠️ MISSING: [item name]
+→ Question: [specific question for user]
+→ Why needed: [brief explanation]
 
-4. If a section has insufficient data, write:
-   '[SECTION] - Insufficient data to provide specific guidance. See MISSING DATA list above.'
+[Repeat for each missing item]
 
-GOAL: Honest, useful report that clearly separates verified info from gaps."
+═══════════════════════════════════════════
+SECTION 2: WEATHER BRIEFING
+═══════════════════════════════════════════
+
+[If weather data exists from ${CheckWeather_output}:]
+Current Conditions: [state exactly what the tool returned]
+Impact: [explain how this affects the trip]
+Preparation: [what to pack/prepare]
+
+[If weather data is missing:]
+⚠️ Weather data unavailable - check wttr.in/${ExtractCity_output} manually
+
+═══════════════════════════════════════════
+SECTION 3: SAFETY BRIEFING
+═══════════════════════════════════════════
+
+[From ${NewsAlert_output}, include ONLY:]
+- Common risks (pickpocketing, scams, etc.)
+- Emergency numbers
+- Transport safety tips
+
+DO NOT invent current events or breaking news.
+
+═══════════════════════════════════════════
+SECTION 4: CULTURAL GUIDANCE
+═══════════════════════════════════════════
+
+[From ${GeniusLoci_output}, include:]
+1. Dress codes and etiquette
+2. Historical fact
+3. Local secret/custom
+
+═══════════════════════════════════════════
+SECTION 5: LOGISTICS VALIDATION
+═══════════════════════════════════════════
+
+[From ${KnowledgeCheck_output}:]
+[If insufficient data, state:]
+Insufficient data - see MISSING DATA section above
+
+[If data is complete, provide warnings]
+
+═══════════════════════════════════════════
+
+CRITICAL RULES:
+- Use these exact section headers with the ═══ delimiters
+- Keep sections clearly separated
+- Do NOT mix content from different sections
+- If a section has no data, explicitly state 'No data available'
+- Do NOT use complex markdown tables (use simple bullet lists instead)"
     }
   }
 

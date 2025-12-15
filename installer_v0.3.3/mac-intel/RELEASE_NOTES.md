@@ -3,10 +3,10 @@
 ## Major Features
 - **Streaming Support**: Full end-to-end support for LLM streaming via `ExecuteStream`.
 - **CLI Streaming**: New `--stream` flag for `fastgraph run` to output real-time chunks to stdout.
-- **Improved UI Contract**: Updated Interface Contract with strict guidelines for streaming UI implementation.
+- **Streaming Contract**: `chunk` events now include `node` + `node_name` so Gateways can map chunks to UI cards.
 
 ## Improvements
-- **Stability**: Enhanced robustnes in Runtime Executor.
+- **Stability**: Enhanced robustness in Runtime Executor.
 - **Documentation**: New Interface Contract specs.
 
 ## Components

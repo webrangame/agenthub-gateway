@@ -2,6 +2,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Upload } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import DragDropZone from './DragDropZone';
 import { API_ENDPOINTS } from '../utils/api';
 
@@ -169,8 +171,41 @@ const ChatPanel: React.FC = () => {
                                 : 'bg-[#E6EEF9] text-[#003580] rounded-bl-none'
                                 }`}
                         >
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                            <span className={`text-[10px] block mt-2 opacity-70 ${msg.role === 'user' ? 'text-[#003580]/70' : 'text-gray-400'}`}>
+                            <div className="text-sm leading-relaxed overflow-hidden">
+                                <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    components={{
+                                        p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
+                                        ul: ({ node, ...props }) => <ul className="list-disc ml-4 mb-2" {...props} />,
+                                        ol: ({ node, ...props }) => <ol className="list-decimal ml-4 mb-2" {...props} />,
+                                        li: ({ node, ...props }) => <li className="mb-1" {...props} />,
+                                        h1: ({ node, ...props }) => <h1 className="text-lg font-bold mb-2" {...props} />,
+                                        h2: ({ node, ...props }) => <h2 className="text-base font-bold mb-2" {...props} />,
+                                        h3: ({ node, ...props }) => <h3 className="text-sm font-bold mb-1" {...props} />,
+                                        blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-gray-300 pl-4 italic my-2" {...props} />,
+                                        a: ({ node, ...props }) => <a className="underline hover:text-blue-500" target="_blank" rel="noopener noreferrer" {...props} />,
+                                        code: ({ node, ...props }) => {
+                                            const { className, children, ...rest } = props as any;
+                                            const match = /language-(\w+)/.exec(className || '');
+                                            const isInline = !match && !String(children).includes('\n');
+                                            return isInline ? (
+                                                <code className="bg-black/10 px-1 py-0.5 rounded font-mono text-xs" {...rest}>
+                                                    {children}
+                                                </code>
+                                            ) : (
+                                                <div className="bg-black/10 p-2 rounded-lg my-2 overflow-x-auto">
+                                                    <code className={`font-mono text-xs ${className || ''}`} {...rest}>
+                                                        {children}
+                                                    </code>
+                                                </div>
+                                            );
+                                        }
+                                    }}
+                                >
+                                    {msg.content}
+                                </ReactMarkdown>
+                            </div>
+                            <span className={`text-[10px] block mt-1 opacity-70 ${msg.role === 'user' ? 'text-[#003580]/70' : 'text-gray-400'}`}>
                                 {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                         </div>
