@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 
-// Use environment variable for API URL, fallback to API Gateway
-const API_BASE_URL = (process.env.BACKEND_API_URL || 'https://ql3aoaj2x0.execute-api.us-east-1.amazonaws.com/prod').trim();
+// Use environment variable for API URL, fallback to production server
+const API_BASE_URL = (process.env.BACKEND_API_URL || 'http://3.82.226.162:8081').trim();
 
 export async function POST(request: NextRequest) {
   let timeoutId: NodeJS.Timeout | null = null;

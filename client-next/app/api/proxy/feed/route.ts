@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 
 // Feed endpoint configuration
-// Priority: FEED_API_URL > BACKEND_API_URL > API Gateway
+// Priority: FEED_API_URL > BACKEND_API_URL > production server
 // For Vercel/production, set FEED_API_URL or BACKEND_API_URL environment variable
-const API_BASE_URL = (process.env.FEED_API_URL || process.env.BACKEND_API_URL || 'https://ql3aoaj2x0.execute-api.us-east-1.amazonaws.com/prod').trim();
+const API_BASE_URL = (process.env.FEED_API_URL || process.env.BACKEND_API_URL || 'http://3.82.226.162:8081').trim();
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
