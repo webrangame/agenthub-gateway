@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 
 // Use environment variable for API URL, fallback to production server
-const API_BASE_URL = (process.env.BACKEND_API_URL || 'http://44.200.144.6:8081').trim();
+const API_BASE_URL = (process.env.BACKEND_API_URL || 'http://34.230.6.109:8081').trim();
 
 export async function POST(request: NextRequest) {
   let timeoutId: NodeJS.Timeout | null = null;

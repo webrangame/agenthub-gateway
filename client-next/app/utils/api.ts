@@ -10,7 +10,7 @@ const USE_PROXY = typeof window !== 'undefined' && (
 );
 
 // API URL: Default to the production backend server
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://44.200.144.6:8081';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://34.230.6.109:8081';
 const PROXY_BASE = '/api/proxy';
 
 export const API_ENDPOINTS = {
