@@ -539,9 +539,27 @@ func ChatStreamHandler(c *gin.Context) {
 		}
 		if err := json.Unmarshal([]byte(eventJSON), &evt); err == nil {
 			if evt.Message != "" {
-				fullOutput.WriteString(evt.Message)
+				// Try to parse message as JSON to check for node and text fields
+				var nodeInfo struct {
+					Node string `json:"node"`
+					Text string `json:"text"`
+				}
+				
+				chunkData := make(map[string]string)
+				
+				// Check if message is JSON with node and text fields
+				if err := json.Unmarshal([]byte(evt.Message), &nodeInfo); err == nil && nodeInfo.Node != "" && nodeInfo.Text != "" {
+					// Message contains node and text structure
+					chunkData["node"] = nodeInfo.Node
+					chunkData["text"] = nodeInfo.Text
+					fullOutput.WriteString(nodeInfo.Text)
+				} else {
+					// Plain text message
+					chunkData["text"] = evt.Message
+					fullOutput.WriteString(evt.Message)
+				}
+				
 				// Emit Chunk
-				chunkData := map[string]string{"text": evt.Message}
 				if chunkBytes, err := json.Marshal(chunkData); err == nil {
 					c.SSEvent("chunk", string(chunkBytes))
 					c.Writer.Flush()

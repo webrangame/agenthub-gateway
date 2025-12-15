@@ -98,7 +98,51 @@ const ChatPanel: React.FC = () => {
 
                             // Check for 'text' chunk (New Protocol)
                             if (parsed.text) {
-                                currentText += parsed.text;
+                                let nodeValue = parsed.node;
+                                let textValue = parsed.text;
+                                
+                                // Skip metadata lines like "event: chunk\n"
+                                if (textValue.trim() === 'event: chunk' || textValue.trim().startsWith('event:')) {
+                                    continue;
+                                }
+                                
+                                // Check if text contains nested JSON (e.g., "data: {\"node\": \"ExtractCity\", \"text\": \"Sig\"}\n")
+                                if (textValue.includes('data:') && textValue.includes('{')) {
+                                    try {
+                                        // Extract the JSON part after "data: "
+                                        const dataIndex = textValue.indexOf('data:');
+                                        if (dataIndex !== -1) {
+                                            const jsonStart = textValue.indexOf('{', dataIndex);
+                                            if (jsonStart !== -1) {
+                                                // Find the matching closing brace
+                                                let braceCount = 0;
+                                                let jsonEnd = jsonStart;
+                                                for (let i = jsonStart; i < textValue.length; i++) {
+                                                    if (textValue[i] === '{') braceCount++;
+                                                    if (textValue[i] === '}') braceCount--;
+                                                    if (braceCount === 0) {
+                                                        jsonEnd = i + 1;
+                                                        break;
+                                                    }
+                                                }
+                                                const jsonStr = textValue.substring(jsonStart, jsonEnd);
+                                                const innerParsed = JSON.parse(jsonStr);
+                                                if (innerParsed.node) nodeValue = innerParsed.node;
+                                                if (innerParsed.text) textValue = innerParsed.text;
+                                            }
+                                        }
+                                    } catch (innerError) {
+                                        // If parsing fails, use original text
+                                    }
+                                }
+                                
+                                // If node exists, format as heading + text
+                                if (nodeValue) {
+                                    const formattedContent = `**${nodeValue}**\n${textValue}`;
+                                    currentText = currentText ? currentText + '\n\n' + formattedContent : formattedContent;
+                                } else {
+                                    currentText += textValue;
+                                }
                                 setMessages(prev => prev.map(msg =>
                                     msg.id === assistantMsgId ? { ...msg, content: currentText } : msg
                                 ));
@@ -169,7 +213,24 @@ const ChatPanel: React.FC = () => {
                                 : 'bg-[#E6EEF9] text-[#003580] rounded-bl-none'
                                 }`}
                         >
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                            <div className="text-sm leading-relaxed">
+                                {msg.content.split(/\n\n/).map((block, blockIdx) => {
+                                    const lines = block.split('\n');
+                                    const firstLine = lines[0];
+                                    // Check if first line is a heading (starts and ends with **)
+                                    if (firstLine.startsWith('**') && firstLine.endsWith('**')) {
+                                        const heading = firstLine.replace(/\*\*/g, '');
+                                        const textContent = lines.slice(1).join('\n');
+                                        return (
+                                            <div key={blockIdx} className={blockIdx > 0 ? 'mt-4' : ''}>
+                                                <h3 className="font-semibold text-base mb-2 text-[#003580]">{heading}</h3>
+                                                {textContent && <p className="whitespace-pre-wrap">{textContent}</p>}
+                                            </div>
+                                        );
+                                    }
+                                    return <p key={blockIdx} className="whitespace-pre-wrap mb-1">{block}</p>;
+                                })}
+                            </div>
                             <span className={`text-[10px] block mt-2 opacity-70 ${msg.role === 'user' ? 'text-[#003580]/70' : 'text-gray-400'}`}>
                                 {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>

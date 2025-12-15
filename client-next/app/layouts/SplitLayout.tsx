@@ -18,7 +18,7 @@ const SplitLayout: React.FC<SplitLayoutProps> = ({ left, right, className }) => 
             </div>
 
             {/* Right Pane */}
-            <div className="w-1/2 h-full bg-gray-50 flex flex-col">
+            <div className="w-1/2 h-full bg-white flex flex-col">
                 {right}
             </div>
         </div>
@@ -26,6 +26,8 @@ const SplitLayout: React.FC<SplitLayoutProps> = ({ left, right, className }) => 
 };
 
 export default SplitLayout;
+
+
 
 
 
