@@ -67,9 +67,9 @@ jobs:
       - name: Build Next.js app
         env:
           # Use placeholder values for build (Vercel will use real env vars)
-          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || 'http://34.230.6.109:8081' }}
-          BACKEND_API_URL: ${{ secrets.BACKEND_API_URL || 'http://34.230.6.109:8081' }}
-          FEED_API_URL: ${{ secrets.FEED_API_URL || 'http://34.230.6.109:8081' }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || 'http://107.23.26.219:8080' }}
+          BACKEND_API_URL: ${{ secrets.BACKEND_API_URL || 'http://107.23.26.219:8080' }}
+          FEED_API_URL: ${{ secrets.FEED_API_URL || 'http://107.23.26.219:8080' }}
         run: npm run build
 
       - name: Upload build artifacts

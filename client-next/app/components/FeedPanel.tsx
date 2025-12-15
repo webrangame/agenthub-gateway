@@ -25,7 +25,7 @@ const FeedPanel: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        // Default behavior: use real API from localhost:8080
+        // Default behavior: use real API from production server
         // Override:
         // - ?mockFeed=0 forces real backend (default)
         // - ?mockFeed=1 forces mock
@@ -34,7 +34,7 @@ const FeedPanel: React.FC = () => {
             const param = new URLSearchParams(window.location.search).get('mockFeed');
             if (param === '0') return false;
             if (param === '1') return true;
-            // Default to real API (not mock) for localhost:8080
+            // Default to real API (not mock) for production server
             return process.env.NEXT_PUBLIC_USE_MOCK_FEED === 'true';
         })();
 
@@ -239,7 +239,7 @@ const FeedPanel: React.FC = () => {
                             <div className="text-red-800 font-semibold mb-2">⚠️ Connection Error</div>
                             <div className="text-red-600 text-sm mb-3">{error}</div>
                             <div className="text-red-500 text-xs">
-                                Feed API: <code className="bg-red-100 px-1 rounded">http://localhost:8080/api/feed</code>
+                                Feed API: <code className="bg-red-100 px-1 rounded">http://107.23.26.219:8080/api/feed</code>
                             </div>
                         </div>
                     </div>
