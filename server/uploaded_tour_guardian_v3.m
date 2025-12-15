@@ -55,19 +55,23 @@ CRITICAL RULE: If the user did NOT provide a specific piece of information, writ
 User trip details: ${ExtractDetails_output}
 Current date (UTC): ${GetDate_output}
 
-Task:
-1. Identify MISSING critical information needed to validate timing:
-   - Exact start date (for holiday/closure checks)
-   - Specific venue names (for opening hours validation)
-   - Arrival/departure times (for last train / connection checks)
+FIRST, check if the destination is valid:
+- If '${ExtractCity_output}' is 'MISSING' or 'unknown', output:
+  '⚠️ MISSING: Destination city'
+  'REQUIRED: Please specify which city you are traveling to.'
 
-2. For any MISSING data, output:
-   '⚠️ MISSING: [item]'
-   'REQUIRED: [specific question to ask user]'
+THEN identify other MISSING critical information:
+- Exact start date (for holiday/closure checks)
+- Specific venue names (for opening hours validation)
+- Arrival/departure times (for last train / connection checks)
 
-3. ONLY if you have complete data, provide timing warnings (e.g., 'Museum X closed on Mondays').
+For each MISSING item, output:
+'⚠️ MISSING: [item]'
+'REQUIRED: [specific question to ask user]'
 
-CRITICAL RULE: DO NOT invent specific opening hours, closure days, or travel times. If you don't have verified info, say 'MISSING: specific venue hours' and ask the user to clarify which venues they plan to visit."
+ONLY if you have complete data (city + dates + venues), provide timing warnings.
+
+CRITICAL RULE: DO NOT invent specific opening hours, closure days, or travel times."
     }
 
     // 5. Real Review Analysis (Google Places)
@@ -92,19 +96,22 @@ CRITICAL RULE: DO NOT invent specific opening hours, closure days, or travel tim
 Review data: ${FetchReviews_output}
 User trip: ${input}
 
-Task:
-1. Check if review data is valid (not an API error).
-2. If data is MISSING/invalid, output:
-   '⚠️ MISSING: Live review data'
-   'IMPACT: Cannot provide insider tips or hidden warnings from recent travelers'
-   'FALLBACK: Providing general travel advice (not verified by recent reviews)'
+FIRST, check if the destination is valid:
+- If '${ExtractCity_output}' is 'MISSING' or 'unknown', output ONLY:
+  '⚠️ MISSING: Destination city'
+  'Cannot analyze reviews without knowing the destination.'
+  
+THEN check if review data is valid (not an API error):
+- If data is MISSING/invalid/API error, output:
+  '⚠️ MISSING: Live review data'
+  'IMPACT: Cannot provide insider tips or hidden warnings from recent travelers'
 
-3. ONLY if reviews are valid, extract:
-   - Insider Tips (specific, actionable)
-   - Hidden Warnings (complaints, issues)
-   - Real Vibe (touristy vs authentic)
+- ONLY if reviews are valid, extract:
+  - Insider Tips (specific, actionable)
+  - Hidden Warnings (complaints, issues)
+  - Real Vibe (touristy vs authentic)
 
-CRITICAL RULE: Do NOT invent review content or pretend you have live data when you don't."
+CRITICAL RULE: Do NOT invent review content or try to analyze reviews for 'MISSING' destinations."
     }
 
     // 7. Safety Briefing - acknowledge limits of non-live data
@@ -115,18 +122,33 @@ CRITICAL RULE: Do NOT invent review content or pretend you have live data when y
 User trip: ${input}
 Extracted details: ${ExtractDetails_output}
 
-Task:
-1. State clearly: 'No verified live news data available in this run (as of execution time).'
-2. List what's MISSING to provide accurate safety alerts:
-   - Exact travel dates (for current event/strike checks)
-   - Specific neighborhoods (for localized risk assessment)
+FIRST, check if the destination is valid:
+- If '${ExtractCity_output}' is 'MISSING' or 'unknown', output ONLY:
+  '⚠️ MISSING: Destination city'
+  'Cannot provide safety briefing without knowing the destination.'
+  'Please specify: Which city are you traveling to?'
 
-3. Provide ONLY:
-   - Common, well-known safety risks for ${ExtractCity_output} (e.g., pickpocketing in X area)
-   - Emergency numbers (police, ambulance)
-   - General transport safety tips
+- If '${ExtractCity_output}' is a valid city, provide:
+  1. Statement: 'No verified live news data available in this run (as of execution time).'
+  2. MISSING data needed for accurate alerts (dates, neighborhoods)
+  3. Common, well-known safety risks for ${ExtractCity_output}
+  4. Emergency numbers (police, ambulance)
+  5. General transport safety tips
 
-CRITICAL RULE: DO NOT invent breaking news, current strikes, or recent disasters. If you don't have live data, explicitly say so."
+OUTPUT FORMAT:
+Use simple markdown with complete sentences:
+- Use bullet points (- item)
+- Use bold for emphasis (**text**)
+- NEVER use pipe tables (| col | col |)
+- Keep paragraphs short (2-3 sentences max)
+
+CRITICAL COMPLETION RULE: 
+- ALWAYS finish every sentence completely
+- NEVER end mid-word or mid-phrase (e.g., 'prior to and' is FORBIDDEN)
+- If you reach output limit, end with the LAST complete sentence
+- Better to omit a section than leave incomplete text
+
+CRITICAL RULE: DO NOT invent breaking news or try to provide safety guidance for 'MISSING' destinations."
     }
 
     // 8. Cultural Wisdom - focus on timeless facts, not current events
@@ -136,12 +158,18 @@ CRITICAL RULE: DO NOT invent breaking news, current strikes, or recent disasters
 
 User trip: ${input}
 
-Provide timeless, well-established cultural guidance for ${ExtractCity_output}:
-1. Behavior: Dress codes, etiquette (at religious sites, on public transport, etc.)
-2. Connection: A verified historical fact about ${ExtractCity_output}
-3. Local Secret: A known local custom or hidden spot (not invented)
+FIRST, check if the destination is valid:
+- If '${ExtractCity_output}' is 'MISSING' or 'unknown' or empty, output ONLY:
+  '⚠️ MISSING: Destination city'
+  'Cannot provide cultural guidance without knowing the destination.'
+  'Please specify: Which city are you traveling to?'
+  
+- If '${ExtractCity_output}' is a valid city name, provide timeless, well-established cultural guidance:
+  1. Behavior: Dress codes, etiquette (at religious sites, on public transport, etc.)
+  2. Connection: A verified historical fact about ${ExtractCity_output}
+  3. Local Secret: A known local custom or hidden spot (not invented)
 
-CRITICAL RULE: Focus ONLY on ${ExtractCity_output}. Do NOT invent customs. If you're uncertain, say 'General cultural guideline' instead of claiming it's specific to this city."
+CRITICAL RULE: Do NOT try to provide cultural wisdom for 'MISSING' or invalid destinations. Do NOT invent customs."
     }
 
     // 9. Final Report - compile missing data list + what's available
@@ -177,12 +205,20 @@ SECTION 2: WEATHER BRIEFING
 ═══════════════════════════════════════════
 
 [If weather data exists from ${CheckWeather_output}:]
-Current Conditions: [state exactly what the tool returned]
-Impact: [explain how this affects the trip]
-Preparation: [what to pack/prepare]
+**Current Conditions:** [state exactly what the tool returned]
+
+**Impact:** [explain how this affects the trip in 1-2 complete sentences]
+
+**Preparation:** [what to pack/prepare - use bullet list if multiple items]
 
 [If weather data is missing:]
 ⚠️ Weather data unavailable - check wttr.in/${ExtractCity_output} manually
+
+FORMATTING RULES FOR THIS SECTION:
+- Use bullet points for lists (- item)
+- Keep each paragraph to 2-3 complete sentences maximum
+- NEVER end mid-sentence
+- If reaching output limit, end with last complete sentence
 
 ═══════════════════════════════════════════
 SECTION 3: SAFETY BRIEFING
@@ -192,6 +228,14 @@ SECTION 3: SAFETY BRIEFING
 - Common risks (pickpocketing, scams, etc.)
 - Emergency numbers
 - Transport safety tips
+
+FORMATTING RULES FOR THIS SECTION:
+- Use bullet points for lists
+- Use bold for risk names
+- Keep descriptions to 1-2 complete sentences
+- NEVER use pipe tables
+- ALWAYS complete every sentence - no mid-sentence cutoffs
+- If text looks incomplete, mark as INCOMPLETE
 
 DO NOT invent current events or breaking news.
 

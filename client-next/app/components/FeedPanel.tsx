@@ -13,6 +13,7 @@ interface FeedItem {
     id: string;
     card_type: 'weather' | 'safe_alert' | 'cultural_tip' | 'map_coord' | 'article' | 'log';
     priority: string;
+    timestamp: string;
     data: any;
 }
 
@@ -32,7 +33,8 @@ const FeedPanel: React.FC = () => {
             const param = new URLSearchParams(window.location.search).get('mockFeed');
             if (param === '0') return false;
             if (param === '1') return true;
-            return process.env.NEXT_PUBLIC_USE_MOCK_FEED === 'true' || process.env.NODE_ENV !== 'production';
+            // Default to FALSE to use real backend, unless env var says otherwise
+            return process.env.NEXT_PUBLIC_USE_MOCK_FEED === 'true';
         })();
 
         const fetchFeed = async () => {
@@ -83,9 +85,22 @@ const FeedPanel: React.FC = () => {
                         level={item.data.level}
                     />;
                 case 'cultural_tip':
-                    return <VideoCard
+                    const videoUrl = item.data.video_url || item.data.videoUrl;
+                    if (videoUrl) {
+                        return <VideoCard
+                            title={item.data.title}
+                            videoUrl={videoUrl}
+                            summary={item.data.summary}
+                        />;
+                    }
+                    return <ArticleCard
                         title={item.data.title}
-                        videoUrl={item.data.video_url}
+                        summary={item.data.summary}
+                        source={item.data.source || 'Cultural Tip'}
+                        category={item.data.category as any || 'Culture'}
+                        colorTheme={item.data.colorTheme as any || 'purple'}
+                        imageUrl={item.data.imageUrl}
+                        timestamp={item.timestamp}
                     />;
                 case 'article':
                     return <ArticleCard
@@ -134,11 +149,10 @@ const FeedPanel: React.FC = () => {
                 <h2 className="text-xl font-bold text-[#003580] tracking-tight">Insight Stream</h2>
                 <button
                     onClick={() => setShowLogs(!showLogs)}
-                    className={`text-[10px] px-3 py-1.5 rounded-full font-medium transition-all duration-300 border ${
-                        showLogs 
-                            ? 'bg-[#003580] text-white border-[#003580] shadow-md' 
-                            : 'bg-[#EEF5FF] text-[#003580] border-[#9DBEF8] hover:bg-white hover:shadow-sm'
-                    }`}
+                    className={`text-[10px] px-3 py-1.5 rounded-full font-medium transition-all duration-300 border ${showLogs
+                        ? 'bg-[#003580] text-white border-[#003580] shadow-md'
+                        : 'bg-[#EEF5FF] text-[#003580] border-[#9DBEF8] hover:bg-white hover:shadow-sm'
+                        }`}
                 >
                     {showLogs ? 'Hide Logs' : 'Debug'}
                 </button>

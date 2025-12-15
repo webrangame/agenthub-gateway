@@ -4,7 +4,8 @@
 const USE_PROXY = typeof window !== 'undefined' && window.location.protocol === 'https:';
 
 // API URL: http://44.200.144.6:8081
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://44.200.144.6:8081';
+//const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081';
+const API_BASE_URL = 'http://localhost:8081';
 const PROXY_BASE = '/api/proxy';
 
 export const API_ENDPOINTS = {

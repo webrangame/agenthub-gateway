@@ -2,7 +2,10 @@
 
 import React from 'react';
 import { ExternalLink, Eye, Video, Clock, Newspaper } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
+// Force re-compile
 interface ArticleCardProps {
     title: string;
     summary: string;
@@ -41,7 +44,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
     colorTheme = 'default',
     timestamp
 }) => {
-    
+
     return (
         <div className="bg-white border border-[#9DBEF8] rounded-xl overflow-hidden shadow-sm hover:shadow-xl hover:shadow-[#003580]/10 hover:border-[#003580]/30 transition-all duration-300 hover:-translate-y-1 group">
             {/* Hero Image or Video */}
@@ -71,10 +74,10 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
             ) : (
                 // Fallback elegant header
                 <div className="h-12 w-full bg-[#EEF5FF] border-b border-[#9DBEF8]/30 flex items-center px-4">
-                     <div className="flex items-center gap-2 text-[#003580]/60">
+                    <div className="flex items-center gap-2 text-[#003580]/60">
                         <Newspaper className="w-4 h-4" />
                         <span className="text-xs font-semibold uppercase tracking-wider">News Update</span>
-                     </div>
+                    </div>
                 </div>
             )}
 
@@ -102,9 +105,20 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
                 </h3>
 
                 {/* Summary */}
-                <p className="text-sm text-[#003580]/70 leading-relaxed mb-4 whitespace-pre-wrap line-clamp-4">
-                    {summary}
-                </p>
+                <div className="text-sm text-[#003580]/70 leading-relaxed mb-4 overflow-hidden">
+                    <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                            p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
+                            strong: ({ node, ...props }) => <strong className="font-bold text-[#003580]" {...props} />,
+                            ul: ({ node, ...props }) => <ul className="list-disc ml-4 mb-2 space-y-1" {...props} />,
+                            li: ({ node, ...props }) => <li className="" {...props} />,
+                            a: ({ node, ...props }) => <a className="underline hover:text-blue-600" target="_blank" rel="noopener noreferrer" {...props} />,
+                        }}
+                    >
+                        {summary}
+                    </ReactMarkdown>
+                </div>
 
                 {/* Read More Link */}
                 {url && (

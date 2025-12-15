@@ -3,6 +3,8 @@
 import React from 'react';
 import { AlertCircle, AlertTriangle, Info } from 'lucide-react';
 import { motion, Variants } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { cn } from '../utils/cn';
 
 interface AlertWidgetProps {
@@ -15,7 +17,7 @@ const AlertWidget: React.FC<AlertWidgetProps> = ({ message, level }) => {
         warning: {
             icon: AlertTriangle,
             badgeText: "WARNING",
-            stripColorHex: "#FFAB00", 
+            stripColorHex: "#FFAB00",
             iconColor: "text-[#FFAB00]",
             badgeBg: "bg-[#FFF4E5]",
             badgeTextCol: "text-[#B76E00]"
@@ -58,30 +60,30 @@ const AlertWidget: React.FC<AlertWidgetProps> = ({ message, level }) => {
     };
 
     return (
-        <motion.div 
+        <motion.div
             className="relative w-full rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden mb-2 group border-2"
             variants={cardVariants}
             whileHover="hover"
-            initial={{ 
+            initial={{
                 backgroundColor: style.stripColorHex + "30",
-                borderColor: style.stripColorHex 
+                borderColor: style.stripColorHex
             }}
-            animate={{ 
+            animate={{
                 backgroundColor: "#ffffff",
-                borderColor: shouldPulse 
-                    ? [style.stripColorHex, style.stripColorHex + "40", style.stripColorHex] 
-                    : style.stripColorHex 
+                borderColor: shouldPulse
+                    ? [style.stripColorHex, style.stripColorHex + "40", style.stripColorHex]
+                    : style.stripColorHex
             }}
-            transition={{ 
+            transition={{
                 backgroundColor: { duration: 0.8, ease: "easeOut" },
-                borderColor: shouldPulse 
+                borderColor: shouldPulse
                     ? { duration: 2, repeat: Infinity, ease: "easeInOut" }
                     : { duration: 0.3 }
             }}
         >
             <div className="flex flex-row items-start p-3 pl-4 gap-2">
                 {/* Icon Circle - Shakes on card hover via variants */}
-                <motion.div 
+                <motion.div
                     className="shrink-0 pt-0.5"
                     variants={iconVariants}
                 >
@@ -102,9 +104,29 @@ const AlertWidget: React.FC<AlertWidgetProps> = ({ message, level }) => {
                     </span>
 
                     {/* Message */}
-                    <p className="text-xs font-semibold text-black leading-normal mt-0.5">
-                        {message}
-                    </p>
+                    <div className="text-xs font-medium text-gray-800 leading-normal mt-1 w-full max-h-80 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-200">
+                        <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                                p: ({ node, ...props }) => <p className="mb-1 last:mb-0" {...props} />,
+                                strong: ({ node, ...props }) => <strong className="font-bold text-gray-900" {...props} />,
+                                table: ({ node, ...props }) => (
+                                    <div className="overflow-x-auto my-2 border rounded-md border-gray-200">
+                                        <table className="w-full text-left border-collapse text-[10px]" {...props} />
+                                    </div>
+                                ),
+                                thead: ({ node, ...props }) => <thead className="bg-gray-50 border-b border-gray-200" {...props} />,
+                                tbody: ({ node, ...props }) => <tbody className="divide-y divide-gray-100" {...props} />,
+                                tr: ({ node, ...props }) => <tr className="hover:bg-gray-50/50" {...props} />,
+                                th: ({ node, ...props }) => <th className="px-2 py-1.5 font-semibold text-gray-600 whitespace-nowrap" {...props} />,
+                                td: ({ node, ...props }) => <td className="px-2 py-1.5 align-top text-gray-700" {...props} />,
+                                ul: ({ node, ...props }) => <ul className="list-disc ml-4 my-1" {...props} />,
+                                li: ({ node, ...props }) => <li className="mb-0.5" {...props} />
+                            }}
+                        >
+                            {message}
+                        </ReactMarkdown>
+                    </div>
                 </div>
             </div>
         </motion.div>

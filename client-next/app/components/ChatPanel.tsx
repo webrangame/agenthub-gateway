@@ -14,6 +14,19 @@ interface Message {
     timestamp: Date;
 }
 
+// Helper to strip raw JSON and internal artifacts from agent output
+const cleanAgentOutput = (text: string) => {
+    if (!text) return '';
+    // Remove ```json ... ``` blocks often output by agents
+    let cleaned = text.replace(/```json[\s\S]*?```/g, '');
+    // Remove "GenerateReport_output:" etc prefixes if they leak
+    cleaned = cleaned.replace(/GenerateReport_output:/g, '');
+    // Check if the whole message is wrapped in ```markdown ... ``` and unwrap it
+    const mdMatch = cleaned.match(/^```markdown\s*([\s\S]*?)\s*```$/);
+    if (mdMatch) return mdMatch[1];
+    return cleaned;
+};
+
 const ChatPanel: React.FC = () => {
     const [messages, setMessages] = useState<Message[]>([
         {
@@ -98,9 +111,10 @@ const ChatPanel: React.FC = () => {
                         try {
                             const parsed = JSON.parse(dataContent);
 
-                            // Check for 'text' chunk (New Protocol)
-                            if (parsed.text) {
-                                currentText += parsed.text;
+                            // Valid content chunk (text or message)
+                            const contentChunk = parsed.text || parsed.message;
+                            if (contentChunk && typeof contentChunk === 'string') {
+                                currentText += contentChunk;
                                 setMessages(prev => prev.map(msg =>
                                     msg.id === assistantMsgId ? { ...msg, content: currentText } : msg
                                 ));
@@ -179,22 +193,34 @@ const ChatPanel: React.FC = () => {
                                         ul: ({ node, ...props }) => <ul className="list-disc ml-4 mb-2" {...props} />,
                                         ol: ({ node, ...props }) => <ol className="list-decimal ml-4 mb-2" {...props} />,
                                         li: ({ node, ...props }) => <li className="mb-1" {...props} />,
-                                        h1: ({ node, ...props }) => <h1 className="text-lg font-bold mb-2" {...props} />,
-                                        h2: ({ node, ...props }) => <h2 className="text-base font-bold mb-2" {...props} />,
-                                        h3: ({ node, ...props }) => <h3 className="text-sm font-bold mb-1" {...props} />,
-                                        blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-gray-300 pl-4 italic my-2" {...props} />,
-                                        a: ({ node, ...props }) => <a className="underline hover:text-blue-500" target="_blank" rel="noopener noreferrer" {...props} />,
+                                        h1: ({ node, ...props }) => <h1 className="text-lg font-bold mb-2 uppercase tracking-tight text-[#003580]" {...props} />,
+                                        h2: ({ node, ...props }) => <h2 className="text-base font-bold mb-2 text-[#003580]" {...props} />,
+                                        h3: ({ node, ...props }) => <h3 className="text-sm font-bold mb-1 mt-2 text-[#003580]" {...props} />,
+                                        blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-[#003580]/30 pl-4 italic my-2 text-gray-600 bg-white/50 py-1 rounded-r" {...props} />,
+                                        a: ({ node, ...props }) => <a className="underline hover:text-blue-500 font-medium" target="_blank" rel="noopener noreferrer" {...props} />,
+                                        // Table Support
+                                        table: ({ node, ...props }) => (
+                                            <div className="overflow-x-auto my-3 border rounded-lg border-blue-100 shadow-sm bg-white">
+                                                <table className="w-full text-left border-collapse text-xs" {...props} />
+                                            </div>
+                                        ),
+                                        thead: ({ node, ...props }) => <thead className="bg-blue-50/50 border-b border-blue-100" {...props} />,
+                                        tbody: ({ node, ...props }) => <tbody className="divide-y divide-blue-50" {...props} />,
+                                        tr: ({ node, ...props }) => <tr className="hover:bg-blue-50/30 transition-colors" {...props} />,
+                                        th: ({ node, ...props }) => <th className="px-3 py-2 font-semibold text-[#003580] whitespace-nowrap" {...props} />,
+                                        td: ({ node, ...props }) => <td className="px-3 py-2 align-top text-gray-700" {...props} />,
+                                        // Code Support
                                         code: ({ node, ...props }) => {
                                             const { className, children, ...rest } = props as any;
                                             const match = /language-(\w+)/.exec(className || '');
                                             const isInline = !match && !String(children).includes('\n');
                                             return isInline ? (
-                                                <code className="bg-black/10 px-1 py-0.5 rounded font-mono text-xs" {...rest}>
+                                                <code className="bg-white/50 px-1.5 py-0.5 rounded font-mono text-xs text-[#d63384] border border-black/5" {...rest}>
                                                     {children}
                                                 </code>
                                             ) : (
-                                                <div className="bg-black/10 p-2 rounded-lg my-2 overflow-x-auto">
-                                                    <code className={`font-mono text-xs ${className || ''}`} {...rest}>
+                                                <div className="bg-[#1e1e1e] p-3 rounded-lg my-3 overflow-x-auto shadow-inner border border-black/10">
+                                                    <code className={`font-mono text-xs text-blue-100 ${className || ''}`} {...rest}>
                                                         {children}
                                                     </code>
                                                 </div>
@@ -202,7 +228,7 @@ const ChatPanel: React.FC = () => {
                                         }
                                     }}
                                 >
-                                    {msg.content}
+                                    {cleanAgentOutput(msg.content || '')}
                                 </ReactMarkdown>
                             </div>
                             <span className={`text-[10px] block mt-1 opacity-70 ${msg.role === 'user' ? 'text-[#003580]/70' : 'text-gray-400'}`}>
