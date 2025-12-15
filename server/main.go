@@ -139,6 +139,9 @@ func startScheduledExecution(agentPath string, schedule *runtime.ScheduleInfo) {
 	}
 }
 
+// Sticky Node State to associate orphaned chunks
+var lastActiveNode string
+
 func processAndAppendFeed(eventJSON string) {
 	fmt.Println("ENGINE EVENT:", eventJSON)
 
@@ -160,8 +163,13 @@ func processAndAppendFeed(eventJSON string) {
 		} else if evt.Message != "" {
 			message = evt.Message
 		}
+
 		if evt.Node != "" {
 			incomingNode = evt.Node
+			lastActiveNode = evt.Node // Update sticky state
+		} else if evt.Type == "chunk" && lastActiveNode != "" {
+			// If it's a chunk but has no node, assume it belongs to the previous stream
+			incomingNode = lastActiveNode
 		}
 	}
 
@@ -238,15 +246,12 @@ func processAndAppendFeed(eventJSON string) {
 			// Append to existing bucket
 			lastSummary, _ := existing.Data["summary"].(string)
 			// Limit total length to prevent huge jumbled text
-			if len(lastSummary) < 2000 {
-				// Add newline separation between chunks for readability
-				if len(lastSummary) > 0 && !strings.HasSuffix(lastSummary, "\n") {
-					existing.Data["summary"] = lastSummary + "\n" + cleanText
-				} else {
-					existing.Data["summary"] = lastSummary + cleanText
-				}
-				existing.Timestamp = time.Now().Format(time.RFC3339)
-			}
+			// Limit total length to prevent huge jumbled text (REMOVED LIMIT per user request)
+			// if len(lastSummary) < 10000 {
+			// Simple concatenation to preserve markdown structure (tokens can be split across chunks)
+			existing.Data["summary"] = lastSummary + cleanText
+			existing.Timestamp = time.Now().Format(time.RFC3339)
+			// }
 			// DON'T return early - the existing pointer is already in currentFeed
 			return
 		}
@@ -535,14 +540,14 @@ func UploadAgentHandler(c *gin.Context) {
 		go startScheduledExecution(savePath, meta.Schedule)
 	}
 
-	// Initial Run (Reactive)
-	go func() {
-		if err := engine.Run(savePath, "Start Analysis", func(eventJSON string) {
-			processAndAppendFeed(eventJSON)
-		}); err != nil {
-			fmt.Printf("Error running initial analysis for %s: %v\n", savePath, err)
-		}
-	}()
+	// Initial Run (Reactive) - REMOVED per user request to wait for first prompt
+	// go func() {
+	// 	if err := engine.Run(savePath, "Start Analysis", func(eventJSON string) {
+	// 		processAndAppendFeed(eventJSON)
+	// 	}); err != nil {
+	// 		fmt.Printf("Error running initial analysis for %s: %v\n", savePath, err)
+	// 	}
+	// }()
 
 	c.JSON(http.StatusOK, gin.H{
 		"status":       "success",

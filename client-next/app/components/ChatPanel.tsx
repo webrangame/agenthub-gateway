@@ -2,6 +2,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Upload } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import DragDropZone from './DragDropZone';
 import { API_ENDPOINTS } from '../utils/api';
 
@@ -11,6 +13,19 @@ interface Message {
     content: string;
     timestamp: Date;
 }
+
+// Helper to strip raw JSON and internal artifacts from agent output
+const cleanAgentOutput = (text: string) => {
+    if (!text) return '';
+    // Remove ```json ... ``` blocks often output by agents
+    let cleaned = text.replace(/```json[\s\S]*?```/g, '');
+    // Remove "GenerateReport_output:" etc prefixes if they leak
+    cleaned = cleaned.replace(/GenerateReport_output:/g, '');
+    // Check if the whole message is wrapped in ```markdown ... ``` and unwrap it
+    const mdMatch = cleaned.match(/^```markdown\s*([\s\S]*?)\s*```$/);
+    if (mdMatch) return mdMatch[1];
+    return cleaned;
+};
 
 const ChatPanel: React.FC = () => {
     const [messages, setMessages] = useState<Message[]>([
@@ -143,6 +158,10 @@ const ChatPanel: React.FC = () => {
                                 } else {
                                     currentText += textValue;
                                 }
+                            } else if (parsed.message) {
+                                // Fallback to message field
+                                currentText += parsed.message;
+                            }
                                 setMessages(prev => prev.map(msg =>
                                     msg.id === assistantMsgId ? { ...msg, content: currentText } : msg
                                 ));
@@ -213,23 +232,51 @@ const ChatPanel: React.FC = () => {
                                 : 'bg-[#E6EEF9] text-[#003580] rounded-bl-none'
                                 }`}
                         >
-                            <div className="text-sm leading-relaxed">
-                                {msg.content.split(/\n\n/).map((block, blockIdx) => {
-                                    const lines = block.split('\n');
-                                    const firstLine = lines[0];
-                                    // Check if first line is a heading (starts and ends with **)
-                                    if (firstLine.startsWith('**') && firstLine.endsWith('**')) {
-                                        const heading = firstLine.replace(/\*\*/g, '');
-                                        const textContent = lines.slice(1).join('\n');
-                                        return (
-                                            <div key={blockIdx} className={blockIdx > 0 ? 'mt-4' : ''}>
-                                                <h3 className="font-semibold text-base mb-2 text-[#003580]">{heading}</h3>
-                                                {textContent && <p className="whitespace-pre-wrap">{textContent}</p>}
+                            <div className="text-sm leading-relaxed overflow-hidden">
+                                <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    components={{
+                                        p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
+                                        ul: ({ node, ...props }) => <ul className="list-disc ml-4 mb-2" {...props} />,
+                                        ol: ({ node, ...props }) => <ol className="list-decimal ml-4 mb-2" {...props} />,
+                                        li: ({ node, ...props }) => <li className="mb-1" {...props} />,
+                                        h1: ({ node, ...props }) => <h1 className="text-lg font-bold mb-2 uppercase tracking-tight text-[#003580]" {...props} />,
+                                        h2: ({ node, ...props }) => <h2 className="text-base font-bold mb-2 text-[#003580]" {...props} />,
+                                        h3: ({ node, ...props }) => <h3 className="text-sm font-bold mb-1 mt-2 text-[#003580]" {...props} />,
+                                        blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-[#003580]/30 pl-4 italic my-2 text-gray-600 bg-white/50 py-1 rounded-r" {...props} />,
+                                        a: ({ node, ...props }) => <a className="underline hover:text-blue-500 font-medium" target="_blank" rel="noopener noreferrer" {...props} />,
+                                        // Table Support
+                                        table: ({ node, ...props }) => (
+                                            <div className="overflow-x-auto my-3 border rounded-lg border-blue-100 shadow-sm bg-white">
+                                                <table className="w-full text-left border-collapse text-xs" {...props} />
                                             </div>
-                                        );
-                                    }
-                                    return <p key={blockIdx} className="whitespace-pre-wrap mb-1">{block}</p>;
-                                })}
+                                        ),
+                                        thead: ({ node, ...props }) => <thead className="bg-blue-50/50 border-b border-blue-100" {...props} />,
+                                        tbody: ({ node, ...props }) => <tbody className="divide-y divide-blue-50" {...props} />,
+                                        tr: ({ node, ...props }) => <tr className="hover:bg-blue-50/30 transition-colors" {...props} />,
+                                        th: ({ node, ...props }) => <th className="px-3 py-2 font-semibold text-[#003580] whitespace-nowrap" {...props} />,
+                                        td: ({ node, ...props }) => <td className="px-3 py-2 align-top text-gray-700" {...props} />,
+                                        // Code Support
+                                        code: ({ node, ...props }) => {
+                                            const { className, children, ...rest } = props as any;
+                                            const match = /language-(\w+)/.exec(className || '');
+                                            const isInline = !match && !String(children).includes('\n');
+                                            return isInline ? (
+                                                <code className="bg-white/50 px-1.5 py-0.5 rounded font-mono text-xs text-[#d63384] border border-black/5" {...rest}>
+                                                    {children}
+                                                </code>
+                                            ) : (
+                                                <div className="bg-[#1e1e1e] p-3 rounded-lg my-3 overflow-x-auto shadow-inner border border-black/10">
+                                                    <code className={`font-mono text-xs text-blue-100 ${className || ''}`} {...rest}>
+                                                        {children}
+                                                    </code>
+                                                </div>
+                                            );
+                                        }
+                                    }}
+                                >
+                                    {cleanAgentOutput(msg.content || '')}
+                                </ReactMarkdown>
                             </div>
                             <span className={`text-[10px] block mt-2 opacity-70 ${msg.role === 'user' ? 'text-[#003580]/70' : 'text-gray-400'}`}>
                                 {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
