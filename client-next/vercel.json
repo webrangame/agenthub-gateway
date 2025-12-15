@@ -5,9 +5,9 @@
   "framework": "nextjs",
   "regions": ["iad1"],
   "env": {
-    "NEXT_PUBLIC_API_URL": "http://107.23.26.219:8081",
-    "BACKEND_API_URL": "http://107.23.26.219:8081",
-    "FEED_API_URL": "http://107.23.26.219:8081"
+    "NEXT_PUBLIC_API_URL": "https://ql3aoaj2x0.execute-api.us-east-1.amazonaws.com/prod",
+    "BACKEND_API_URL": "https://ql3aoaj2x0.execute-api.us-east-1.amazonaws.com/prod",
+    "FEED_API_URL": "https://ql3aoaj2x0.execute-api.us-east-1.amazonaws.com/prod"
   }
 }
 
