@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"strings"
 
 	"guardian-gateway/pkg/fastgraph/runtime"
 
@@ -53,10 +54,12 @@ func TestChatStreamHandler(t *testing.T) {
 
 	// Verify Body (SSE Format)
 	body := w.Body.String()
+	compact := strings.ReplaceAll(body, " ", "")
 	if !assert.Contains(t, body, `event:done`) {
 		t.Logf("Response Body: %s", body)
 	}
-	assert.Contains(t, body, `event:chunk`)
-	assert.Contains(t, body, `data:{"text":"Hello"}`)
-	assert.Contains(t, body, `data:{"text":" World"}`)
+	// ChatStreamHandler emits SSE events as "message" with raw JSON payloads.
+	assert.Contains(t, body, `event:message`)
+	assert.Contains(t, compact, `data:{"type":"chunk","message":"Hello"}`)
+	assert.Contains(t, compact, `data:{"type":"chunk","message":"World"}`)
 }

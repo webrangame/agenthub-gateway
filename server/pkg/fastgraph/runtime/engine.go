@@ -6,8 +6,33 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 )
+
+// inferNodeFromLine attempts to infer a FastGraph node name from a plain-text line.
+// Many agents print "NodeName: ..." prefixes; we use those as a best-effort mapping.
+func inferNodeFromLine(line string) (string, bool) {
+	trim := strings.TrimSpace(line)
+	if trim == "" {
+		return "", false
+	}
+	// Common node prefixes used by the bundled trip-guardian agent.
+	prefixes := map[string]string{
+		"NewsAlert:":        "NewsAlert",
+		"CheckWeather:":     "CheckWeather",
+		"KnowledgeCheck:":   "KnowledgeCheck",
+		"ReviewSummarizer:": "ReviewSummarizer",
+		"GeniusLoci:":       "GeniusLoci",
+		"GenerateReport:":   "GenerateReport",
+	}
+	for p, node := range prefixes {
+		if strings.HasPrefix(trim, p) {
+			return node, true
+		}
+	}
+	return "", false
+}
 
 // AgentMetadata matches the JSON output of 'fastgraph inspect'
 type AgentMetadata struct {
@@ -30,24 +55,28 @@ type Engine struct {
 }
 
 func New() *Engine {
-	// Check if binary exists, try Linux binary first, then Windows
-	// Check if binary exists, try Linux binary first, then Windows
-	binPath := "./installer_v0.3.3/linux/fastgraph"
+	// Check if binary exists, try Linux binary first (for cloud), then Windows
+	binPath := "./installer_v0.3.4/linux/fastgraph"
 	if _, err := os.Stat(binPath); os.IsNotExist(err) {
-		// Fallback to Windows executable
-		binPath = "./installer_v0.3.3/windows/fastgraph.exe"
+		// Fallback to Windows executable (for local dev)
+		binPath = "./installer_v0.3.4/windows-amd64/fastgraph.exe"
 		if _, err := os.Stat(binPath); os.IsNotExist(err) {
-			// Fallback to root (legacy Windows)
-			binPath = "./fastgraph.exe"
+			// Fallback to v0.3.3 for backward compatibility
+			binPath = "./installer_v0.3.3/windows/fastgraph.exe"
 			if _, err := os.Stat(binPath); os.IsNotExist(err) {
-				// Fallback to root (Linux)
-				binPath = "./fastgraph"
+				// Fallback to root (legacy)
+				binPath = "./fastgraph.exe"
 				if _, err := os.Stat(binPath); os.IsNotExist(err) {
-					fmt.Println("WARNING: fastgraph binary not found")
+					binPath = "./fastgraph"
+					if _, err := os.Stat(binPath); os.IsNotExist(err) {
+						fmt.Println("WARNING: fastgraph binary not found")
+					}
 				}
 			}
 		}
 	}
+
+	fmt.Printf("INFO: Using FastGraph binary: %s\n", binPath)
 
 	return &Engine{
 		BinPath: binPath,
@@ -141,21 +170,109 @@ func (e *Engine) Run(agentPath string, input string, onEvent func(string)) error
 		}
 	}()
 
-	// Stream Stdout (Chunks) - Line-based to preserve prefixes
+	// Stream Stdout (Chunks) - Parse SSE format from FastGraph
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
 		scanner := bufio.NewScanner(stdout)
-		for scanner.Scan() {
-			chunk := scanner.Text()
+		// Some agent outputs can contain long lines (markdown / JSON blocks).
+		// Increase the scanner buffer to avoid token-too-long errors.
+		scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+		var currentEvent string
+		plainMode := false
+		currentNode := ""
 
-			// Emit chunk immediately (line by line)
+		for scanner.Scan() {
+			line := scanner.Text()
+
+			trim := strings.TrimSpace(line)
+
+			// Parse SSE format: "event: chunk" or "data: {...}"
+			if strings.HasPrefix(trim, "event: ") {
+				plainMode = false
+				currentEvent = strings.TrimPrefix(line, "event: ")
+				continue
+			} else if strings.HasPrefix(trim, "data: ") {
+				plainMode = false
+				dataJSON := strings.TrimPrefix(trim, "data: ")
+
+				// DEBUG: Log what we're parsing
+				fmt.Printf("DEBUG SSE: event=%s, data=%s\n", currentEvent, dataJSON)
+
+				if onEvent != nil {
+					// Parse the JSON data to extract node info
+					var data struct {
+						Node     string `json:"node"`
+						NodeName string `json:"node_name"`
+						Message  string `json:"message"` // FastGraph uses "message"
+						Text     string `json:"text"`    // Fallback for older formats
+					}
+
+					if err := json.Unmarshal([]byte(dataJSON), &data); err == nil {
+						// Use message if available, otherwise text
+						content := data.Message
+						if content == "" {
+							content = data.Text
+						}
+
+						// DEBUG: Log parsed data
+						fmt.Printf("DEBUG PARSED: node=%s, node_name=%s, content_len=%d\n", data.Node, data.NodeName, len(content))
+
+						// Successfully parsed JSON - forward as chunk event with node metadata
+						chunkEvent := map[string]string{
+							"type":      "chunk",
+							"message":   content,
+							"node":      data.Node,
+							"node_name": data.NodeName,
+						}
+
+						if jsonBytes, err := json.Marshal(chunkEvent); err == nil {
+							fmt.Printf("DEBUG FORWARDING: %s\n", string(jsonBytes))
+							onEvent(string(jsonBytes))
+						}
+					} else {
+						// DEBUG: Log parse error
+						fmt.Printf("DEBUG PARSE ERROR: %v\n", err)
+
+						// Not JSON or done event - forward as-is for backward compatibility
+						if currentEvent == "done" {
+							doneEvent := map[string]string{
+								"type": "done",
+								"data": dataJSON,
+							}
+							if jsonBytes, err := json.Marshal(doneEvent); err == nil {
+								onEvent(string(jsonBytes))
+							}
+						}
+					}
+				}
+				currentEvent = "" // Reset after processing data
+				continue
+			}
+
+			// Fallback: FastGraph may output plain text (no SSE framing).
+			// In that case, stream each line as a chunk event so the gateway/UI still works.
+			// We also try to infer node context from "NodeName:" prefixes.
+			if trim == "" {
+				continue
+			}
+			if !plainMode {
+				// If we haven't seen any SSE framing yet, assume plain mode.
+				plainMode = true
+			}
+			if node, ok := inferNodeFromLine(trim); ok {
+				currentNode = node
+			}
 			if onEvent != nil {
-				// We append a newline because Scan() strips it, and we want to preserve form if needed,
-				// but for JSON/Prefix detection, the line itself is what matters.
-				// Let's send the line.
-				chunkEvent := map[string]string{"type": "chunk", "message": chunk + "\n"}
+				chunkEvent := map[string]string{
+					"type":    "chunk",
+					"message": line + "\n",
+				}
+				if currentNode != "" {
+					chunkEvent["node"] = currentNode
+					chunkEvent["node_name"] = currentNode
+				}
 				if jsonBytes, err := json.Marshal(chunkEvent); err == nil {
 					onEvent(string(jsonBytes))
 				}
