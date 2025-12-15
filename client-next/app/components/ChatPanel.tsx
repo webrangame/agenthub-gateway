@@ -158,10 +158,13 @@ const ChatPanel: React.FC = () => {
                                 } else {
                                     currentText += textValue;
                                 }
+                                
+                                setMessages(prev => prev.map(msg =>
+                                    msg.id === assistantMsgId ? { ...msg, content: currentText } : msg
+                                ));
                             } else if (parsed.message) {
                                 // Fallback to message field
                                 currentText += parsed.message;
-                            }
                                 setMessages(prev => prev.map(msg =>
                                     msg.id === assistantMsgId ? { ...msg, content: currentText } : msg
                                 ));
