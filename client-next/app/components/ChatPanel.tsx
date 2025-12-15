@@ -2,6 +2,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Upload } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import DragDropZone from './DragDropZone';
 import { API_ENDPOINTS } from '../utils/api';
 

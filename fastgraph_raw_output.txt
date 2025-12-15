@@ -1,0 +1,30 @@
+﻿Error executing node ExtractCity: GOOGLE_API_KEY environment variable not set
+Error executing node ExtractDetails: GOOGLE_API_KEY environment variable not set
+Optional node GetDate failed (ignoring): operation failed after 3 attempts: request failed: Get "https://timeapi.io/api/Time/current/zone?timeZone=UTC": context deadline exceeded
+Error executing node GeniusLoci: GOOGLE_API_KEY environment variable not set
+Error executing node KnowledgeCheck: GOOGLE_API_KEY environment variable not set
+.\installer_v0.3.3\windows\fastgraph.exe : Error: execution failed: parallel 
+execution failed: KnowledgeCheck: GOOGLE_API_KEY environment variable not 
+set; ExtractCity: GOOGLE_API_KEY environment variable not set; 
+ExtractDetails: GOOGLE_API_KEY environment variable not set; GeniusLoci: 
+GOOGLE_API_KEY environment variable not set
+At line:1 char:1
++ .\installer_v0.3.3\windows\fastgraph.exe run server\agents\trip-guard ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Error: executio...ariable not 
+set:Strin    g) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Usage:
+  fastgraph run [file] --input [input text] [flags]
+
+Flags:
+  -h, --help           help for run
+  -i, --input string   Input text for the agent
+  -s, --stream         Stream output chunks to stdout
+  -w, --wait           Wait for user input before exiting
+
+execution failed: parallel execution failed: KnowledgeCheck: GOOGLE_API_KEY 
+environment variable not set; ExtractCity: GOOGLE_API_KEY environment 
+variable not set; ExtractDetails: GOOGLE_API_KEY environment variable not 
+set; GeniusLoci: GOOGLE_API_KEY environment variable not set

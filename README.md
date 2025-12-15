@@ -268,6 +268,16 @@ npm run build
 # Output: client/dist/
 ```
 
+### Cleaning up (make the repo lean again)
+
+On Windows (PowerShell):
+
+```powershell
+.\scripts\clean.ps1
+# or (also removes local log/output artifacts):
+.\scripts\clean.ps1 -Deep
+```
+
 ### Environment Variables
 
 Create `server/.env`:

@@ -72,13 +72,15 @@ graph LR
 
 **Option 2: Go Library (Native Integration)**
 You can import `fastgraph/pkg/runtime` directly if your backend is in Go.
+
+👉 **See [Go Integration Guide](../GO_INTEGRATION_GUIDE.md) for detailed code examples.**
+
 ```go
 import (
     "github.com/prageethmgunathilaka/FastGraph-Go/pkg/mlang"
     "github.com/prageethmgunathilaka/FastGraph-Go/pkg/runtime"
-    "github.com/prageethmgunathilaka/FastGraph-Go/pkg/llm"
 )
-// ... (code snippet)
+// ...
 ```
 
 **Option 3: Pre-compiled Binary (Black Box)**
@@ -130,10 +132,10 @@ The server streams events using standard SSE format (`text/event-stream`).
 **Example Stream:**
 ```
 event: chunk
-data: {"text": "Hello"}
+data: {"node":"chat","node_name":"chat","text": "Hello"}
 
 event: chunk
-data: {"text": " world"}
+data: {"node":"chat","node_name":"chat","text": " world"}
 
 event: done
 data: {"output": "Hello world"}

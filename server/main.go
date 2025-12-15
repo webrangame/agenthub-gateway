@@ -146,39 +146,82 @@ func processAndAppendFeed(eventJSON string) {
 	var evt struct {
 		Type    string `json:"type"`
 		Message string `json:"message"`
+		Node    string `json:"node"`
+		Text    string `json:"text"` // Added 'text' field
 	}
 
 	message := eventJSON // fallback
+	incomingNode := ""
+
 	if err := json.Unmarshal([]byte(eventJSON), &evt); err == nil {
-		if evt.Message != "" {
+		// Prioritize 'text' field if present, then 'message'
+		if evt.Text != "" {
+			message = evt.Text
+		} else if evt.Message != "" {
 			message = evt.Message
+		}
+		if evt.Node != "" {
+			incomingNode = evt.Node
 		}
 	}
 
-	// Skip useless messages
-	if shouldSkipMessage(message, evt.Type, eventJSON) {
+	// Skip useless messages (Pass incomingNode to allow exceptions)
+	if shouldSkipMessage(message, evt.Type, eventJSON, incomingNode) {
 		return
 	}
 
 	// Default UI mapping
 	cardType, priority, data := mapToCard(message)
 
-	// Try to extract node information
+	// Try to extract node information from the message content (nested JSON)
 	var nodeInfo struct {
 		Node string `json:"node"`
 		Text string `json:"text"`
 	}
-	incomingNode := ""
 	var cleanText string
 
-	if err := json.Unmarshal([]byte(message), &nodeInfo); err == nil && nodeInfo.Node != "" {
-		incomingNode = nodeInfo.Node
-		cleanText = nodeInfo.Text
-		cardType, priority, data = mapToCard(cleanText)
-		data["source_node"] = incomingNode
+	// If Top-Level Node is empty, try to find it in the message
+	if incomingNode == "" {
+		if err := json.Unmarshal([]byte(message), &nodeInfo); err == nil && nodeInfo.Node != "" {
+			incomingNode = nodeInfo.Node
+			cleanText = nodeInfo.Text
+			cardType, priority, data = mapToCard(cleanText)
+			data["source_node"] = incomingNode
+		} else {
+			cleanText = cleanMessage(message)
+			data["summary"] = cleanText
+		}
 	} else {
+		// If we already have a Node ID, just clean the text
 		cleanText = cleanMessage(message)
+		// Re-run mapToCard to get category/color for this specific Node Title (if matched)
+		// But we need to leverage the known Node ID
+
+		// If mapToCard didn't find a title by prefix, use the Node ID as title
+		if t, ok := data["title"].(string); !ok || t == "" {
+			data["title"] = incomingNode
+		}
+
+		// Map again with the Node Name as the Title to get the correct styling
+		// We temporarily inject the Node Name as a title to mapToCard by faking a prefix?
+		// Better: explicitly refine the card type based on incomingNode
+		refineCardType(incomingNode, message, &cardType, &priority, data)
+
 		data["summary"] = cleanText
+		data["source_node"] = incomingNode
+	}
+
+	// FILTER: If incomingNode is empty, check if mapToCard found a title
+	if incomingNode == "" {
+		if title, ok := data["title"].(string); ok && title != "" {
+			incomingNode = title
+			data["source_node"] = incomingNode
+		}
+	}
+
+	// FILTER: Skip if no node ID/Name is specified
+	if incomingNode == "" {
+		return
 	}
 
 	// FILTER: Hide internal utility nodes from the public feed to prevent clutter
@@ -194,10 +237,17 @@ func processAndAppendFeed(eventJSON string) {
 		if existing, ok := nodeBuckets[incomingNode]; ok {
 			// Append to existing bucket
 			lastSummary, _ := existing.Data["summary"].(string)
-			if len(lastSummary) < 10000 {
-				existing.Data["summary"] = lastSummary + cleanText
+			// Limit total length to prevent huge jumbled text
+			if len(lastSummary) < 2000 {
+				// Add newline separation between chunks for readability
+				if len(lastSummary) > 0 && !strings.HasSuffix(lastSummary, "\n") {
+					existing.Data["summary"] = lastSummary + "\n" + cleanText
+				} else {
+					existing.Data["summary"] = lastSummary + cleanText
+				}
 				existing.Timestamp = time.Now().Format(time.RFC3339)
 			}
+			// DON'T return early - the existing pointer is already in currentFeed
 			return
 		}
 	}
@@ -215,21 +265,28 @@ func processAndAppendFeed(eventJSON string) {
 		SourceNode: incomingNode,
 		Data:       data,
 	}
+
+	// Store pointer in bucket map AND add pointer to feed
+	itemPointer := &newItem
 	if incomingNode != "" {
-		nodeBuckets[incomingNode] = &newItem
+		nodeBuckets[incomingNode] = itemPointer
 	}
-	// Prepend to feed slice (most recent first)
-	currentFeed = append([]*FeedItem{&newItem}, currentFeed...)
+	// Prepend to feed slice (most recent first) - using POINTER so updates propagate
+	currentFeed = append([]*FeedItem{itemPointer}, currentFeed...)
 }
 
-func shouldSkipMessage(message, eventType, rawJSON string) bool {
+func shouldSkipMessage(message, eventType, rawJSON, nodeName string) bool {
 	// Skip empty messages
 	if strings.TrimSpace(message) == "" {
 		return true
 	}
 
-	// Skip raw JSON logs (they're internal debug info, not user-facing)
-	if eventType == "log" && (message == "" || message == rawJSON) {
+	// Skip ALL raw JSON logs (internal debug info)
+	if eventType == "log" {
+		// EXCEPTION: Allow logs from CheckWeather (it emits output as log)
+		if nodeName == "CheckWeather" {
+			return false
+		}
 		return true
 	}
 
@@ -271,8 +328,12 @@ func shouldSkipMessage(message, eventType, rawJSON string) bool {
 	}
 
 	// Skip very short messages (likely not useful)
-	if len(strings.TrimSpace(message)) < 15 {
-		return true
+	// BUT: if this is a chunk with an identified node, allow short lines so we don't
+	// lose headings/markers (the bucket logic will concatenate them).
+	if eventType != "chunk" || nodeName == "" {
+		if len(strings.TrimSpace(message)) < 15 {
+			return true
+		}
 	}
 
 	return false
@@ -284,12 +345,6 @@ func mapToCard(message string) (string, string, map[string]interface{}) {
 	var data = map[string]interface{}{
 		"summary": message,
 	}
-
-	// Default Title
-	data["title"] = "TripGuardian"
-	data["source"] = "Analysis"
-	data["category"] = "Tips"
-	data["colorTheme"] = "default"
 
 	// PREFIX DETECTION LOGIC
 	// We check for "NodeName: Content" pattern
@@ -352,6 +407,43 @@ func mapToCard(message string) (string, string, map[string]interface{}) {
 	}
 
 	return cardType, priority, data
+}
+
+func refineCardType(title string, message string, cardType *string, priority *string, data map[string]interface{}) {
+	if title == "NewsAlert" || contains(message, "SAFETY:") || contains(message, "Warning") {
+		*cardType = "safe_alert"
+		*priority = "high"
+		data["message"] = data["summary"]
+		data["level"] = "warning"
+		data["category"] = "Safety"
+		data["colorTheme"] = "red"
+	} else if title == "CheckWeather" || contains(message, "Weather") {
+		*cardType = "weather"
+		data["source"] = "Weather Agent"
+		data["category"] = "Weather"
+		data["colorTheme"] = "blue"
+		data["imageUrl"] = "https://images.unsplash.com/photo-1592210454359-9043f067919b?auto=format&fit=crop&w=800&q=80"
+		data["description"] = data["summary"]
+		data["temp"] = "22°C"
+		data["location"] = "Destination"
+		data["condition"] = "Cloudy"
+	} else if title == "GeniusLoci" || title == "KnowledgeCheck" || title == "ReviewSummarizer" {
+		*cardType = "cultural_tip"
+		data["source"] = "Genius Loci"
+		data["category"] = "Culture"
+		data["colorTheme"] = "purple"
+		data["imageUrl"] = "https://images.unsplash.com/photo-1528642474498-1af0c17fd8c3?auto=format&fit=crop&w=800&q=80"
+
+		if contains(message, "temple") || contains(message, "shrine") {
+			data["videoUrl"] = "https://www.youtube.com/embed/s-VRyQprlu8"
+		}
+	} else if title == "GenerateReport" {
+		*cardType = "article"
+		data["source"] = "Final Synthesis"
+		data["category"] = "Report"
+		data["colorTheme"] = "green"
+		data["imageUrl"] = "https://images.unsplash.com/photo-1526481280693-3bfa7568e0f3?auto=format&fit=crop&w=800&q=80"
+	}
 }
 
 func cleanMessage(msg string) string {
@@ -526,15 +618,22 @@ func ChatStreamHandler(c *gin.Context) {
 
 	// Run Agent and Stream
 	err := engine.Run(agentPath, req.Input, func(eventJSON string) {
+		fmt.Println("RAW FASTGRAPH EVENT:", eventJSON) // Log raw data from FastGraph
 		mu.Lock()
 		defer mu.Unlock()
 
 		// Broadcast to Feed as well? Maybe yes, so history is kept.
 		processAndAppendFeed(eventJSON)
 
-		// Parse the JSON event to extract text
+		// Broadcast to Feed as well
+		// Removed duplicate feed processing (already handled above)
+
+		// Forward raw event to client
+		c.SSEvent("message", eventJSON)
+		c.Writer.Flush()
+
+		// Accumulate output for "done" event
 		var evt struct {
-			Type    string `json:"type"`
 			Message string `json:"message"`
 		}
 		if err := json.Unmarshal([]byte(eventJSON), &evt); err == nil {
