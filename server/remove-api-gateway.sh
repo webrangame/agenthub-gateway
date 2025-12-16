@@ -62,3 +62,4 @@ echo "API Gateway ID: ${API_ID}"
 echo "Status: Deleted"
 echo ""
 echo "✅ API Gateway removal complete!"
+

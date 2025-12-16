@@ -109,3 +109,4 @@ echo ""
 echo "   # Test custom domain (after DNS update)"
 echo "   curl https://${DOMAIN_NAME}/health"
 echo ""
+

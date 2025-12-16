@@ -250,7 +250,7 @@ const FeedPanel: React.FC = () => {
                             <div className="text-red-800 font-semibold mb-2">⚠️ Connection Error</div>
                             <div className="text-red-600 text-sm mb-3">{error}</div>
                             <div className="text-red-500 text-xs">
-                                Feed API: <code className="bg-red-100 px-1 rounded">http://3.82.226.162:8081/api/feed</code>
+                                Feed API: <code className="bg-red-100 px-1 rounded">http://52.91.52.178:8081/api/feed</code>
                             </div>
                         </div>
                     </div>

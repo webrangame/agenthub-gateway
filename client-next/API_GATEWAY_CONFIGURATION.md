@@ -151,3 +151,4 @@ Now it connects via API Gateway:
 - `server/API_GATEWAY_CONNECTED.md` - API Gateway setup status
 - `server/API_GATEWAY_IP_MANAGEMENT.md` - Managing IP changes
 - `server/update-api-gateway-ip.sh` - Script to update API Gateway IP
+

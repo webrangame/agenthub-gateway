@@ -160,3 +160,4 @@ If you need connections longer than 29 seconds:
 - `server/fix-api-gateway-timeout.sh` - Script to fix timeout
 - `server/main.go` - Backend chat stream handler
 - `client-next/app/components/ChatPanel.tsx` - Frontend SSE handling
+

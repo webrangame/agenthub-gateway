@@ -116,3 +116,4 @@ echo "✅ After setup, your API will be available at:"
 echo "   https://${DOMAIN}/health"
 echo "   https://${DOMAIN}/api/feed"
 echo "   https://${DOMAIN}/api/chat/stream"
+

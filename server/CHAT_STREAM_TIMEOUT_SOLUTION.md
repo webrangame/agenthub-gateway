@@ -130,3 +130,4 @@ aws logs tail /ecs/fastgraph-gateway --follow --region us-east-1
 2. **Monitor logs** - Check for any issues
 3. **Optimize backend** - If still slow, optimize processing
 4. **Consider WebSocket** - If need longer connections
+

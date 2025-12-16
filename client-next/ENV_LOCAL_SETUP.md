@@ -85,3 +85,4 @@ When backend IP changes:
 - **With .env.local**: Override backend IP easily
 - **Without .env.local**: Uses code defaults (works fine)
 - **Recommendation**: Create `.env.local` for easier IP updates
+

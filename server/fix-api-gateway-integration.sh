@@ -145,3 +145,4 @@ rm -rf ${TEMP_DIR}
 
 echo ""
 echo "📋 If still not working, follow console steps above."
+

@@ -132,3 +132,4 @@ aws acm describe-certificate \
 - Verify certificate is `ISSUED` status
 - Check HTTPS listener exists on port 443
 - Test with: `curl -v https://ALB-DNS/health`
+

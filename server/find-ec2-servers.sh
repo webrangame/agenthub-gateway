@@ -47,3 +47,4 @@ echo "  Default Region: us-east-1"
 echo "  ECS Cluster: fastgraph-cluster (us-east-1)"
 echo "  Current API IP: 107.23.26.219:8081"
 echo "  Service Type: ECS Fargate (serverless containers)"
+

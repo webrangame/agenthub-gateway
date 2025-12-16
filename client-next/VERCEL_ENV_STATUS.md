@@ -101,3 +101,4 @@ After verifying values, test:
 3. **Upload endpoint**: Should use API Gateway
 
 Check browser Network tab to verify correct URLs are being used.
+
