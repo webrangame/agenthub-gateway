@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Use environment variable for API URL, fallback to hardcoded IP
-const API_BASE_URL = (process.env.BACKEND_API_URL || 'http://44.200.144.6:8081').trim();
+// Use environment variable for API URL, fallback to production server
+const API_BASE_URL = (process.env.BACKEND_API_URL || 'http://3.82.226.162:8081').trim();
 
 export async function POST(request: NextRequest) {
   try {

@@ -74,3 +74,5 @@ echo "   aws ecs describe-services --cluster ${ECS_CLUSTER_NAME} --services ${EC
 
 
 
+
+

@@ -53,11 +53,19 @@ const DragDropZone: React.FC = () => {
                 // In real app, we would trigger a capability refresh here
                 setTimeout(() => setUploadStatus('idle'), 3000);
             } else {
+                const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
+                console.error('Upload failed:', response.status, errorData);
                 setUploadStatus('error');
+                setTimeout(() => setUploadStatus('idle'), 3000);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Upload failed:', error);
+            // Check if it's a network error
+            if (error?.message?.includes('Failed to fetch') || error?.name === 'TypeError') {
+                console.error('Network error: Make sure the backend server is running at', API_ENDPOINTS.upload);
+            }
             setUploadStatus('error');
+            setTimeout(() => setUploadStatus('idle'), 3000);
         }
     };
 

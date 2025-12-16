@@ -5,7 +5,9 @@
   "framework": "nextjs",
   "regions": ["iad1"],
   "env": {
-    "NEXT_PUBLIC_API_URL": "http://54.226.4.196:8081"
+    "NEXT_PUBLIC_API_URL": "http://3.82.226.162:8081",
+    "BACKEND_API_URL": "http://3.82.226.162:8081",
+    "FEED_API_URL": "http://3.82.226.162:8081"
   }
 }
 

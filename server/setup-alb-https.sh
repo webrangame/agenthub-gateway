@@ -72,7 +72,7 @@ echo "🔓 Updating ECS security group to allow ALB traffic..."
 aws ec2 authorize-security-group-ingress \
   --group-id ${SG_ID} \
   --protocol tcp \
-  --port 8080 \
+  --port 8081 \
   --source-group ${ALB_SG_ID} \
   --region ${AWS_REGION} 2>/dev/null || echo "Rule may already exist"
 
@@ -88,7 +88,7 @@ if [ -z "$TARGET_GROUP_ARN" ] || [ "$TARGET_GROUP_ARN" == "None" ]; then
   TARGET_GROUP_ARN=$(aws elbv2 create-target-group \
     --name ${TARGET_GROUP_NAME} \
     --protocol HTTP \
-    --port 8080 \
+    --port 8081 \
     --vpc-id ${VPC_ID} \
     --target-type ip \
     --health-check-path /health \
@@ -219,10 +219,13 @@ fi
 
 # Update ECS service to use ALB
 echo "🔄 Updating ECS service to use ALB..."
+# Note: containerName should match the container name in your task definition
+# Check if using 'fastgraph-gateway' or 'guardian-gateway'
+CONTAINER_NAME="fastgraph-gateway"
 aws ecs update-service \
   --cluster ${CLUSTER_NAME} \
   --service ${SERVICE_NAME} \
-  --load-balancers targetGroupArn=${TARGET_GROUP_ARN},containerName=fastgraph-gateway,containerPort=8080 \
+  --load-balancers targetGroupArn=${TARGET_GROUP_ARN},containerName=${CONTAINER_NAME},containerPort=8081 \
   --network-configuration "awsvpcConfiguration={subnets=[${SUBNET_IDS}],securityGroups=[${SG_ID}],assignPublicIp=DISABLED}" \
   --region ${AWS_REGION} > /dev/null
 
@@ -246,4 +249,6 @@ if [ -z "$CERT_ARN" ] || [ "$CERT_ARN" == "None" ]; then
 fi
 echo ""
 echo "📝 Update your frontend API URL to: http://${ALB_DNS} (or https://${ALB_DNS} if HTTPS is enabled)"
+
+
 

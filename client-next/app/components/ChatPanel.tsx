@@ -111,10 +111,60 @@ const ChatPanel: React.FC = () => {
                         try {
                             const parsed = JSON.parse(dataContent);
 
-                            // Valid content chunk (text or message)
-                            const contentChunk = parsed.text || parsed.message;
-                            if (contentChunk && typeof contentChunk === 'string') {
-                                currentText += contentChunk;
+                            // Check for 'text' chunk (New Protocol)
+                            if (parsed.text) {
+                                let nodeValue = parsed.node;
+                                let textValue = parsed.text;
+                                
+                                // Skip metadata lines like "event: chunk\n"
+                                if (textValue.trim() === 'event: chunk' || textValue.trim().startsWith('event:')) {
+                                    continue;
+                                }
+                                
+                                // Check if text contains nested JSON (e.g., "data: {\"node\": \"ExtractCity\", \"text\": \"Sig\"}\n")
+                                if (textValue.includes('data:') && textValue.includes('{')) {
+                                    try {
+                                        // Extract the JSON part after "data: "
+                                        const dataIndex = textValue.indexOf('data:');
+                                        if (dataIndex !== -1) {
+                                            const jsonStart = textValue.indexOf('{', dataIndex);
+                                            if (jsonStart !== -1) {
+                                                // Find the matching closing brace
+                                                let braceCount = 0;
+                                                let jsonEnd = jsonStart;
+                                                for (let i = jsonStart; i < textValue.length; i++) {
+                                                    if (textValue[i] === '{') braceCount++;
+                                                    if (textValue[i] === '}') braceCount--;
+                                                    if (braceCount === 0) {
+                                                        jsonEnd = i + 1;
+                                                        break;
+                                                    }
+                                                }
+                                                const jsonStr = textValue.substring(jsonStart, jsonEnd);
+                                                const innerParsed = JSON.parse(jsonStr);
+                                                if (innerParsed.node) nodeValue = innerParsed.node;
+                                                if (innerParsed.text) textValue = innerParsed.text;
+                                            }
+                                        }
+                                    } catch (innerError) {
+                                        // If parsing fails, use original text
+                                    }
+                                }
+                                
+                                // If node exists, format as heading + text
+                                if (nodeValue) {
+                                    const formattedContent = `**${nodeValue}**\n${textValue}`;
+                                    currentText = currentText ? currentText + '\n\n' + formattedContent : formattedContent;
+                                } else {
+                                    currentText += textValue;
+                                }
+                                
+                                setMessages(prev => prev.map(msg =>
+                                    msg.id === assistantMsgId ? { ...msg, content: currentText } : msg
+                                ));
+                            } else if (parsed.message) {
+                                // Fallback to message field
+                                currentText += parsed.message;
                                 setMessages(prev => prev.map(msg =>
                                     msg.id === assistantMsgId ? { ...msg, content: currentText } : msg
                                 ));
@@ -231,7 +281,7 @@ const ChatPanel: React.FC = () => {
                                     {cleanAgentOutput(msg.content || '')}
                                 </ReactMarkdown>
                             </div>
-                            <span className={`text-[10px] block mt-1 opacity-70 ${msg.role === 'user' ? 'text-[#003580]/70' : 'text-gray-400'}`}>
+                            <span className={`text-[10px] block mt-2 opacity-70 ${msg.role === 'user' ? 'text-[#003580]/70' : 'text-gray-400'}`}>
                                 {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                         </div>
