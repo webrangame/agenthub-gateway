@@ -5,6 +5,8 @@ import { ExternalLink, Eye, Video, Clock, Newspaper } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
+import remarkBreaks from 'remark-breaks';
+
 // Force re-compile
 interface ArticleCardProps {
     title: string;
@@ -107,13 +109,45 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
                 {/* Summary */}
                 <div className="text-sm text-[#003580]/70 leading-relaxed mb-4 overflow-hidden">
                     <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
+                        remarkPlugins={[remarkGfm, remarkBreaks]}
                         components={{
                             p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
+                            h1: ({ node, ...props }) => <h1 className="text-base font-bold mb-2 uppercase tracking-tight text-[#003580]" {...props} />,
+                            h2: ({ node, ...props }) => <h2 className="text-sm font-bold mb-2 text-[#003580]" {...props} />,
+                            h3: ({ node, ...props }) => <h3 className="text-xs font-bold mb-1 mt-2 text-[#003580]" {...props} />,
                             strong: ({ node, ...props }) => <strong className="font-bold text-[#003580]" {...props} />,
                             ul: ({ node, ...props }) => <ul className="list-disc ml-4 mb-2 space-y-1" {...props} />,
+                            ol: ({ node, ...props }) => <ol className="list-decimal ml-4 mb-2" {...props} />,
                             li: ({ node, ...props }) => <li className="" {...props} />,
+                            blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-[#003580]/30 pl-4 italic my-2 text-gray-600 bg-gray-50 py-1 rounded-r" {...props} />,
                             a: ({ node, ...props }) => <a className="underline hover:text-blue-600" target="_blank" rel="noopener noreferrer" {...props} />,
+                            // Table Support
+                            table: ({ node, ...props }) => (
+                                <div className="overflow-x-auto my-3 border rounded-lg border-blue-100 shadow-sm bg-white">
+                                    <table className="w-full text-left border-collapse text-xs" {...props} />
+                                </div>
+                            ),
+                            thead: ({ node, ...props }) => <thead className="bg-blue-50/50 border-b border-blue-100" {...props} />,
+                            tbody: ({ node, ...props }) => <tbody className="divide-y divide-blue-50" {...props} />,
+                            tr: ({ node, ...props }) => <tr className="hover:bg-blue-50/30 transition-colors" {...props} />,
+                            th: ({ node, ...props }) => <th className="px-3 py-2 font-semibold text-[#003580] whitespace-nowrap" {...props} />,
+                            td: ({ node, ...props }) => <td className="px-3 py-2 align-top text-gray-700" {...props} />,
+                            code: ({ node, ...props }) => {
+                                const { className, children, ...rest } = props as any;
+                                const match = /language-(\w+)/.exec(className || '');
+                                const isInline = !match && !String(children).includes('\n');
+                                return isInline ? (
+                                    <code className="bg-gray-100 px-1.5 py-0.5 rounded font-mono text-xs text-[#d63384] border border-gray-200" {...rest}>
+                                        {children}
+                                    </code>
+                                ) : (
+                                    <div className="bg-[#1e1e1e] p-3 rounded-lg my-3 overflow-x-auto shadow-inner">
+                                        <code className={`font-mono text-xs text-blue-100 ${className || ''}`} {...rest}>
+                                            {children}
+                                        </code>
+                                    </div>
+                                );
+                            }
                         }}
                     >
                         {summary}

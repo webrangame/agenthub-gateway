@@ -5,6 +5,7 @@ import { AlertCircle, AlertTriangle, Info } from 'lucide-react';
 import { motion, Variants } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 import { cn } from '../utils/cn';
 
 interface AlertWidgetProps {
@@ -106,12 +107,18 @@ const AlertWidget: React.FC<AlertWidgetProps> = ({ message, level }) => {
                     {/* Message */}
                     <div className="text-xs font-medium text-gray-800 leading-normal mt-1 w-full max-h-80 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-200">
                         <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
+                            remarkPlugins={[remarkGfm, remarkBreaks]}
                             components={{
                                 p: ({ node, ...props }) => <p className="mb-1 last:mb-0" {...props} />,
                                 strong: ({ node, ...props }) => <strong className="font-bold text-gray-900" {...props} />,
+                                ul: ({ node, ...props }) => <ul className="list-disc ml-4 my-1" {...props} />,
+                                ol: ({ node, ...props }) => <ol className="list-decimal ml-4 my-1" {...props} />,
+                                li: ({ node, ...props }) => <li className="mb-0.5" {...props} />,
+                                a: ({ node, ...props }) => <a className="underline hover:text-blue-600 font-medium" target="_blank" rel="noopener noreferrer" {...props} />,
+                                blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-gray-300 pl-3 italic my-1 text-gray-600" {...props} />,
+                                // Table Support
                                 table: ({ node, ...props }) => (
-                                    <div className="overflow-x-auto my-2 border rounded-md border-gray-200">
+                                    <div className="overflow-x-auto my-2 border rounded-md border-gray-200 bg-white">
                                         <table className="w-full text-left border-collapse text-[10px]" {...props} />
                                     </div>
                                 ),
@@ -120,8 +127,22 @@ const AlertWidget: React.FC<AlertWidgetProps> = ({ message, level }) => {
                                 tr: ({ node, ...props }) => <tr className="hover:bg-gray-50/50" {...props} />,
                                 th: ({ node, ...props }) => <th className="px-2 py-1.5 font-semibold text-gray-600 whitespace-nowrap" {...props} />,
                                 td: ({ node, ...props }) => <td className="px-2 py-1.5 align-top text-gray-700" {...props} />,
-                                ul: ({ node, ...props }) => <ul className="list-disc ml-4 my-1" {...props} />,
-                                li: ({ node, ...props }) => <li className="mb-0.5" {...props} />
+                                code: ({ node, ...props }) => {
+                                    const { className, children, ...rest } = props as any;
+                                    const match = /language-(\w+)/.exec(className || '');
+                                    const isInline = !match && !String(children).includes('\n');
+                                    return isInline ? (
+                                        <code className="bg-gray-100 px-1 py-0.5 rounded font-mono text-[9px] text-[#d63384] border border-gray-200" {...rest}>
+                                            {children}
+                                        </code>
+                                    ) : (
+                                        <div className="bg-[#1e1e1e] p-2 rounded-md my-2 overflow-x-auto shadow-inner">
+                                            <code className={`font-mono text-[9px] text-blue-100 ${className || ''}`} {...rest}>
+                                                {children}
+                                            </code>
+                                        </div>
+                                    );
+                                }
                             }}
                         >
                             {message}

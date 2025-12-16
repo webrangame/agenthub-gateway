@@ -135,7 +135,6 @@ const FeedPanel: React.FC = () => {
                 key={item.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                layout // Smooth list reordering
                 transition={{ duration: 0.4, ease: "easeOut" }}
             >
                 {content}

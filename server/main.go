@@ -143,6 +143,9 @@ func startScheduledExecution(agentPath string, schedule *runtime.ScheduleInfo) {
 var lastActiveNode string
 
 func processAndAppendFeed(eventJSON string) {
+	bucketMutex.Lock()
+	defer bucketMutex.Unlock()
+
 	fmt.Println("ENGINE EVENT:", eventJSON)
 
 	// Parse the JSON event to extract a clean message
@@ -166,7 +169,12 @@ func processAndAppendFeed(eventJSON string) {
 
 		if evt.Node != "" {
 			incomingNode = evt.Node
-			lastActiveNode = evt.Node // Update sticky state
+			// STICKY LOGIC: If we are currently locked on "GenerateReport" (streaming large text),
+			// don't let other intermittent nodes (like ReviewSummarizer) steal the sticky focus.
+			// This ensures subsequent unnamed chunks (tokens) are still attributed to GenerateReport.
+			if lastActiveNode != "GenerateReport" || evt.Node == "GenerateReport" {
+				lastActiveNode = evt.Node
+			}
 		} else if evt.Type == "chunk" && lastActiveNode != "" {
 			// If it's a chunk but has no node, assume it belongs to the previous stream
 			incomingNode = lastActiveNode
@@ -238,23 +246,25 @@ func processAndAppendFeed(eventJSON string) {
 	}
 
 	// ---------- MAP‑BASED BUCKET LOGIC ----------
-	bucketMutex.Lock()
-	defer bucketMutex.Unlock()
 
-	if incomingNode != "" {
-		if existing, ok := nodeBuckets[incomingNode]; ok {
-			// Append to existing bucket
+	if existing, ok := nodeBuckets[incomingNode]; ok {
+		// Calculate time since last update
+		lastTime, err := time.Parse(time.RFC3339, existing.Timestamp)
+		resetThreshold := 60 * time.Second // 1 minute of silence triggers a reset
+
+		if err == nil && time.Since(lastTime) > resetThreshold {
+			// RESET: It's been a while, so this is likely a NEW run. Start fresh.
+			fmt.Printf("🔄 Resetting card for node %s (silence > %v)\n", incomingNode, resetThreshold)
+			existing.Data["summary"] = cleanText
+		} else {
+			// APPEND: Continue adding to the current card
 			lastSummary, _ := existing.Data["summary"].(string)
-			// Limit total length to prevent huge jumbled text
-			// Limit total length to prevent huge jumbled text (REMOVED LIMIT per user request)
-			// if len(lastSummary) < 10000 {
-			// Simple concatenation to preserve markdown structure (tokens can be split across chunks)
 			existing.Data["summary"] = lastSummary + cleanText
-			existing.Timestamp = time.Now().Format(time.RFC3339)
-			// }
-			// DON'T return early - the existing pointer is already in currentFeed
-			return
 		}
+
+		existing.Timestamp = time.Now().Format(time.RFC3339)
+		// DON'T return early - the existing pointer is already in currentFeed
+		return
 	}
 
 	// No bucket – create a new FeedItem and store it
@@ -281,8 +291,8 @@ func processAndAppendFeed(eventJSON string) {
 }
 
 func shouldSkipMessage(message, eventType, rawJSON, nodeName string) bool {
-	// Skip empty messages
-	if strings.TrimSpace(message) == "" {
+	// Skip truly empty messages, but allow whitespace (newlines/spaces) for formatting
+	if message == "" {
 		return true
 	}
 
@@ -294,6 +304,7 @@ func shouldSkipMessage(message, eventType, rawJSON, nodeName string) bool {
 		}
 		return true
 	}
+	// ... existing trivialPhrases ...
 
 	// Skip trivial/system messages that don't add value
 	trivialPhrases := []string{
@@ -307,6 +318,9 @@ func shouldSkipMessage(message, eventType, rawJSON, nodeName string) bool {
 		"openai api error",     // LLM API errors
 		"Bad Gateway",          // 502 errors
 		"invalid character",    // JSON parsing errors
+		"API key expired",      // Google Maps API errors
+		"\"error\":",           // JSON error objects
+		"\"code\": 400",        // Error codes
 	}
 	for _, phrase := range trivialPhrases {
 		if strings.Contains(message, phrase) {
@@ -318,7 +332,6 @@ func shouldSkipMessage(message, eventType, rawJSON, nodeName string) bool {
 	formatChars := []string{
 		"---",
 		"___",
-		"###",
 		"***",
 		"<hr>",
 		"</hr>",
@@ -327,7 +340,7 @@ func shouldSkipMessage(message, eventType, rawJSON, nodeName string) bool {
 		"═", // U+2550 Box Drawing Double Horizontal
 	}
 	for _, char := range formatChars {
-		if strings.TrimSpace(message) == char || strings.Contains(message, char) {
+		if strings.TrimSpace(message) == char {
 			return true
 		}
 	}
@@ -408,7 +421,7 @@ func mapToCard(message string) (string, string, map[string]interface{}) {
 		data["source"] = "Final Synthesis"
 		data["category"] = "Report"
 		data["colorTheme"] = "green"
-		data["imageUrl"] = "https://images.unsplash.com/photo-1526481280693-3bfa7568e0f3?auto=format&fit=crop&w=800&q=80"
+		data["imageUrl"] = "/kandy.png"
 	}
 
 	return cardType, priority, data
@@ -447,7 +460,7 @@ func refineCardType(title string, message string, cardType *string, priority *st
 		data["source"] = "Final Synthesis"
 		data["category"] = "Report"
 		data["colorTheme"] = "green"
-		data["imageUrl"] = "https://images.unsplash.com/photo-1526481280693-3bfa7568e0f3?auto=format&fit=crop&w=800&q=80"
+		data["imageUrl"] = "/kandy.png"
 	}
 }
 
@@ -460,7 +473,7 @@ func cleanMessage(msg string) string {
 	for _, p := range prefixes {
 		msg = strings.ReplaceAll(msg, p, "")
 	}
-	return strings.TrimSpace(msg)
+	return msg
 }
 
 func contains(s, substr string) bool {
@@ -620,6 +633,13 @@ func ChatStreamHandler(c *gin.Context) {
 	// Accumulate full output for "done" event
 	var fullOutput strings.Builder
 	var mu sync.Mutex
+
+	// RESET STATE: Clear node buckets and sticky node for a fresh request
+	// This prevents "Mixed Content" where old data merges with new
+	bucketMutex.Lock()
+	nodeBuckets = map[string]*FeedItem{}
+	lastActiveNode = ""
+	bucketMutex.Unlock()
 
 	// Run Agent and Stream
 	err := engine.Run(agentPath, req.Input, func(eventJSON string) {
