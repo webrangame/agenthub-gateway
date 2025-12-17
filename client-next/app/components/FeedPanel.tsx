@@ -6,7 +6,7 @@ import WeatherCard from './WeatherCard';
 import AlertWidget from './AlertWidget';
 import VideoCard from './VideoCard';
 import ArticleCard from './ArticleCard';
-import { API_ENDPOINTS } from '../utils/api';
+import { API_ENDPOINTS, API_BASE_URL } from '../utils/api';
 import { buildMockFeed } from '../mock/mockFeed';
 
 interface FeedItem {
@@ -57,7 +57,7 @@ const FeedPanel: React.FC = () => {
                     // Add credentials for same-origin requests
                     credentials: 'omit',
                 });
-                
+
                 if (res.ok) {
                     const data = await res.json();
                     console.log('Feed data received:', data);
@@ -76,7 +76,7 @@ const FeedPanel: React.FC = () => {
                         return { error: text };
                     });
                     console.error('Feed API error:', res.status, errorData);
-                    
+
                     // Set user-friendly error message
                     if (errorData.message) {
                         setError(errorData.message);
@@ -168,7 +168,7 @@ const FeedPanel: React.FC = () => {
                         <div className="p-4 border border-[#9DBEF8] rounded-lg bg-[#EEF5FF] text-xs text-[#003580]">
                             <div className="font-semibold mb-2">📍 Map Coordinates</div>
                             <div className="text-[10px] font-mono">
-                                {item.data.lat && item.data.lng 
+                                {item.data.lat && item.data.lng
                                     ? `${item.data.lat}, ${item.data.lng}`
                                     : JSON.stringify(item.data)}
                             </div>
@@ -250,7 +250,7 @@ const FeedPanel: React.FC = () => {
                             <div className="text-red-800 font-semibold mb-2">⚠️ Connection Error</div>
                             <div className="text-red-600 text-sm mb-3">{error}</div>
                             <div className="text-red-500 text-xs">
-                                Feed API: <code className="bg-red-100 px-1 rounded">http://3.82.226.162:8081/api/feed</code>
+                                Feed API: <code className="bg-red-100 px-1 rounded">{API_BASE_URL}/api/feed</code>
                             </div>
                         </div>
                     </div>

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"guardian-gateway/pkg/fastgraph/runtime"
+	"guardian-gateway/pkg/llm"
+	"guardian-gateway/pkg/session"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -61,6 +63,9 @@ func main() {
 
 	// Init Engine
 	engine = runtime.New()
+
+	// Init Session Manager
+	session.Init()
 
 	r := gin.Default()
 
@@ -132,7 +137,7 @@ func startScheduledExecution(agentPath string, schedule *runtime.ScheduleInfo) {
 		fmt.Println("SCHEDULE: Triggering proactive run...")
 		fmt.Println("SCHEDULE: Triggering proactive run...")
 		if err := engine.Run(agentPath, "Proactive Check", func(eventJSON string) {
-			processAndAppendFeed(eventJSON)
+			processAndAppendFeed(eventJSON, "")
 		}); err != nil {
 			fmt.Printf("Error running scheduled check for %s: %v\n", agentPath, err)
 		}
@@ -142,7 +147,7 @@ func startScheduledExecution(agentPath string, schedule *runtime.ScheduleInfo) {
 // Sticky Node State to associate orphaned chunks
 var lastActiveNode string
 
-func processAndAppendFeed(eventJSON string) {
+func processAndAppendFeed(eventJSON string, destination string) {
 	bucketMutex.Lock()
 	defer bucketMutex.Unlock()
 
@@ -187,7 +192,7 @@ func processAndAppendFeed(eventJSON string) {
 	}
 
 	// Default UI mapping
-	cardType, priority, data := mapToCard(message)
+	cardType, priority, data := mapToCard(message, destination)
 
 	// Try to extract node information from the message content (nested JSON)
 	var nodeInfo struct {
@@ -201,7 +206,7 @@ func processAndAppendFeed(eventJSON string) {
 		if err := json.Unmarshal([]byte(message), &nodeInfo); err == nil && nodeInfo.Node != "" {
 			incomingNode = nodeInfo.Node
 			cleanText = nodeInfo.Text
-			cardType, priority, data = mapToCard(cleanText)
+			cardType, priority, data = mapToCard(cleanText, destination)
 			data["source_node"] = incomingNode
 		} else {
 			cleanText = cleanMessage(message)
@@ -221,7 +226,7 @@ func processAndAppendFeed(eventJSON string) {
 		// Map again with the Node Name as the Title to get the correct styling
 		// We temporarily inject the Node Name as a title to mapToCard by faking a prefix?
 		// Better: explicitly refine the card type based on incomingNode
-		refineCardType(incomingNode, message, &cardType, &priority, data)
+		refineCardType(incomingNode, message, &cardType, &priority, data, destination)
 
 		data["summary"] = cleanText
 		data["source_node"] = incomingNode
@@ -357,7 +362,7 @@ func shouldSkipMessage(message, eventType, rawJSON, nodeName string) bool {
 	return false
 }
 
-func mapToCard(message string) (string, string, map[string]interface{}) {
+func mapToCard(message string, destination string) (string, string, map[string]interface{}) {
 	var cardType = "article"
 	var priority = "medium"
 	var data = map[string]interface{}{
@@ -406,28 +411,58 @@ func mapToCard(message string) (string, string, map[string]interface{}) {
 		data["temp"] = "22°C"
 		data["location"] = "Destination"
 		data["condition"] = "Cloudy"
+		data["condition"] = "Cloudy"
+		query := "weather sky"
+		if destination != "" {
+			query = destination + " weather sky"
+		}
+		fmt.Printf("DEBUG: Unsplash Weather Query: '%s' (Dest: '%s')\n", query, destination)
+		if img := fetchUnsplashImage(query); img != "" {
+			data["imageUrl"] = img
+		} else {
+			data["imageUrl"] = "https://images.unsplash.com/photo-1592210454359-9043f067919b?auto=format&fit=crop&w=800&q=80"
+		}
 	} else if title == "GeniusLoci" || title == "KnowledgeCheck" || title == "ReviewSummarizer" {
 		cardType = "cultural_tip"
 		data["source"] = "Genius Loci"
 		data["category"] = "Culture"
 		data["colorTheme"] = "purple"
-		data["imageUrl"] = "https://images.unsplash.com/photo-1528642474498-1af0c17fd8c3?auto=format&fit=crop&w=800&q=80"
-
-		if contains(message, "temple") || contains(message, "shrine") {
-			data["videoUrl"] = "https://www.youtube.com/embed/s-VRyQprlu8"
+		query := "Sri Lanka travel culture"
+		if destination != "" {
+			query = destination + " culture travel"
+		}
+		fmt.Printf("DEBUG: Unsplash Culture Query: '%s' (Dest: '%s')\n", query, destination)
+		if img := fetchUnsplashImage(query); img != "" {
+			data["imageUrl"] = img
+		} else {
+			data["imageUrl"] = "https://images.unsplash.com/photo-1528642474498-1af0c17fd8c3?auto=format&fit=crop&w=800&q=80"
 		}
 	} else if title == "GenerateReport" {
 		cardType = "article"
 		data["source"] = "Final Synthesis"
 		data["category"] = "Report"
 		data["colorTheme"] = "green"
-		data["imageUrl"] = "/kandy.png"
+	} else if title == "GenerateReport" {
+		cardType = "article"
+		data["source"] = "Final Synthesis"
+		data["category"] = "Report"
+		data["colorTheme"] = "green"
+		query := "travel itinerary planner"
+		if destination != "" {
+			query = destination + " travel landscape"
+		}
+		fmt.Printf("DEBUG: Unsplash Report Query: '%s' (Dest: '%s')\n", query, destination)
+		if img := fetchUnsplashImage(query); img != "" {
+			data["imageUrl"] = img
+		} else {
+			data["imageUrl"] = "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=800&q=80"
+		}
 	}
 
 	return cardType, priority, data
 }
 
-func refineCardType(title string, message string, cardType *string, priority *string, data map[string]interface{}) {
+func refineCardType(title string, message string, cardType *string, priority *string, data map[string]interface{}, destination string) {
 	if title == "NewsAlert" || contains(message, "SAFETY:") || contains(message, "Warning") {
 		*cardType = "safe_alert"
 		*priority = "high"
@@ -445,23 +480,89 @@ func refineCardType(title string, message string, cardType *string, priority *st
 		data["temp"] = "22°C"
 		data["location"] = "Destination"
 		data["condition"] = "Cloudy"
+		data["condition"] = "Cloudy"
+		query := "sky clouds weather"
+		if destination != "" {
+			query = destination + " weather"
+		}
+		if img := fetchUnsplashImage(query); img != "" {
+			data["imageUrl"] = img
+		} else {
+			data["imageUrl"] = "https://images.unsplash.com/photo-1592210454359-9043f067919b?auto=format&fit=crop&w=800&q=80"
+		}
 	} else if title == "GeniusLoci" || title == "KnowledgeCheck" || title == "ReviewSummarizer" {
 		*cardType = "cultural_tip"
 		data["source"] = "Genius Loci"
 		data["category"] = "Culture"
 		data["colorTheme"] = "purple"
-		data["imageUrl"] = "https://images.unsplash.com/photo-1528642474498-1af0c17fd8c3?auto=format&fit=crop&w=800&q=80"
-
-		if contains(message, "temple") || contains(message, "shrine") {
-			data["videoUrl"] = "https://www.youtube.com/embed/s-VRyQprlu8"
+		data["colorTheme"] = "purple"
+		query := "Sri Lanka culture tradition"
+		if destination != "" {
+			query = destination + " culture tradition"
+		}
+		if img := fetchUnsplashImage(query); img != "" {
+			data["imageUrl"] = img
+		} else {
+			data["imageUrl"] = "https://images.unsplash.com/photo-1528642474498-1af0c17fd8c3?auto=format&fit=crop&w=800&q=80"
 		}
 	} else if title == "GenerateReport" {
 		*cardType = "article"
 		data["source"] = "Final Synthesis"
 		data["category"] = "Report"
 		data["colorTheme"] = "green"
-		data["imageUrl"] = "/kandy.png"
+		data["colorTheme"] = "green"
+		query := "travel landscape destination"
+		if destination != "" {
+			query = destination + " travel"
+		}
+		if img := fetchUnsplashImage(query); img != "" {
+			data["imageUrl"] = img
+		} else {
+			data["imageUrl"] = "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=800&q=80"
+		}
 	}
+}
+
+// fetchUnsplashImage queries the Unsplash API for a random photo matching the query.
+// It returns the photo URL or an empty string if it fails.
+func fetchUnsplashImage(query string) string {
+	apiKey := os.Getenv("UNSPLASH_ACCESS_KEY")
+	if apiKey == "" {
+		return ""
+	}
+
+	// Construct URL
+	// Endpoint: https://api.unsplash.com/photos/random
+	// Params: query, orientation=landscape, count=1
+	url := fmt.Sprintf("https://api.unsplash.com/photos/random?query=%s&orientation=landscape&client_id=%s",
+		strings.ReplaceAll(query, " ", "%20"), apiKey)
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		fmt.Printf("⚠️ Unsplash API Error: %v\n", err)
+		return ""
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("⚠️ Unsplash API Returned: %d\n", resp.StatusCode)
+		return ""
+	}
+
+	var result struct {
+		Urls struct {
+			Regular string `json:"regular"`
+			Small   string `json:"small"`
+		} `json:"urls"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		fmt.Printf("⚠️ Unsplash Decode Error: %v\n", err)
+		return ""
+	}
+
+	return result.Urls.Regular
 }
 
 func cleanMessage(msg string) string {
@@ -510,8 +611,14 @@ func GetFeedHandler(c *gin.Context) {
 // @Success      200  {object}  map[string]string
 // @Router       /api/feed [delete]
 func ClearFeedHandler(c *gin.Context) {
+	bucketMutex.Lock()
+	defer bucketMutex.Unlock()
+
 	currentFeed = []*FeedItem{}
-	fmt.Println("Feed cleared")
+	nodeBuckets = make(map[string]*FeedItem)
+	lastActiveNode = ""
+
+	fmt.Println("Feed and buckets cleared")
 	c.JSON(http.StatusOK, gin.H{"status": "cleared", "message": "Feed has been reset"})
 }
 
@@ -584,45 +691,133 @@ func UploadAgentHandler(c *gin.Context) {
 func ChatStreamHandler(c *gin.Context) {
 	var req struct {
 		Input     string `json:"input"`
-		AgentPath string `json:"agent_path"` // Optional, defaults to latest uploaded?
+		AgentPath string `json:"agent_path"`
 	}
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
 
-	// For now, assume a single active agent or pass path.
-	// If path empty, find first .m or .zip in root?
-	agentPath := req.AgentPath
-	if agentPath == "" {
-		// Default to trip_guardian.m if available
-		defaultAgent := "agents/trip-guardian/trip_guardian.m"
-		if _, err := filepath.Abs(defaultAgent); err == nil {
-			// Check if file exists
-			if _, err := filepath.Glob(defaultAgent); err == nil {
-				agentPath = defaultAgent
+	// 1. Get Session
+	clientID := c.ClientIP()
+	sess := session.GlobalManager.GetOrCreate(clientID)
+
+	// 2. Append User Message
+	sess.AppendMessage("user", req.Input)
+
+	// 3. Gateway Brain Logic (Gemini)
+	// Construct history context
+	history := sess.GetHistory()
+	vars := sess.GetVariables()
+	varsJSON, _ := json.MarshalIndent(vars, "", "  ")
+
+	// Check State
+	isPostReport := sess.State == session.StatePostReport
+
+	systemMsg := fmt.Sprintf(`You are the "Guardian Assistant" for Trip Guardian.
+
+CURRENT STATE:
+- Known Variables: %s
+- Report Generated: %v
+
+GOAL: 
+- If Report Generated = false: Collect MANDATORY data.
+- If Report Generated = true: Chat naturally. Do NOT run agent again unless explicitly asked.
+
+SAFETY RAILS (ALWAYS ACTIVE):
+1. OFF-LIMITS: Medical advice, Legal advice, Violence/Hate speech.
+   - Response: "I cannot help with that. I am only a travel assistant."
+2. PERSONA: Stay in character as a helpful Travel Guardian.
+
+TIER 1 (MANDATORY - BLOCKER):
+- Destination (City/Location)
+- Start Date (When?)
+- Duration (How long?)
+- Arrival/Departure Times (Time?)
+
+TIER 2 (OPTIONAL - ASK ONCE):
+- Specific Venues, Budget, Interests, Mode
+
+INSTRUCTIONS:
+1. Analyze conversation.
+2. If new info is found, output: UPDATE_STATE: Key=Value
+3. LOGIC:
+   [IF Report Generated = FALSE]
+   - If Tier 1 MISSING -> ACTION: ASK_QUESTION <Specific Question>
+   - If Tier 1 COMPLETE but Tier 2 unknown -> ACTION: ASK_QUESTION <Polite inquiry>
+   - If User says "skip" or Tier 2 present -> ACTION: RUN_AGENT SUMMARY: [Context]
+
+   [IF Report Generated = TRUE]
+   - MODE: Conversational. Do NOT run agent automatically.
+   - If user changes preferences (e.g. "I hate museums"):
+     1. UPDATE_STATE: Interests=No Museums
+     2. ACTION: ASK_QUESTION "Got it. I've updated your preferences. Should I regenerate the itinerary?"
+   - If user explicitly asks ("Yes", "Run again", "Update"):
+     -> ACTION: RUN_AGENT SUMMARY: [Context]
+   - Otherwise (General chat, follow-ups):
+     -> ACTION: ASK_QUESTION <Natural Reply>
+
+4. Format:
+UPDATE_STATE: Key=Value
+ACTION: ...`, string(varsJSON), isPostReport)
+
+	fmt.Printf("GATEWAY: Thinking... (History: %d msgs)\n", len(history))
+	decision, err := llm.GenerateContent(convertHistory(history), systemMsg)
+
+	// Default fallback
+	action := "ACTION: ASK_QUESTION Sorry, I am having trouble thinking right now."
+
+	if err == nil {
+		decision = strings.TrimSpace(decision)
+		lines := strings.Split(decision, "\n")
+
+		// Parse State Updates
+		updates := make(map[string]string)
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "UPDATE_STATE:") {
+				parts := strings.SplitN(line, ":", 2)
+				if len(parts) == 2 {
+					kv := strings.SplitN(strings.TrimSpace(parts[1]), "=", 2)
+					if len(kv) == 2 {
+						// Normalize key to Title Case to match strict prompt expectations
+						key := strings.Title(strings.ToLower(strings.TrimSpace(kv[0])))
+						updates[key] = strings.TrimSpace(kv[1])
+					}
+				}
+			} else if strings.Contains(line, "ACTION:") {
+				action = line // Capture the action line
 			}
 		}
 
-		// Fallback: pick the last uploaded one
-		if agentPath == "" {
-			matches, _ := filepath.Glob("uploaded_*.m")
-			if len(matches) > 0 {
-				agentPath = matches[0]
-			} else {
-				// Try zip
-				zipMatches, _ := filepath.Glob("uploaded_*.zip")
-				if len(zipMatches) > 0 {
-					agentPath = zipMatches[0]
+		// Apply updates to session
+		if len(updates) > 0 {
+			sess.UpdateVariables(updates)
+			fmt.Printf("GATEWAY UPDATED STATE: %v\n", updates)
+		}
+
+		// Fallback: If no ACTION was found but we have valid text, treat it as a question/response
+		// Check against default fallback to ensure we actually captured something new
+		if action == "ACTION: ASK_QUESTION Sorry, I am having trouble thinking right now." && len(decision) > 0 {
+			// Filter out update lines to find the "talk" part
+			var speechParts []string
+			for _, line := range lines {
+				if !strings.HasPrefix(strings.TrimSpace(line), "UPDATE_STATE:") && strings.TrimSpace(line) != "" {
+					speechParts = append(speechParts, line)
 				}
 			}
+			if len(speechParts) > 0 {
+				cleanSpeech := strings.Join(speechParts, "\n")
+				action = "ACTION: ASK_QUESTION " + cleanSpeech
+			}
 		}
+	} else {
+		// Log actual error for admin
+		fmt.Printf("GATEWAY ERROR: %v\n", err)
+		// Friendly message for user
+		action = "ACTION: ASK_QUESTION I'm currently experiencing high traffic or a temporary system issue. Please try again in a moment."
 	}
-
-	if agentPath == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No agent found. Upload one first."})
-		return
-	}
+	fmt.Println("GATEWAY DECISION:", action)
 
 	// Set SSE headers
 	c.Writer.Header().Set("Content-Type", "text/event-stream")
@@ -630,79 +825,140 @@ func ChatStreamHandler(c *gin.Context) {
 	c.Writer.Header().Set("Connection", "keep-alive")
 	c.Writer.Flush()
 
-	// Accumulate full output for "done" event
-	var fullOutput strings.Builder
-	var mu sync.Mutex
+	// 4. Act on Decision
+	if strings.Contains(action, "ACTION: RUN_AGENT") {
+		// Set state to POST_REPORT to prevent auto-retriggering
+		sess.SetState(session.StatePostReport)
 
-	// RESET STATE: Clear node buckets and sticky node for a fresh request
-	// This prevents "Mixed Content" where old data merges with new
-	bucketMutex.Lock()
-	nodeBuckets = map[string]*FeedItem{}
-	lastActiveNode = ""
-	bucketMutex.Unlock()
-
-	// Run Agent and Stream
-	err := engine.Run(agentPath, req.Input, func(eventJSON string) {
-		fmt.Println("RAW FASTGRAPH EVENT:", eventJSON) // Log raw data from FastGraph
-		mu.Lock()
-		defer mu.Unlock()
-
-		// Broadcast to Feed as well? Maybe yes, so history is kept.
-		processAndAppendFeed(eventJSON)
-
-		// Broadcast to Feed as well
-		// Removed duplicate feed processing (already handled above)
-
-		// Forward raw event to client
-		c.SSEvent("message", eventJSON)
-		c.Writer.Flush()
-
-		// Accumulate output for "done" event
-		var evt struct {
-			Message string `json:"message"`
+		// Construct robust agent input from Session Variables + System Time
+		// This replaces reliance on the LLM's "SUMMARY" which can be flaky or hallucinated.
+		vars := sess.GetVariables()
+		inputBuilder := strings.Builder{}
+		inputBuilder.WriteString(fmt.Sprintf("Current System Date: %s.\n", time.Now().Format("2006-01-02")))
+		inputBuilder.WriteString("Trip Details:\n")
+		for k, v := range vars {
+			inputBuilder.WriteString(fmt.Sprintf("- %s: %s\n", k, v))
 		}
-		if err := json.Unmarshal([]byte(eventJSON), &evt); err == nil {
-			if evt.Message != "" {
-				// Try to parse message as JSON to check for node and text fields
-				var nodeInfo struct {
-					Node string `json:"node"`
-					Text string `json:"text"`
-				}
-				
-				chunkData := make(map[string]string)
-				
-				// Check if message is JSON with node and text fields
-				if err := json.Unmarshal([]byte(evt.Message), &nodeInfo); err == nil && nodeInfo.Node != "" && nodeInfo.Text != "" {
-					// Message contains node and text structure
-					chunkData["node"] = nodeInfo.Node
-					chunkData["text"] = nodeInfo.Text
-					fullOutput.WriteString(nodeInfo.Text)
-				} else {
-					// Plain text message
-					chunkData["text"] = evt.Message
-					fullOutput.WriteString(evt.Message)
-				}
-				
-				// Emit Chunk
-				if chunkBytes, err := json.Marshal(chunkData); err == nil {
-					c.SSEvent("chunk", string(chunkBytes))
-					c.Writer.Flush()
-				}
+		// Append the actual user input just in case context is needed, but variables are primary.
+		inputBuilder.WriteString(fmt.Sprintf("\nUser Note: %s", req.Input))
+
+		agentInput := inputBuilder.String()
+		fmt.Printf("GATEWAY: Running Agent with Synthesized Input:\n%s\n", agentInput)
+
+		// --- RUN AGENT PATH ---
+		sess.AppendMessage("model", "Starting Trip Guardian analysis...")
+
+		// Determine Agent Path (Legacy Logic)
+		agentPath := req.AgentPath
+		if agentPath == "" {
+			defaultAgent := "agents/trip-guardian/trip_guardian_v3.m"
+			if matches, _ := filepath.Glob(defaultAgent); len(matches) > 0 {
+				agentPath = defaultAgent
+			} else if matches, _ := filepath.Glob("uploaded_*.m"); len(matches) > 0 {
+				agentPath = matches[0]
 			}
 		}
-	})
 
-	if err != nil {
-		mu.Lock()
-		c.SSEvent("error", err.Error())
-		mu.Unlock()
-	}
+		if agentPath == "" {
+			c.SSEvent("error", "No agent found. Upload one first.")
+			return
+		}
 
-	// Emit Done
-	doneData := map[string]string{"output": fullOutput.String()}
-	if doneBytes, err := json.Marshal(doneData); err == nil {
-		mu.Lock()
-		c.SSEvent("done", string(doneBytes))
-		mu.Unlock()
+		// Notify User
+		c.SSEvent("chunk", `{"node": "Guardian Assistant:", "text": "Great! I have everything I need. Running Trip Guardian now..."}`)
+		c.Writer.Flush()
+
+		// Prepare Accumulator
+		var fullOutput strings.Builder
+		var mu sync.Mutex
+
+		// Reset Stream State
+		bucketMutex.Lock()
+		nodeBuckets = map[string]*FeedItem{}
+		lastActiveNode = ""
+		bucketMutex.Unlock()
+
+		// Run Agent
+		err := engine.Run(agentPath, agentInput, func(eventJSON string) {
+			fmt.Println("RAW FASTGRAPH EVENT:", eventJSON)
+			mu.Lock()
+			defer mu.Unlock()
+
+			// Feed Update
+			// Robust Destination Lookup
+			dest := vars["Destination"]
+			if dest == "" {
+				dest = vars["destination"] // Try lowercase fallback
+			}
+			fmt.Printf("DEBUG: Feed Update - Destination: '%s'\n", dest)
+			processAndAppendFeed(eventJSON, dest)
+
+			// Stream to Client
+			c.SSEvent("message", eventJSON)
+			c.Writer.Flush()
+
+			// Accumulate for Done
+			fullOutput.WriteString(extractTextFromEvent(eventJSON))
+		})
+
+		if err != nil {
+			c.SSEvent("error", err.Error())
+		}
+
+		sess.AppendMessage("model", "Report generated.")
+
+		// Emit Done
+		doneData := map[string]string{"output": fullOutput.String()}
+		if doneBytes, err := json.Marshal(doneData); err == nil {
+			c.SSEvent("done", string(doneBytes))
+		}
+
+	} else {
+		// --- ASK QUESTION PATH ---
+		question := strings.TrimPrefix(action, "ACTION: ASK_QUESTION ")
+		question = strings.TrimSpace(question)
+
+		sess.AppendMessage("model", question)
+
+		// Stream the question as a "Guardian Assistant" node message
+		msgObj := map[string]string{
+			"node": "Guardian Assistant:",
+			"text": question,
+		}
+		chunkBytes, _ := json.Marshal(msgObj)
+		c.SSEvent("chunk", string(chunkBytes))
+		c.Writer.Flush()
+
+		// Done immediately
+		c.SSEvent("done", `{"output": "Question asked"}`)
 	}
+}
+
+// Helper to convert session history to map format for LLM
+func convertHistory(hist []session.Message) []map[string]interface{} {
+	var res []map[string]interface{}
+	for _, m := range hist {
+		res = append(res, map[string]interface{}{
+			"role":    m.Role,
+			"content": m.Content,
+		})
+	}
+	return res
+}
+
+// Helper to extract text from event JSON
+func extractTextFromEvent(eventJSON string) string {
+	var evt struct {
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal([]byte(eventJSON), &evt); err == nil {
+		var nodeInfo struct {
+			Text string `json:"text"`
+		}
+		if err := json.Unmarshal([]byte(evt.Message), &nodeInfo); err == nil && nodeInfo.Text != "" {
+			return nodeInfo.Text
+		}
+		return evt.Message
+	}
+	return ""
 }

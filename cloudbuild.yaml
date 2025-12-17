@@ -1,0 +1,7 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/guardian-repo/guardian-gateway', '-f', 'server/Dockerfile', '.']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/guardian-repo/guardian-gateway']
+images:
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/guardian-repo/guardian-gateway'

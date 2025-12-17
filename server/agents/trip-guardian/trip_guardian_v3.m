@@ -51,7 +51,7 @@ Extract just the main destination city name from: '${input}'. Return ONLY the ci
       optional: "true"
     }
 
-    // 4. Logistical Validation - provide timing warnings based on available data
+    // 4. Logistical Validation - list what's missing to validate timing
     llm KnowledgeCheck {
       model: "gemini-flash-latest"
       prompt: "CURRENT DATE/TIME: ${GetDate_output}
@@ -60,18 +60,23 @@ You are a Logistical Validator for ${ExtractCity_output}.
 
 User trip details: ${ExtractDetails_output}
 
-Check if the destination is valid:
+FIRST, check if the destination is valid:
 - If '${ExtractCity_output}' is 'MISSING' or 'unknown', output:
-  'Cannot provide logistics advice without a destination.'
+  '⚠️ MISSING: Destination city'
+  'REQUIRED: Please specify which city you are traveling to.'
 
-If destination is valid, provide timing warnings and logistics advice based on the information available:
-- If start date is provided: Check for holidays, peak seasons, closure periods
-- If venues are provided: Provide timing advice (best time to visit, avoid crowds)
-- If arrival/departure times are provided: Advise on transport connections, rush hours
+THEN identify other MISSING critical information:
+- Exact start date (for holiday/closure checks)
+- Specific venue names (for opening hours validation)
+- Arrival/departure times (for last train / connection checks)
 
-IMPORTANT: Work with whatever information is available. If some details are missing, provide general logistics advice for the city.
+For each MISSING item, output:
+'⚠️ MISSING: [item]'
+'REQUIRED: [specific question to ask user]'
 
-CRITICAL RULE: DO NOT invent specific opening hours, closure days, or travel times. Only provide validated, well-known information."
+ONLY if you have complete data (city + dates + venues), provide timing warnings.
+
+CRITICAL RULE: DO NOT invent specific opening hours, closure days, or travel times."
     }
 
     // 5. Real Review Analysis (Google Places)
@@ -198,7 +203,18 @@ Data sources:
 STRUCTURE YOUR OUTPUT EXACTLY AS FOLLOWS (use these exact section headers):
 
 ═══════════════════════════════════════════
-SECTION 1: WEATHER BRIEFING
+SECTION 1: MISSING DATA - ACTION REQUIRED
+═══════════════════════════════════════════
+
+[List each missing item on a NEW LINE with clear formatting:]
+⚠️ MISSING: [item name]
+→ Question: [specific question for user]
+→ Why needed: [brief explanation]
+
+[Repeat for each missing item]
+
+═══════════════════════════════════════════
+SECTION 2: WEATHER BRIEFING
 ═══════════════════════════════════════════
 
 [If weather data exists from ${CheckWeather_output}:]
@@ -218,7 +234,7 @@ FORMATTING RULES FOR THIS SECTION:
 - If reaching output limit, end with last complete sentence
 
 ═══════════════════════════════════════════
-SECTION 2: SAFETY BRIEFING
+SECTION 3: SAFETY BRIEFING
 ═══════════════════════════════════════════
 
 [From ${NewsAlert_output}, include ONLY:]
@@ -237,7 +253,7 @@ FORMATTING RULES FOR THIS SECTION:
 DO NOT invent current events or breaking news.
 
 ═══════════════════════════════════════════
-SECTION 3: CULTURAL GUIDANCE
+SECTION 4: CULTURAL GUIDANCE
 ═══════════════════════════════════════════
 
 [From ${GeniusLoci_output}, include:]
@@ -246,12 +262,14 @@ SECTION 3: CULTURAL GUIDANCE
 3. Local secret/custom
 
 ═══════════════════════════════════════════
-SECTION 4: LOGISTICS & TIMING ADVICE
+SECTION 5: LOGISTICS VALIDATION
 ═══════════════════════════════════════════
 
 [From ${KnowledgeCheck_output}:]
-[Provide any available logistics advice, timing warnings, or general tips]
-[If no specific logistics data available, provide general city-level advice]
+[If insufficient data, state:]
+Insufficient data - see MISSING DATA section above
+
+[If data is complete, provide warnings]
 
 ═══════════════════════════════════════════
 

@@ -21,7 +21,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         // Simulate API call delay
         setTimeout(() => {
             // Check credentials
-            if (username === 'NiyoGen_first' && password === 'Dr_Jack') {
+            if (
+                (username === 'NiyoGen_first' && password === 'Dr_Jack') ||
+                (username === 'jacquev' && password === 'jacque123')
+            ) {
                 // Store authentication in localStorage
                 localStorage.setItem('isAuthenticated', 'true');
                 localStorage.setItem('username', username);

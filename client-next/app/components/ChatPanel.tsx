@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Upload } from 'lucide-react';
+import { Send, Upload, Trash2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import DragDropZone from './DragDropZone';
@@ -39,6 +39,7 @@ const ChatPanel: React.FC = () => {
     const [inputValue, setInputValue] = useState('');
     const [isStreaming, setIsStreaming] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -47,6 +48,13 @@ const ChatPanel: React.FC = () => {
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
+
+    // Auto-focus input when streaming ends
+    useEffect(() => {
+        if (!isStreaming) {
+            inputRef.current?.focus();
+        }
+    }, [isStreaming]);
 
     const handleSend = async () => {
         if (!inputValue.trim()) return;
@@ -115,12 +123,12 @@ const ChatPanel: React.FC = () => {
                             if (parsed.text) {
                                 let nodeValue = parsed.node;
                                 let textValue = parsed.text;
-                                
+
                                 // Skip metadata lines like "event: chunk\n"
                                 if (textValue.trim() === 'event: chunk' || textValue.trim().startsWith('event:')) {
                                     continue;
                                 }
-                                
+
                                 // Check if text contains nested JSON (e.g., "data: {\"node\": \"ExtractCity\", \"text\": \"Sig\"}\n")
                                 if (textValue.includes('data:') && textValue.includes('{')) {
                                     try {
@@ -150,7 +158,7 @@ const ChatPanel: React.FC = () => {
                                         // If parsing fails, use original text
                                     }
                                 }
-                                
+
                                 // If node exists, format as heading + text
                                 if (nodeValue) {
                                     const formattedContent = `**${nodeValue}**\n${textValue}`;
@@ -158,7 +166,7 @@ const ChatPanel: React.FC = () => {
                                 } else {
                                     currentText += textValue;
                                 }
-                                
+
                                 setMessages(prev => prev.map(msg =>
                                     msg.id === assistantMsgId ? { ...msg, content: currentText } : msg
                                 ));
@@ -191,12 +199,25 @@ const ChatPanel: React.FC = () => {
         } finally {
             setIsStreaming(false);
             // Add a completion message
-            setMessages(prev => [...prev, {
-                id: Date.now().toString() + '-done',
+            // Stream complete
+        }
+    };
+
+    const handleReset = async () => {
+        if (!confirm('Are you sure you want to reset the conversation? This will clear all history.')) return;
+
+        try {
+            await fetch(API_ENDPOINTS.feed, { method: 'DELETE' });
+            setMessages([{
+                id: Date.now().toString(),
                 role: 'assistant',
-                content: "✅ Analysis complete. Check the Insight Stream for details.",
+                content: "Conversations cleared. Ready for a new plan! 🌍",
                 timestamp: new Date()
             }]);
+            setInputValue('');
+        } catch (err) {
+            console.error('Failed to reset:', err);
+            alert('Failed to reset conversation. Check console.');
         }
     };
 
@@ -212,10 +233,19 @@ const ChatPanel: React.FC = () => {
             {/* Header */}
             <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#003580] z-10 sticky top-0">
                 <h2 className="font-bold text-white tracking-wider">Trip Guardian</h2>
-                <span className="text-xs px-2 py-1 bg-white/15 text-white rounded-full flex items-center gap-1 border border-white/20">
-                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                    Online
-                </span>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={handleReset}
+                        title="Reset Conversation"
+                        className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                    </button>
+                    <span className="text-xs px-2 py-1 bg-white/15 text-white rounded-full flex items-center gap-1 border border-white/20">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                        Online
+                    </span>
+                </div>
             </div>
 
             {/* Messages Area */}
@@ -303,6 +333,7 @@ const ChatPanel: React.FC = () => {
             <div className="p-4 border-t border-gray-300 bg-white">
                 <div className="flex items-center gap-2 border border-blue-200 rounded-xl px-4 py-2 focus-within:border-[#003580] transition-all shadow-[0_6px_18px_rgba(0,0,0,0.06)] focus-within:shadow-[0_8px_24px_rgba(0,53,128,0.18)]">
                     <input
+                        ref={inputRef}
                         type="text"
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}

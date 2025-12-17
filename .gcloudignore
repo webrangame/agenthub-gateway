@@ -1,0 +1,16 @@
+.git
+.gitignore
+.github
+node_modules
+client-next
+client
+*.exe
+installer_v0.3.4
+installer_v0.3.3/mac-arm
+installer_v0.3.3/mac-intel
+installer_v0.3.3/windows
+installer_v0.3.3/windows-amd64
+test_output.txt
+fastgraph_stream_output.txt
+stdout.txt
+stderr.txt

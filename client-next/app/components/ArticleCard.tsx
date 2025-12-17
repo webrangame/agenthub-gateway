@@ -46,6 +46,9 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
     colorTheme = 'default',
     timestamp
 }) => {
+    const [isExpanded, setIsExpanded] = React.useState(false);
+    // Truncate if summary is longer than 250 characters
+    const shouldTruncate = summary && summary.length > 250;
 
     return (
         <div className="bg-white border border-[#9DBEF8] rounded-xl overflow-hidden shadow-sm hover:shadow-xl hover:shadow-[#003580]/10 hover:border-[#003580]/30 transition-all duration-300 hover:-translate-y-1 group">
@@ -107,7 +110,8 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
                 </h3>
 
                 {/* Summary */}
-                <div className="text-sm text-[#003580]/70 leading-relaxed mb-4 overflow-hidden">
+                <div className={`text-sm text-[#003580]/70 leading-relaxed mb-4 relative ${!isExpanded && shouldTruncate ? 'max-h-[120px] overflow-hidden' : ''
+                    }`}>
                     <ReactMarkdown
                         remarkPlugins={[remarkGfm, remarkBreaks]}
                         components={{
@@ -152,7 +156,30 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
                     >
                         {summary}
                     </ReactMarkdown>
+
+                    {/* Gradient Overlay for truncated content */}
+                    {!isExpanded && shouldTruncate && (
+                        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+                    )}
                 </div>
+
+                {/* Show More/Less Button */}
+                {shouldTruncate && (
+                    <button
+                        onClick={() => setIsExpanded(!isExpanded)}
+                        className="text-xs font-bold text-[#003580] hover:text-[#9DBEF8] mb-3 flex items-center gap-1 focus:outline-none transition-colors"
+                    >
+                        {isExpanded ? (
+                            <>
+                                Show Less
+                            </>
+                        ) : (
+                            <>
+                                Show More <span className="text-[10px]">▼</span>
+                            </>
+                        )}
+                    </button>
+                )}
 
                 {/* Read More Link */}
                 {url && (

@@ -46,7 +46,11 @@ const SplitLayout: React.FC<SplitLayoutProps> = ({ left, right, className }) => 
     return (
         <div
             ref={containerRef}
-            className={cn("flex h-screen w-full overflow-hidden bg-gray-50 select-none", className)}
+            className={cn(
+                "flex h-screen w-full overflow-hidden bg-gray-50",
+                isResizing && "select-none",
+                className
+            )}
         >
             {/* Left Pane */}
             <div
