@@ -1,4 +1,4 @@
-name: Deploy Gateway to AWS
+name: Deploy Gateway (AWS & GCP)
 
 on:
   push:
@@ -86,8 +86,8 @@ jobs:
           cd server
           gosec ./...
 
-  deploy:
-    name: Deploy
+  deploy_aws:
+    name: Deploy AWS
     # needs: [test, lint, security] # Running in parallel for speed
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
@@ -139,3 +139,39 @@ jobs:
           service: ${{ env.ECS_SERVICE }}
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
+
+  deploy_gcp:
+    name: Deploy GCP
+    # needs: [test, lint, security]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
+
+      - name: 'Configure Docker Auth'
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev
+
+      - name: 'Build and Push Container'
+        run: |
+          docker build -t us-central1-docker.pkg.dev/mcpstore-474903/guardian-repo/guardian-gateway:${{ github.sha }} -f server/Dockerfile .
+          docker push us-central1-docker.pkg.dev/mcpstore-474903/guardian-repo/guardian-gateway:${{ github.sha }}
+
+      - name: 'Deploy to Cloud Run'
+        uses: 'google-github-actions/deploy-cloudrun@v2'
+        with:
+          service: 'guardian-gateway'
+          image: 'us-central1-docker.pkg.dev/mcpstore-474903/guardian-repo/guardian-gateway:${{ github.sha }}'
+          region: 'us-central1'
