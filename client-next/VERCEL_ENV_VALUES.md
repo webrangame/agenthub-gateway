@@ -119,3 +119,4 @@ console.log(process.env.NEXT_PUBLIC_BACKEND_DIRECT_URL);
 - ✅ 3 variables set in `vercel.json`
 - ⚠️ 1 variable (`NEXT_PUBLIC_BACKEND_DIRECT_URL`) needs to be added in Vercel Dashboard
 - 🔄 Update `NEXT_PUBLIC_BACKEND_DIRECT_URL` after each ECS redeployment
+

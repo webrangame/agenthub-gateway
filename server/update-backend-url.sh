@@ -71,3 +71,4 @@ echo "  cd client-next"
 echo "  echo '${BACKEND_URL}' | vercel env add NEXT_PUBLIC_BACKEND_DIRECT_URL production"
 echo "  vercel --prod"
 echo ""
+

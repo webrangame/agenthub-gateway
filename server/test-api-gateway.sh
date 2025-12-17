@@ -47,3 +47,4 @@ echo "If you see errors, check:"
 echo "1. Backend is running: curl ${BACKEND_URL}/health"
 echo "2. API Gateway logs in CloudWatch"
 echo "3. Integration configuration in console"
+

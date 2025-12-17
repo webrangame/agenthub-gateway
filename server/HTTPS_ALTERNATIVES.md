@@ -284,3 +284,4 @@ You already have Next.js proxy routes:
 - **Want stability?** → Method 2 (Cloudflare Tunnel)
 - **Have a VPS?** → Method 3 or 4 (Nginx/Caddy)
 - **Current setup works?** → Method 5 (Keep using Next.js proxy)
+

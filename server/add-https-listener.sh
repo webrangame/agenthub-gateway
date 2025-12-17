@@ -125,3 +125,4 @@ echo "🧪 Test HTTPS:"
 echo "   curl https://${ALB_DNS}/health"
 echo ""
 echo "📝 Update frontend to use: https://${ALB_DNS}"
+

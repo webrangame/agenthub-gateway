@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { API_BASE_URL } from '../../../utils/api';
 
 // Use environment variable for API URL, fallback to production server
+// Use environment variable for API URL, fallback to production server
 
 export async function POST(request: NextRequest) {
   try {

@@ -102,3 +102,4 @@ Vercel will use environment variables from:
 - **Local Dev**: Use `.env.local` ✅ (already created)
 - **Production**: Use Vercel Dashboard ✅ (add `NEXT_PUBLIC_BACKEND_DIRECT_URL`)
 - **Both**: Have fallback values in code
+

@@ -128,3 +128,4 @@ cd server
 ./update-backend-url.sh
 # Follow instructions to update Vercel
 ```
+

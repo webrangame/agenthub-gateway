@@ -106,3 +106,4 @@ else
     echo "  2. See: server/ENABLE_ALB_GUIDE.md for detailed instructions"
     echo "  3. Or use Cloudflare Tunnel as free alternative"
 fi
+

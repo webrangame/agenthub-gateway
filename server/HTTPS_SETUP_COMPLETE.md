@@ -188,3 +188,4 @@ If you encounter issues:
 1. Check AWS CloudWatch logs: `/ecs/fastgraph-gateway`
 2. Check ALB target group health in AWS Console
 3. Verify all security group rules are correct
+

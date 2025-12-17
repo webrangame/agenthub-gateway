@@ -166,3 +166,4 @@ if [ "$start_now" == "y" ]; then
     echo ""
     $CLOUDFLARED tunnel run ${TUNNEL_NAME}
 fi
+

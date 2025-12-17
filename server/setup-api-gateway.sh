@@ -144,3 +144,4 @@ if [ -n "$PROXY_RESOURCE_ID" ] && [ "$PROXY_RESOURCE_ID" != "None" ]; then
 fi
 echo ""
 echo "💡 For automated setup, see: server/API_GATEWAY_SETUP.md"
+

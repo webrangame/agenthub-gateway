@@ -77,3 +77,4 @@ aws ec2 describe-instances --region eu-north-1 --instance-ids i-0ba0dfae569d7a97
 # Check instance status
 aws ec2 describe-instance-status --region eu-north-1 --instance-ids i-0ba0dfae569d7a97c i-03952791cc0888fab
 ```
+

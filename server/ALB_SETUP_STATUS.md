@@ -87,3 +87,4 @@ Once ALB DNS is available, update:
 1. `client-next/vercel.json` - Update API URLs
 2. `client-next/app/utils/api.ts` - Update default API_BASE_URL
 3. Vercel environment variables
+

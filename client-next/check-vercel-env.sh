@@ -55,3 +55,4 @@ if command -v vercel &> /dev/null; then
     echo "This will show all environment variables"
     echo ""
 fi
+

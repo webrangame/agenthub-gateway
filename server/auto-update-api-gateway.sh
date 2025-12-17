@@ -105,3 +105,4 @@ aws apigateway create-deployment \
     --region ${AWS_REGION} > /dev/null 2>&1
 
 echo "✅ API Gateway updated to ${ECS_IP}"
+

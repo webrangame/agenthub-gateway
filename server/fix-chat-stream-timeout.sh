@@ -88,3 +88,4 @@ echo "  curl -X POST https://${API_ID}.execute-api.${AWS_REGION}.amazonaws.com/p
 echo "    -H 'Content-Type: application/json' \\"
 echo "    -d '{\"message\":\"test\"}'"
 echo ""
+
