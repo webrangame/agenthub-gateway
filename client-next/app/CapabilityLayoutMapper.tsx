@@ -14,9 +14,10 @@ import TerminalPanel from './components/TerminalPanel'; // Placeholder
 
 interface CapabilityMapperProps {
   capabilities: string[];
+  onLogout?: () => void;
 }
 
-const CapabilityLayoutMapper: React.FC<CapabilityMapperProps> = ({ capabilities }) => {
+const CapabilityLayoutMapper: React.FC<CapabilityMapperProps> = ({ capabilities, onLogout }) => {
   const [layoutConfig, setLayoutConfig] = useState<any>(null);
 
   useEffect(() => {
@@ -45,8 +46,8 @@ const CapabilityLayoutMapper: React.FC<CapabilityMapperProps> = ({ capabilities 
 
     return (
       <SplitLayout
-        left={<ComponentFactory name={LeftCompName} />}
-        right={<ComponentFactory name={RightCompName} />}
+        left={<ComponentFactory name={LeftCompName} onLogout={onLogout} />}
+        right={<ComponentFactory name={RightCompName} onLogout={onLogout} />}
       />
     );
   }
@@ -62,10 +63,10 @@ const CapabilityLayoutMapper: React.FC<CapabilityMapperProps> = ({ capabilities 
 };
 
 // Simple Factory to map string names to React Components
-const ComponentFactory = ({ name }: { name: string }) => {
+const ComponentFactory = ({ name, onLogout }: { name: string; onLogout?: () => void }) => {
   switch (name) {
     case 'ChatBox': return <ChatPanel />;
-    case 'FeedPanel': return <FeedPanel />;
+    case 'FeedPanel': return <FeedPanel onLogout={onLogout} />;
     case 'Terminal': return <TerminalPanel />;
     default: return <div className="p-4 text-red-500">Unknown Component: {name}</div>;
   }

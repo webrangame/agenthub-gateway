@@ -7,6 +7,7 @@ import AlertWidget from './AlertWidget';
 import VideoCard from './VideoCard';
 import ArticleCard from './ArticleCard';
 import { API_ENDPOINTS, API_BASE_URL } from '../utils/api';
+import UserMenuInline from './UserMenuInline';
 import { buildMockFeed } from '../mock/mockFeed';
 
 interface FeedItem {
@@ -17,7 +18,11 @@ interface FeedItem {
     data: Record<string, any>;
 }
 
-const FeedPanel: React.FC = () => {
+interface FeedPanelProps {
+    onLogout?: () => void;
+}
+
+const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout }) => {
     const [feed, setFeed] = useState<FeedItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [showLogs, setShowLogs] = useState(false); // Default: Hide Logs
@@ -230,15 +235,18 @@ const FeedPanel: React.FC = () => {
                         </p>
                     )}
                 </div>
-                <button
-                    onClick={() => setShowLogs(!showLogs)}
-                    className={`text-[10px] px-3 py-1.5 rounded-full font-medium transition-all duration-300 border ${showLogs
-                        ? 'bg-[#003580] text-white border-[#003580] shadow-md'
-                        : 'bg-[#EEF5FF] text-[#003580] border-[#9DBEF8] hover:bg-white hover:shadow-sm'
-                        }`}
-                >
-                    {showLogs ? 'Hide Logs' : 'Debug'}
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setShowLogs(!showLogs)}
+                        className={`text-[10px] px-3 py-1.5 rounded-full font-medium transition-all duration-300 border ${showLogs
+                            ? 'bg-[#003580] text-white border-[#003580] shadow-md'
+                            : 'bg-[#EEF5FF] text-[#003580] border-[#9DBEF8] hover:bg-white hover:shadow-sm'
+                            }`}
+                    >
+                        {showLogs ? 'Hide Logs' : 'Debug'}
+                    </button>
+                    {onLogout && <UserMenuInline onLogout={onLogout} />}
+                </div>
             </div>
 
             <div className="space-y-4 px-4 pb-20">

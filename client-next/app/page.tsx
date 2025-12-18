@@ -3,46 +3,55 @@
 import React, { useState, useEffect } from 'react';
 import CapabilityLayoutMapper from './CapabilityLayoutMapper';
 import LoginPage from './components/LoginPage';
-import { isAuthenticated } from './utils/auth';
+import { authMe, authLogout } from './utils/auth';
 
 export default function Home() {
   const [authenticated, setAuthenticated] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
 
   useEffect(() => {
-    // Set mounted to true on client-side only
-    setMounted(true);
-    
-    // Check authentication status on mount
-    const checkAuth = () => {
-      if (typeof window !== 'undefined') {
-        const authStatus = isAuthenticated();
-        setAuthenticated(authStatus);
-      }
+    let cancelled = false;
+
+    const checkSession = async () => {
+      setAuthChecking(true);
+      const res = await authMe();
+      if (cancelled) return;
+      setAuthenticated(res.ok);
+      setAuthChecking(false);
     };
 
-    checkAuth();
+    // Initial SSO check
+    checkSession();
+
+    // Keep travel UI in sync when user logs in/out on market in another tab
+    const onFocus = () => {
+      checkSession();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
   }, []);
 
   const handleLogin = () => {
     setAuthenticated(true);
   };
 
-  const handleLogout = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('isAuthenticated');
-      localStorage.removeItem('username');
-    }
+  const handleLogout = async () => {
+    await authLogout();
     setAuthenticated(false);
   };
 
-  // Show loading only during initial mount (client-side hydration)
-  if (!mounted) {
+  if (authChecking) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#003580] via-[#004a9f] to-[#003580]">
         <div className="text-white">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto"></div>
-          <p className="mt-4 text-center">Loading...</p>
+          <p className="mt-4 text-center">Checking session…</p>
         </div>
       </div>
     );
@@ -58,28 +67,7 @@ export default function Home() {
 
   return (
     <div className="relative">
-      {/* Logout button - positioned at top right */}
-      <button
-        onClick={handleLogout}
-        className="fixed top-4 right-4 z-50 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow-lg transition-all duration-200 flex items-center gap-2 text-sm font-medium"
-        title="Logout"
-      >
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-          />
-        </svg>
-        Logout
-      </button>
-      <CapabilityLayoutMapper capabilities={activeCapabilities} />
+      <CapabilityLayoutMapper capabilities={activeCapabilities} onLogout={handleLogout} />
     </div>
   );
 }
