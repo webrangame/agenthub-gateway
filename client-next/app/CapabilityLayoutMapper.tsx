@@ -18,6 +18,7 @@ interface CapabilityMapperProps {
 
 const CapabilityLayoutMapper: React.FC<CapabilityMapperProps> = ({ capabilities }) => {
   const [layoutConfig, setLayoutConfig] = useState<any>(null);
+  const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
 
   useEffect(() => {
     // 1. Find the first capability that matches a known layout in the spec
@@ -45,8 +46,9 @@ const CapabilityLayoutMapper: React.FC<CapabilityMapperProps> = ({ capabilities 
 
     return (
       <SplitLayout
-        left={<ComponentFactory name={LeftCompName} />}
+        left={<ComponentFactory name={LeftCompName} props={{ isCollapsed: isLeftCollapsed, onToggleCollapse: () => setIsLeftCollapsed(!isLeftCollapsed) }} />}
         right={<ComponentFactory name={RightCompName} />}
+        collapsed={isLeftCollapsed}
       />
     );
   }
@@ -62,11 +64,11 @@ const CapabilityLayoutMapper: React.FC<CapabilityMapperProps> = ({ capabilities 
 };
 
 // Simple Factory to map string names to React Components
-const ComponentFactory = ({ name }: { name: string }) => {
+const ComponentFactory = ({ name, props = {} }: { name: string, props?: any }) => {
   switch (name) {
-    case 'ChatBox': return <ChatPanel />;
-    case 'FeedPanel': return <FeedPanel />;
-    case 'Terminal': return <TerminalPanel />;
+    case 'ChatBox': return <ChatPanel {...props} />;
+    case 'FeedPanel': return <FeedPanel {...props} />;
+    case 'Terminal': return <TerminalPanel {...props} />;
     default: return <div className="p-4 text-red-500">Unknown Component: {name}</div>;
   }
 };

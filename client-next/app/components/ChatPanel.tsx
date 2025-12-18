@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Upload, Trash2 } from 'lucide-react';
+import { Send, Upload, Trash2, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import DragDropZone from './DragDropZone';
@@ -12,6 +12,11 @@ interface Message {
     role: 'user' | 'assistant';
     content: string;
     timestamp: Date;
+}
+
+interface ChatPanelProps {
+    isCollapsed?: boolean;
+    onToggleCollapse?: () => void;
 }
 
 // Helper to strip raw JSON and internal artifacts from agent output
@@ -27,7 +32,7 @@ const cleanAgentOutput = (text: string) => {
     return cleaned;
 };
 
-const ChatPanel: React.FC = () => {
+const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleCollapse }) => {
     const [messages, setMessages] = useState<Message[]>([
         {
             id: '1',
@@ -51,10 +56,10 @@ const ChatPanel: React.FC = () => {
 
     // Auto-focus input when streaming ends
     useEffect(() => {
-        if (!isStreaming) {
+        if (!isStreaming && !isCollapsed) {
             inputRef.current?.focus();
         }
-    }, [isStreaming]);
+    }, [isStreaming, isCollapsed]);
 
     const handleSend = async () => {
         if (!inputValue.trim()) return;
@@ -228,6 +233,40 @@ const ChatPanel: React.FC = () => {
         }
     };
 
+    // Collapsed View
+    if (isCollapsed) {
+        return (
+            <div className="flex-1 flex flex-col h-full bg-[#003580] relative items-center py-4">
+                {/* Expand Button */}
+                <button
+                    onClick={onToggleCollapse}
+                    className="p-2 mb-6 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+                    title="Expand Panel"
+                >
+                    <ChevronRight className="w-5 h-5" />
+                </button>
+
+                {/* Vertical Text */}
+                <div className="flex-1 flex flex-col items-center gap-4 w-full">
+                    <div style={{ writingMode: 'vertical-rl' }} className="text-white font-bold tracking-wider uppercase text-sm rotate-180">
+                        Trip Guardian
+                    </div>
+
+                    <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center mt-4">
+                        <MessageSquare className="w-5 h-5 text-white/80" />
+                    </div>
+
+                    <div className="relative group cursor-help">
+                        <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse border-2 border-[#003580]" />
+                        <span className="absolute left-6 top-1/2 -translate-y-1/2 bg-black/80 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                            Online
+                        </span>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="flex-1 flex flex-col h-full bg-white relative">
             {/* Header */}
@@ -245,6 +284,17 @@ const ChatPanel: React.FC = () => {
                         <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                         Online
                     </span>
+
+                    {/* Access to onToggleCollapse */}
+                    {onToggleCollapse && (
+                        <button
+                            onClick={onToggleCollapse}
+                            className="p-1.5 ml-1 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors border border-transparent hover:border-white/20"
+                            title="Collapse Panel"
+                        >
+                            <ChevronLeft className="w-4 h-4" />
+                        </button>
+                    )}
                 </div>
             </div>
 

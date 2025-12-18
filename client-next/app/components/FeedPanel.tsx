@@ -144,6 +144,8 @@ const FeedPanel: React.FC = () => {
                         category={item.data.category as any || 'Culture'}
                         colorTheme={item.data.colorTheme as any || 'purple'}
                         imageUrl={item.data.imageUrl}
+                        imageUser={item.data.imageUser}
+                        imageUserLink={item.data.imageUserLink}
                         timestamp={item.timestamp}
                     />;
                 case 'article':
@@ -152,6 +154,8 @@ const FeedPanel: React.FC = () => {
                         summary={item.data.summary}
                         source={item.data.source}
                         imageUrl={item.data.imageUrl}
+                        imageUser={item.data.imageUser}
+                        imageUserLink={item.data.imageUserLink}
                         videoUrl={item.data.videoUrl}
                         url={item.data.url}
                         category={item.data.category}

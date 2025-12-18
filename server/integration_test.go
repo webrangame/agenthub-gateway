@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"guardian-gateway/pkg/fastgraph/runtime"
+	"guardian-gateway/pkg/session"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -14,6 +15,9 @@ import (
 
 // Integration Test to verify Router Wiring
 func TestIntegration_RouterWiring(t *testing.T) {
+	// Initialize Session Manager to avoid nil panic
+	session.Init()
+
 	// Setup Mock Engine to avoid actual binary calls
 	mockEngine := runtime.New()
 	mockEngine.MockRun = func(agentPath, input string, onEvent func(string)) error {

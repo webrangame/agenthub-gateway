@@ -64,6 +64,10 @@ func TestRunStreaming(t *testing.T) {
 	engine := &Engine{BinPath: binPath}
 	agentPath, _ := filepath.Abs("../../../testdata/uploaded_trip_guardian.m")
 
+	// We just want to see if callbacks fire.
+	os.Setenv("GOOGLE_API_KEY", "dummy_test_key")
+	defer os.Unsetenv("GOOGLE_API_KEY")
+
 	// Trigger a simple run (may fail if no API keys, but should at least start)
 	// We just want to see if callbacks fire.
 

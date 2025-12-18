@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"net/http"
 	"net/http/httptest"
-	"testing"
 	"strings"
+	"testing"
 
 	"guardian-gateway/pkg/fastgraph/runtime"
+	"guardian-gateway/pkg/session"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -25,6 +26,16 @@ func TestHealthHandler(t *testing.T) {
 }
 
 func TestChatStreamHandler(t *testing.T) {
+	// Initialize Session for Handler
+	session.Init()
+
+	// Mock GenerateContentFunc
+	originalGenerate := GenerateContentFunc
+	defer func() { GenerateContentFunc = originalGenerate }()
+	GenerateContentFunc = func(history []map[string]interface{}, systemPrompt string) (string, error) {
+		return "ACTION: RUN_AGENT SUMMARY: Run requested by test", nil
+	}
+
 	// Setup Mock Engine
 	mockEngine := runtime.New()
 	mockEngine.MockRun = func(agentPath, input string, onEvent func(string)) error {
@@ -44,6 +55,7 @@ func TestChatStreamHandler(t *testing.T) {
 	reqBody := []byte(`{"input": "Hello", "agent_path": "mock.m"}`)
 	c.Request, _ = http.NewRequest("POST", "/api/chat/stream", bytes.NewBuffer(reqBody))
 	c.Request.Header.Set("Content-Type", "application/json")
+	c.Request.RemoteAddr = "127.0.0.1:12345" // Needed for ClientIP binding
 
 	// Call Handler
 	ChatStreamHandler(c)
