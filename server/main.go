@@ -417,8 +417,10 @@ func mapToCard(message string, destination string) (string, string, map[string]i
 			query = destination + " weather sky"
 		}
 		fmt.Printf("DEBUG: Unsplash Weather Query: '%s' (Dest: '%s')\n", query, destination)
-		if img := fetchUnsplashImage(query); img != "" {
+		if img, name, link := fetchUnsplashImage(query); img != "" {
 			data["imageUrl"] = img
+			data["imageUser"] = name
+			data["imageUserLink"] = link
 		} else {
 			data["imageUrl"] = "https://images.unsplash.com/photo-1592210454359-9043f067919b?auto=format&fit=crop&w=800&q=80"
 		}
@@ -432,8 +434,10 @@ func mapToCard(message string, destination string) (string, string, map[string]i
 			query = destination + " culture travel"
 		}
 		fmt.Printf("DEBUG: Unsplash Culture Query: '%s' (Dest: '%s')\n", query, destination)
-		if img := fetchUnsplashImage(query); img != "" {
+		if img, name, link := fetchUnsplashImage(query); img != "" {
 			data["imageUrl"] = img
+			data["imageUser"] = name
+			data["imageUserLink"] = link
 		} else {
 			data["imageUrl"] = "https://images.unsplash.com/photo-1528642474498-1af0c17fd8c3?auto=format&fit=crop&w=800&q=80"
 		}
@@ -452,8 +456,10 @@ func mapToCard(message string, destination string) (string, string, map[string]i
 			query = destination + " travel landscape"
 		}
 		fmt.Printf("DEBUG: Unsplash Report Query: '%s' (Dest: '%s')\n", query, destination)
-		if img := fetchUnsplashImage(query); img != "" {
+		if img, name, link := fetchUnsplashImage(query); img != "" {
 			data["imageUrl"] = img
+			data["imageUser"] = name
+			data["imageUserLink"] = link
 		} else {
 			data["imageUrl"] = "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=800&q=80"
 		}
@@ -485,8 +491,10 @@ func refineCardType(title string, message string, cardType *string, priority *st
 		if destination != "" {
 			query = destination + " weather"
 		}
-		if img := fetchUnsplashImage(query); img != "" {
+		if img, name, link := fetchUnsplashImage(query); img != "" {
 			data["imageUrl"] = img
+			data["imageUser"] = name
+			data["imageUserLink"] = link
 		} else {
 			data["imageUrl"] = "https://images.unsplash.com/photo-1592210454359-9043f067919b?auto=format&fit=crop&w=800&q=80"
 		}
@@ -500,8 +508,10 @@ func refineCardType(title string, message string, cardType *string, priority *st
 		if destination != "" {
 			query = destination + " culture tradition"
 		}
-		if img := fetchUnsplashImage(query); img != "" {
+		if img, name, link := fetchUnsplashImage(query); img != "" {
 			data["imageUrl"] = img
+			data["imageUser"] = name
+			data["imageUserLink"] = link
 		} else {
 			data["imageUrl"] = "https://images.unsplash.com/photo-1528642474498-1af0c17fd8c3?auto=format&fit=crop&w=800&q=80"
 		}
@@ -515,8 +525,10 @@ func refineCardType(title string, message string, cardType *string, priority *st
 		if destination != "" {
 			query = destination + " travel"
 		}
-		if img := fetchUnsplashImage(query); img != "" {
+		if img, name, link := fetchUnsplashImage(query); img != "" {
 			data["imageUrl"] = img
+			data["imageUser"] = name
+			data["imageUserLink"] = link
 		} else {
 			data["imageUrl"] = "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=800&q=80"
 		}
@@ -524,11 +536,11 @@ func refineCardType(title string, message string, cardType *string, priority *st
 }
 
 // fetchUnsplashImage queries the Unsplash API for a random photo matching the query.
-// It returns the photo URL or an empty string if it fails.
-func fetchUnsplashImage(query string) string {
+// It returns the photo URL, photographer name, and profile link (or empty strings).
+func fetchUnsplashImage(query string) (string, string, string) {
 	apiKey := os.Getenv("UNSPLASH_ACCESS_KEY")
 	if apiKey == "" {
-		return ""
+		return "", "", ""
 	}
 
 	// Construct URL
@@ -541,13 +553,13 @@ func fetchUnsplashImage(query string) string {
 	resp, err := client.Get(url)
 	if err != nil {
 		fmt.Printf("⚠️ Unsplash API Error: %v\n", err)
-		return ""
+		return "", "", ""
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		fmt.Printf("⚠️ Unsplash API Returned: %d\n", resp.StatusCode)
-		return ""
+		return "", "", ""
 	}
 
 	var result struct {
@@ -555,14 +567,20 @@ func fetchUnsplashImage(query string) string {
 			Regular string `json:"regular"`
 			Small   string `json:"small"`
 		} `json:"urls"`
+		User struct {
+			Name  string `json:"name"`
+			Links struct {
+				Html string `json:"html"`
+			} `json:"links"`
+		} `json:"user"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		fmt.Printf("⚠️ Unsplash Decode Error: %v\n", err)
-		return ""
+		return "", "", ""
 	}
 
-	return result.Urls.Regular
+	return result.Urls.Regular, result.User.Name, result.User.Links.Html
 }
 
 func cleanMessage(msg string) string {
@@ -688,6 +706,9 @@ func UploadAgentHandler(c *gin.Context) {
 // @Success      200     {string}  string  "SSE Stream"
 // @Failure      400     {object}  map[string]string
 // @Router       /api/chat/stream [post]
+// function variable for testing
+var GenerateContentFunc = llm.GenerateContent
+
 func ChatStreamHandler(c *gin.Context) {
 	var req struct {
 		Input     string `json:"input"`
@@ -762,7 +783,7 @@ UPDATE_STATE: Key=Value
 ACTION: ...`, string(varsJSON), isPostReport)
 
 	fmt.Printf("GATEWAY: Thinking... (History: %d msgs)\n", len(history))
-	decision, err := llm.GenerateContent(convertHistory(history), systemMsg)
+	decision, err := GenerateContentFunc(convertHistory(history), systemMsg)
 
 	// Default fallback
 	action := "ACTION: ASK_QUESTION Sorry, I am having trouble thinking right now."

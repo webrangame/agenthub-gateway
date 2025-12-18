@@ -19,6 +19,7 @@ interface CapabilityMapperProps {
 
 const CapabilityLayoutMapper: React.FC<CapabilityMapperProps> = ({ capabilities, onLogout }) => {
   const [layoutConfig, setLayoutConfig] = useState<any>(null);
+  const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
 
   useEffect(() => {
     // 1. Find the first capability that matches a known layout in the spec
@@ -46,8 +47,18 @@ const CapabilityLayoutMapper: React.FC<CapabilityMapperProps> = ({ capabilities,
 
     return (
       <SplitLayout
-        left={<ComponentFactory name={LeftCompName} onLogout={onLogout} />}
+        left={
+          <ComponentFactory
+            name={LeftCompName}
+            props={{
+              isCollapsed: isLeftCollapsed,
+              onToggleCollapse: () => setIsLeftCollapsed(!isLeftCollapsed),
+            }}
+            onLogout={onLogout}
+          />
+        }
         right={<ComponentFactory name={RightCompName} onLogout={onLogout} />}
+        collapsed={isLeftCollapsed}
       />
     );
   }
@@ -56,18 +67,18 @@ const CapabilityLayoutMapper: React.FC<CapabilityMapperProps> = ({ capabilities,
   return (
     <div className="h-screen w-full flex items-center justify-center bg-gray-100">
       <SingleColLayout>
-        <ComponentFactory name={layoutConfig.components[0]} />
+        <ComponentFactory name={layoutConfig.components[0]} onLogout={onLogout} />
       </SingleColLayout>
     </div>
   );
 };
 
 // Simple Factory to map string names to React Components
-const ComponentFactory = ({ name, onLogout }: { name: string; onLogout?: () => void }) => {
+const ComponentFactory = ({ name, props = {}, onLogout }: { name: string; props?: any; onLogout?: () => void }) => {
   switch (name) {
-    case 'ChatBox': return <ChatPanel />;
+    case 'ChatBox': return <ChatPanel {...props} />;
     case 'FeedPanel': return <FeedPanel onLogout={onLogout} />;
-    case 'Terminal': return <TerminalPanel />;
+    case 'Terminal': return <TerminalPanel {...props} />;
     default: return <div className="p-4 text-red-500">Unknown Component: {name}</div>;
   }
 };

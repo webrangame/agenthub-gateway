@@ -13,6 +13,8 @@ interface ArticleCardProps {
     summary: string;
     source: string;
     imageUrl?: string;
+    imageUser?: string;      // Photographer Name
+    imageUserLink?: string;  // Photographer Profile Link
     videoUrl?: string;
     url?: string;
     category?: 'Safety' | 'Weather' | 'Culture' | 'Tips' | 'Report';
@@ -40,6 +42,8 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
     summary,
     source,
     imageUrl,
+    imageUser,
+    imageUserLink,
     videoUrl,
     url,
     category = 'Tips',
@@ -75,6 +79,21 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                     />
                     <div className="absolute inset-0 bg-linear-to-t from-[#003580]/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                    {/* Unsplash Attribution */}
+                    {imageUser && (
+                        <div className="absolute bottom-0 right-0 bg-black/60 text-white text-[10px] px-2 py-1 rounded-tl-md backdrop-blur-sm z-10 pointer-events-auto">
+                            Photo by <a
+                                href={`${imageUserLink}?utm_source=AiGuardian&utm_medium=referral`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hover:underline font-bold text-white"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                {imageUser}
+                            </a> on Unsplash
+                        </div>
+                    )}
                 </div>
             ) : (
                 // Fallback elegant header
