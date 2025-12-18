@@ -2,11 +2,7 @@ import { NextResponse } from 'next/server';
 import { API_BASE_URL } from '../../../utils/api';
 
 // Feed endpoint configuration
-// Priority: FEED_API_URL > BACKEND_API_URL > production server
-// For Vercel/production, set FEED_API_URL or BACKEND_API_URL environment variable
-// Feed endpoint configuration
-// Priority: FEED_API_URL > BACKEND_API_URL > production server
-// For Vercel/production, set FEED_API_URL or BACKEND_API_URL environment variable
+// API_BASE_URL is resolved in app/utils/api.ts
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;

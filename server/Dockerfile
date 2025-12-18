@@ -24,6 +24,8 @@ COPY --from=builder /app/guardian-gateway /app/guardian-gateway
 
 # Copy Agents directory
 COPY server/agents/ /app/agents/
+# Copy default agent from public folder (trip_guardian_v3.m)
+COPY server/trip_guardian_v3.m /app/trip_guardian_v3.m
 RUN mkdir -p /app/uploads
 
 EXPOSE 8081

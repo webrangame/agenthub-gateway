@@ -14,9 +14,10 @@ import TerminalPanel from './components/TerminalPanel'; // Placeholder
 
 interface CapabilityMapperProps {
   capabilities: string[];
+  onLogout?: () => void;
 }
 
-const CapabilityLayoutMapper: React.FC<CapabilityMapperProps> = ({ capabilities }) => {
+const CapabilityLayoutMapper: React.FC<CapabilityMapperProps> = ({ capabilities, onLogout }) => {
   const [layoutConfig, setLayoutConfig] = useState<any>(null);
   const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
 
@@ -46,8 +47,17 @@ const CapabilityLayoutMapper: React.FC<CapabilityMapperProps> = ({ capabilities 
 
     return (
       <SplitLayout
-        left={<ComponentFactory name={LeftCompName} props={{ isCollapsed: isLeftCollapsed, onToggleCollapse: () => setIsLeftCollapsed(!isLeftCollapsed) }} />}
-        right={<ComponentFactory name={RightCompName} />}
+        left={
+          <ComponentFactory
+            name={LeftCompName}
+            props={{
+              isCollapsed: isLeftCollapsed,
+              onToggleCollapse: () => setIsLeftCollapsed(!isLeftCollapsed),
+            }}
+            onLogout={onLogout}
+          />
+        }
+        right={<ComponentFactory name={RightCompName} onLogout={onLogout} />}
         collapsed={isLeftCollapsed}
       />
     );
@@ -57,17 +67,17 @@ const CapabilityLayoutMapper: React.FC<CapabilityMapperProps> = ({ capabilities 
   return (
     <div className="h-screen w-full flex items-center justify-center bg-gray-100">
       <SingleColLayout>
-        <ComponentFactory name={layoutConfig.components[0]} />
+        <ComponentFactory name={layoutConfig.components[0]} onLogout={onLogout} />
       </SingleColLayout>
     </div>
   );
 };
 
 // Simple Factory to map string names to React Components
-const ComponentFactory = ({ name, props = {} }: { name: string, props?: any }) => {
+const ComponentFactory = ({ name, props = {}, onLogout }: { name: string; props?: any; onLogout?: () => void }) => {
   switch (name) {
     case 'ChatBox': return <ChatPanel {...props} />;
-    case 'FeedPanel': return <FeedPanel {...props} />;
+    case 'FeedPanel': return <FeedPanel onLogout={onLogout} />;
     case 'Terminal': return <TerminalPanel {...props} />;
     default: return <div className="p-4 text-red-500">Unknown Component: {name}</div>;
   }

@@ -10,11 +10,12 @@ const USE_PROXY = process.env.NODE_ENV === 'development' || (typeof window !== '
   window.location.hostname === '127.0.0.1'
 ));
 
-// API URL: Default to the production backend server
+// API URL resolution (single source of truth in production)
+// - Server routes can use BACKEND_API_URL
+// - Client can only see NEXT_PUBLIC_* vars; proxy is used for most requests anyway
 export const API_BASE_URL = process.env.NODE_ENV === 'development'
-  ? 'http://localhost:8081'
-  : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081');
-
+  ? (process.env.BACKEND_API_URL || 'http://localhost:8081')
+  : (process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://3.80.195.233:8081');
 const PROXY_BASE = '/api/proxy';
 
 export const API_ENDPOINTS = {
