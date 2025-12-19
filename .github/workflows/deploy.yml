@@ -1,0 +1,222 @@
+name: Deploy Application (GCP & AWS)
+
+on:
+  push:
+    paths:
+      - 'server/**'
+      - 'client-next/**'
+      - '.github/workflows/deploy.yml'
+      - 'aws/gateway-task-def.json'
+    branches:
+      - master
+  pull_request:
+    paths:
+      - 'server/**'
+      - 'client-next/**'
+    branches:
+      - master
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: fastgraph-gateway
+  ECS_SERVICE: fastgraph-gateway-service
+  ECS_CLUSTER: fastgraph-cluster
+  ECS_TASK_DEFINITION: aws/gateway-task-def.json
+  CONTAINER_NAME: guardian-gateway
+  GCP_REGION: us-central1
+  ARTIFACT_REGISTRY: us-central1-docker.pkg.dev/mcpstore-474903/guardian-repo
+
+jobs:
+  # ------------------------------------------------------------------
+  # BACKEND JOBS
+  # ------------------------------------------------------------------
+  test:
+    name: Run Backend Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || contains(github.event.pull_request.changed_files, 'server/')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Setup Test Environment
+        run: |
+          chmod +x installer_v0.3.3/linux/fastgraph
+          cp installer_v0.3.3/linux/fastgraph server/fastgraph
+          chmod +x server/fastgraph
+
+      - name: Run Tests
+        run: |
+          cd server
+          go test -v ./...
+
+  lint:
+    name: Run Backend Linter
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || contains(github.event.pull_request.changed_files, 'server/')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      - name: Run Linter
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+          working-directory: server
+          args: --timeout=5m
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || contains(github.event.pull_request.changed_files, 'server/')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      - name: Install Gosec
+        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
+      - name: Security Scan
+        run: |
+          cd server
+          gosec ./...
+
+  deploy_backend:
+    name: Deploy Backend (GCP)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    # needs: [test, lint, security]
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Only deploy if server changed (or manual trigger logic if added)
+      # For now, simplistic approach: deploy always to keep in sync or check paths
+      # Github Actions 'paths' filter on workflow level already filters triggers,
+      # but since this workflow triggers on both, we should check which one changed?
+      # Actually, simple is better: if we push, we attempt deploy.
+      # Optimally: use `dorny/paths-filter` to skip if not changed.
+      
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
+
+      - name: 'Configure Docker Auth'
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev
+
+      - name: 'Build and Push Container'
+        run: |
+          docker build -t $ARTIFACT_REGISTRY/guardian-gateway:${{ github.sha }} -f server/Dockerfile .
+          docker push $ARTIFACT_REGISTRY/guardian-gateway:${{ github.sha }}
+
+      - name: 'Deploy to Cloud Run'
+        uses: 'google-github-actions/deploy-cloudrun@v2'
+        with:
+          service: 'guardian-gateway'
+          image: '${{ env.ARTIFACT_REGISTRY }}/guardian-gateway:${{ github.sha }}'
+          region: '${{ env.GCP_REGION }}'
+
+  # ------------------------------------------------------------------
+  # FRONTEND JOBS
+  # ------------------------------------------------------------------
+  deploy_frontend:
+    name: Deploy Frontend (GCP)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
+
+      - name: 'Configure Docker Auth'
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev
+
+      - name: 'Build and Push Container'
+        run: |
+          docker build -t $ARTIFACT_REGISTRY/guardian-frontend:${{ github.sha }} client-next
+          docker push $ARTIFACT_REGISTRY/guardian-frontend:${{ github.sha }}
+
+      - name: 'Deploy to Cloud Run'
+        uses: 'google-github-actions/deploy-cloudrun@v2'
+        with:
+          service: 'guardian-frontend'
+          image: '${{ env.ARTIFACT_REGISTRY }}/guardian-frontend:${{ github.sha }}'
+          region: '${{ env.GCP_REGION }}'
+
+  # ------------------------------------------------------------------
+  # AWS BACKEND (Legacy/Backup)
+  # ------------------------------------------------------------------
+  deploy_aws:
+    name: Deploy Backend (AWS)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f server/Dockerfile .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Fill in the new image ID in the Amazon ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ env.ECS_TASK_DEFINITION }}
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ steps.build-image.outputs.image }}
+
+      - name: Deploy Amazon ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
