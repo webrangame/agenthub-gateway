@@ -20,7 +20,7 @@ export default function Home() {
       setAuthChecking(false);
     };
 
-    // Initial SSO check
+    // Initial SSO check (runs on every page load, including after redirect from market)
     checkSession();
 
     // Keep travel UI in sync when user logs in/out on market in another tab
