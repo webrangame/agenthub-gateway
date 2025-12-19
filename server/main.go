@@ -41,7 +41,7 @@ var engine *runtime.Engine
 var feedStore *store.PostgresStore // New Global Store
 
 // Atomic counter for unique IDs
-var eventCounter int64
+// var eventCounter int64 (Removed: Unused)
 
 // Removed global in-memory feed/buckets
 // var currentFeed = []*FeedItem{}
