@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getUsername, logout } from '../utils/auth';
+import { getUsername, authLogout as logout } from '../utils/auth';
 import ChangePasswordModal from './ChangePasswordModal';
 
 interface UserMenuProps {
