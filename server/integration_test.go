@@ -20,7 +20,7 @@ func TestIntegration_RouterWiring(t *testing.T) {
 
 	// Setup Mock Engine to avoid actual binary calls
 	mockEngine := runtime.New()
-	mockEngine.MockRun = func(agentPath, input string, onEvent func(string)) error {
+	mockEngine.MockRun = func(agentPath, input string, memory *runtime.MemoryConfig, onEvent func(string)) error {
 		return nil
 	}
 	engine = mockEngine

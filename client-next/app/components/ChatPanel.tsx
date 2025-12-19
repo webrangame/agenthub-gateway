@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import DragDropZone from './DragDropZone';
 import { API_ENDPOINTS } from '../utils/api';
+import { getDeviceId } from '../utils/device';
 
 interface Message {
     id: string;
@@ -80,6 +81,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-Device-ID': getDeviceId(),
+                    'X-User-ID': typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : '',
                 },
                 body: JSON.stringify({ input: userMsg.content }),
             });
@@ -212,7 +215,12 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
         if (!confirm('Are you sure you want to reset the conversation? This will clear all history.')) return;
 
         try {
-            await fetch(API_ENDPOINTS.feed, { method: 'DELETE' });
+            await fetch(API_ENDPOINTS.feed, {
+                method: 'DELETE',
+                headers: {
+                    'X-Device-ID': getDeviceId(),
+                }
+            });
             setMessages([{
                 id: Date.now().toString(),
                 role: 'assistant',
