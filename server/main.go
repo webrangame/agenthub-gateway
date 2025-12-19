@@ -17,6 +17,8 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -446,11 +448,6 @@ func mapToCard(message string, destination string) (string, string, map[string]i
 		data["source"] = "Final Synthesis"
 		data["category"] = "Report"
 		data["colorTheme"] = "green"
-	} else if title == "GenerateReport" {
-		cardType = "article"
-		data["source"] = "Final Synthesis"
-		data["category"] = "Report"
-		data["colorTheme"] = "green"
 		query := "travel itinerary planner"
 		if destination != "" {
 			query = destination + " travel landscape"
@@ -802,7 +799,7 @@ ACTION: ...`, string(varsJSON), isPostReport)
 					kv := strings.SplitN(strings.TrimSpace(parts[1]), "=", 2)
 					if len(kv) == 2 {
 						// Normalize key to Title Case to match strict prompt expectations
-						key := strings.Title(strings.ToLower(strings.TrimSpace(kv[0])))
+						key := cases.Title(language.English).String(strings.ToLower(strings.TrimSpace(kv[0])))
 						updates[key] = strings.TrimSpace(kv[1])
 					}
 				}

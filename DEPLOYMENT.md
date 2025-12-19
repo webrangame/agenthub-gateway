@@ -17,7 +17,7 @@ This guide will help you deploy the FastGraph Gateway server to AWS Fargate and 
 ## Architecture
 
 - **Backend**: Go server running on AWS Fargate (ECS Cluster: `fastgraph-cluster`)
-- **Frontend**: Next.js app hosted on Vercel
+- **Frontend**: Next.js app hosted on Google Cloud Run (or local)
 - **Agent**: `trip_guardian.m` runs automatically when chat requests come from frontend
 
 ## Step 1: Setup AWS Resources
@@ -172,48 +172,7 @@ aws ec2 describe-network-interfaces \
 
 **Recommended**: Set up an Application Load Balancer (ALB) for better reliability and HTTPS support.
 
-## Step 8: Deploy Frontend to Vercel
 
-### Option A: Using Vercel CLI
-
-```bash
-cd client-next
-
-# Install Vercel CLI if not installed
-npm i -g vercel
-
-# Login to Vercel
-vercel login
-
-# Deploy
-vercel --prod
-```
-
-### Option B: Using GitHub Integration
-
-1. Push your code to GitHub
-2. Go to [vercel.com](https://vercel.com)
-3. Import your repository
-4. Set environment variable:
-   - `NEXT_PUBLIC_API_URL` = Your ECS service endpoint (e.g., `http://YOUR_ALB_DNS:8081`)
-
-### Update API URL
-
-After deployment, update the API URL in Vercel:
-
-1. Go to Vercel Dashboard → Your Project → Settings → Environment Variables
-2. Add/Update: `NEXT_PUBLIC_API_URL` = `http://YOUR_ECS_ENDPOINT:8081`
-3. Redeploy
-
-Or update `vercel.json`:
-
-```json
-{
-  "env": {
-    "NEXT_PUBLIC_API_URL": "http://YOUR_ALB_DNS_NAME.us-east-1.elb.amazonaws.com"
-  }
-}
-```
 
 ## How It Works
 
@@ -233,7 +192,7 @@ Or update `vercel.json`:
 - `AWS_REGION` - `us-east-1`
 - `BUCKET_NAME` - `agent-marketplace-agents`
 
-### Frontend (Vercel)
+### Frontend (Google Cloud Run)
 - `NEXT_PUBLIC_API_URL` - Backend API endpoint
 
 ## Monitoring
@@ -264,7 +223,7 @@ aws ecs describe-services \
 
 ### Can't connect from frontend
 - Check CORS settings in `main.go`
-- Verify security group allows traffic from Vercel IPs
+- Verify security group allows traffic from Frontend IPs
 - Check if service is running: `aws ecs describe-services --cluster fastgraph-cluster --services fastgraph-gateway-service`
 
 ### Agent not running
