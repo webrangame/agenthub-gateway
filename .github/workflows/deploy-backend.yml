@@ -1,4 +1,4 @@
-name: Deploy Gateway (AWS & GCP)
+name: Deploy Backend (GCP & AWS)
 
 on:
   push:
