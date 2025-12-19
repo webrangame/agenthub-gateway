@@ -47,7 +47,9 @@ func main() {
 		fmt.Println("Database 'tg_cards' already exists.")
 	}
 
-	db.Close()
+	if err := db.Close(); err != nil {
+		log.Printf("Warning: failed to close maintenance DB connection: %v", err)
+	}
 
 	// 3. Connect to New DB
 	// 3. Connect to New DB
