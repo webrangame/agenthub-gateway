@@ -150,6 +150,35 @@ jobs:
           region: '${{ env.GCP_REGION }}'
 
   # ------------------------------------------------------------------
+  # FRONTEND VALIDATION (Runs on PRs & Push if client changes)
+  # ------------------------------------------------------------------
+  test_client:
+    name: Run Frontend Build Check
+    needs: changes
+    if: ${{ needs.changes.outputs.client == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: client-next/package-lock.json
+
+      - name: Install Dependencies
+        run: |
+          cd client-next
+          npm ci
+
+      - name: Run Build Check
+        run: |
+          cd client-next
+          npm run build
+
+  # ------------------------------------------------------------------
   # FRONTEND DEPLOY (Runs ONLY on Master Push & Client changes)
   # ------------------------------------------------------------------
   deploy_frontend:
