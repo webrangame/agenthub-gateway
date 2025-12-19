@@ -73,7 +73,8 @@ func GenerateContent(history []map[string]interface{}, systemPrompt string) (str
 		return "", err
 	}
 
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData)) // nosec G107
+	//nosec G107
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", err
 	}
