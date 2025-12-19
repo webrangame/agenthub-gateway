@@ -7,6 +7,7 @@ import AlertWidget from './AlertWidget';
 import VideoCard from './VideoCard';
 import ArticleCard from './ArticleCard';
 import { API_ENDPOINTS, API_BASE_URL } from '../utils/api';
+import { getDeviceId } from '../utils/device';
 import UserMenuInline from './UserMenuInline';
 import { buildMockFeed } from '../mock/mockFeed';
 
@@ -57,6 +58,8 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout }) => {
                     headers: {
                         'Accept': 'application/json',
                         'Content-Type': 'application/json',
+                        'X-Device-ID': getDeviceId(),
+                        'X-User-ID': typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : '',
                     },
                     cache: 'no-store',
                     // Add credentials for same-origin requests
