@@ -48,13 +48,23 @@ type ScheduleInfo struct {
 	Mode     string `json:"mode"`
 }
 
+// MemoryConfig holds configuration for the FastGraph memory layer
+type MemoryConfig struct {
+	Enabled    bool
+	Store      string // e.g., "vertex" or "inmemory"
+	ProjectID  string
+	Location   string
+	CorpusName string
+}
+
 // Real Engine Wrapper
 type Engine struct {
 	BinPath string
-	MockRun func(agentPath, input string, onEvent func(string)) error
+	MockRun func(agentPath, input string, memory *MemoryConfig, onEvent func(string)) error
 }
 
 func New() *Engine {
+	// ... existing binary discovery logic ...
 	// Check if binary exists, try Linux binary first (for cloud), then Windows
 	binPath := "./installer_v0.3.4/linux/fastgraph"
 	if _, err := os.Stat(binPath); os.IsNotExist(err) {
@@ -94,23 +104,55 @@ func (e *Engine) Inspect(agentPath string) (*AgentMetadata, error) {
 	}
 
 	var meta AgentMetadata
-	if err := json.Unmarshal(output, &meta); err != nil {
-		return nil, fmt.Errorf("failed to parse inspect output: %v", err)
+	if err := json.Unmarshal(output, &meta); err == nil {
+		return &meta, nil
 	}
-	return &meta, nil
+	// Fallback/Warning handled by caller or improve error here
+	return nil, fmt.Errorf("failed to parse inspect output: %v", err)
 }
 
 // Run executes the agent via CLI and streams output to the callback
-func (e *Engine) Run(agentPath string, input string, onEvent func(string)) error {
+func (e *Engine) Run(agentPath string, input string, memory *MemoryConfig, onEvent func(string)) error {
 	if e.MockRun != nil {
-		return e.MockRun(agentPath, input, onEvent)
+		return e.MockRun(agentPath, input, memory, onEvent)
 	}
 
-	fmt.Printf("CLI: Executing %s run %s --stream\n", e.BinPath, agentPath)
+	args := []string{"run", agentPath, "--input", input, "--stream"}
 
-	cmd := exec.Command(e.BinPath, "run", agentPath, "--input", input, "--stream") // #nosec G204
-	// Pass environment variables to the subprocess (especially OPENAI_API_KEY)
-	cmd.Env = os.Environ()
+	// Apply Memory Configuration
+	if memory != nil && memory.Enabled {
+		fmt.Printf("CLI: Memory Enabled (Store: %s)\n", memory.Store)
+		args = append(args, "--memory-enabled")
+		if memory.Store != "" {
+			args = append(args, "--memory-store="+memory.Store)
+		} else {
+			// default to inmemory if not specified but enabled
+			args = append(args, "--memory-store=inmemory")
+		}
+		// Hardcoded defaults as per plan requirements/best practices
+		args = append(args, "--memory-cache=inmemory") // Always use cache for speed
+	}
+
+	fmt.Printf("CLI: Executing %s %v\n", e.BinPath, args)
+
+	cmd := exec.Command(e.BinPath, args...) // #nosec G204
+
+	// Pass environment variables to the subprocess
+	env := os.Environ()
+
+	// Inject Vertex Config if available
+	if memory != nil {
+		if memory.ProjectID != "" {
+			env = append(env, "VERTEX_PROJECT_ID="+memory.ProjectID)
+		}
+		if memory.Location != "" {
+			env = append(env, "VERTEX_LOCATION="+memory.Location)
+		}
+		if memory.CorpusName != "" {
+			env = append(env, "VERTEX_CORPUS_NAME="+memory.CorpusName)
+		}
+	}
+	cmd.Env = env
 
 	// DEBUG: Print Key Prefixes
 	gKey := os.Getenv("GOOGLE_API_KEY")

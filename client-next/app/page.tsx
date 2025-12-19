@@ -14,19 +14,27 @@ export default function Home() {
 
     const checkSession = async () => {
       setAuthChecking(true);
-      
+
       // Debug: Check if cookies are available (always enabled for troubleshooting)
       if (typeof document !== 'undefined') {
         console.log('[SSO Debug] Current domain:', window.location.hostname);
         console.log('[SSO Debug] Cookies available:', document.cookie || 'No cookies found');
         console.log('[SSO Debug] Calling authMe() to:', 'https://market.niyogen.com/api/auth/me');
       }
-      
+
+      // In development, skip the production auth check to avoid "Network Error" console noise.
+      // We rely on the "Local Dev Login" bypass button instead.
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Dev] Skipping production SSO check. Use Local Dev Login.');
+        setAuthChecking(false);
+        return;
+      }
+
       const res = await authMe();
       if (cancelled) return;
-      
+
       console.log('[SSO Debug] Auth result:', res.ok ? '✅ Authenticated' : '❌ Not authenticated', res.error || '');
-      
+
       setAuthenticated(res.ok);
       setAuthChecking(false);
     };

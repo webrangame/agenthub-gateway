@@ -38,7 +38,7 @@ func TestChatStreamHandler(t *testing.T) {
 
 	// Setup Mock Engine
 	mockEngine := runtime.New()
-	mockEngine.MockRun = func(agentPath, input string, onEvent func(string)) error {
+	mockEngine.MockRun = func(agentPath, input string, memory *runtime.MemoryConfig, onEvent func(string)) error {
 		// Mock Output Events
 		onEvent(`{"type": "chunk", "message": "Hello"}`)
 		onEvent(`{"type": "chunk", "message": " World"}`)

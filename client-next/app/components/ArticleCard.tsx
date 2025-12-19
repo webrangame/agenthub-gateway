@@ -51,8 +51,8 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
     timestamp
 }) => {
     const [isExpanded, setIsExpanded] = React.useState(false);
-    // Truncate if summary is longer than 250 characters
-    const shouldTruncate = summary && summary.length > 250;
+    // Truncate if summary is longer than 5000 characters (effectively disabled for dev)
+    const shouldTruncate = summary && summary.length > 5000;
 
     return (
         <div className="bg-white border border-[#9DBEF8] rounded-xl overflow-hidden shadow-sm hover:shadow-xl hover:shadow-[#003580]/10 hover:border-[#003580]/30 transition-all duration-300 hover:-translate-y-1 group">

@@ -72,7 +72,7 @@ func TestRunStreaming(t *testing.T) {
 	// We just want to see if callbacks fire.
 
 	callbackFired := false
-	err := engine.Run(agentPath, "Hello Test", func(eventJSON string) {
+	err := engine.Run(agentPath, "Hello Test", nil, func(eventJSON string) {
 		callbackFired = true
 		if !strings.HasPrefix(eventJSON, "{") {
 			t.Logf("Got non-JSON output: %s", eventJSON)
