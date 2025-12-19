@@ -179,14 +179,14 @@ jobs:
 
       - name: 'Build and Push Container'
         run: |
-          docker build -t $ARTIFACT_REGISTRY/guardian-frontend:${{ github.sha }} client-next
-          docker push $ARTIFACT_REGISTRY/guardian-frontend:${{ github.sha }}
+          docker build -t $ARTIFACT_REGISTRY/guardian-client:${{ github.sha }} client-next
+          docker push $ARTIFACT_REGISTRY/guardian-client:${{ github.sha }}
 
       - name: 'Deploy to Cloud Run'
         uses: 'google-github-actions/deploy-cloudrun@v2'
         with:
-          service: 'guardian-frontend'
-          image: '${{ env.ARTIFACT_REGISTRY }}/guardian-frontend:${{ github.sha }}'
+          service: 'guardian-client'
+          image: '${{ env.ARTIFACT_REGISTRY }}/guardian-client:${{ github.sha }}'
           region: '${{ env.GCP_REGION }}'
 
   # ------------------------------------------------------------------
