@@ -2,19 +2,10 @@ name: Deploy Application (GCP & AWS)
 
 on:
   push:
-    paths:
-      - 'server/**'
-      - 'client-next/**'
-      - '.github/workflows/deploy.yml'
-      - 'aws/gateway-task-def.json'
     branches:
       - master
   pull_request:
-    paths:
-      - 'server/**'
-      - 'client-next/**'
-    branches:
-      - master
+    types: [opened, synchronize, reopened]
 
 env:
   AWS_REGION: us-east-1
@@ -28,12 +19,35 @@ env:
 
 jobs:
   # ------------------------------------------------------------------
-  # BACKEND JOBS
+  # CHANGES: Detect which files changed
+  # ------------------------------------------------------------------
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      server: ${{ steps.filter.outputs.server }}
+      client: ${{ steps.filter.outputs.client }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            server:
+              - 'server/**'
+              - '.github/workflows/deploy.yml'
+              - 'aws/gateway-task-def.json'
+            client:
+              - 'client-next/**'
+              - '.github/workflows/deploy.yml'
+
+  # ------------------------------------------------------------------
+  # BACKEND VALIDATION (Runs on PRs & Push if server changes)
   # ------------------------------------------------------------------
   test:
     name: Run Backend Tests
+    needs: changes
+    if: ${{ needs.changes.outputs.server == 'true' }}
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || contains(github.event.pull_request.changed_files, 'server/')
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -41,7 +55,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.24'
 
       - name: Setup Test Environment
         run: |
@@ -56,15 +70,16 @@ jobs:
 
   lint:
     name: Run Backend Linter
+    needs: changes
+    if: ${{ needs.changes.outputs.server == 'true' }}
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || contains(github.event.pull_request.changed_files, 'server/')
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.24'
       - name: Run Linter
         uses: golangci/golangci-lint-action@v3
         with:
@@ -74,15 +89,16 @@ jobs:
 
   security:
     name: Security Scan
+    needs: changes
+    if: ${{ needs.changes.outputs.server == 'true' }}
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || contains(github.event.pull_request.changed_files, 'server/')
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.24'
       - name: Install Gosec
         run: go install github.com/securego/gosec/v2/cmd/gosec@latest
       - name: Security Scan
@@ -90,10 +106,17 @@ jobs:
           cd server
           gosec ./...
 
+  # ------------------------------------------------------------------
+  # BACKEND DEPLOY (Runs ONLY on Master Push & Success & Server changes)
+  # ------------------------------------------------------------------
   deploy_backend:
     name: Deploy Backend (GCP)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-    # needs: [test, lint, security]
+    needs: 
+      - changes
+      - test
+      - lint
+      - security
+    if: ${{ github.ref == 'refs/heads/master' && needs.changes.outputs.server == 'true' }}
     runs-on: ubuntu-latest
     environment: production
 
@@ -101,13 +124,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Only deploy if server changed (or manual trigger logic if added)
-      # For now, simplistic approach: deploy always to keep in sync or check paths
-      # Github Actions 'paths' filter on workflow level already filters triggers,
-      # but since this workflow triggers on both, we should check which one changed?
-      # Actually, simple is better: if we push, we attempt deploy.
-      # Optimally: use `dorny/paths-filter` to skip if not changed.
-      
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@v2'
@@ -134,11 +150,13 @@ jobs:
           region: '${{ env.GCP_REGION }}'
 
   # ------------------------------------------------------------------
-  # FRONTEND JOBS
+  # FRONTEND DEPLOY (Runs ONLY on Master Push & Client changes)
   # ------------------------------------------------------------------
   deploy_frontend:
     name: Deploy Frontend (GCP)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: changes
+    # Frontend validation can be added here as separate jobs (test, lint) if needed
+    if: ${{ github.ref == 'refs/heads/master' && needs.changes.outputs.client == 'true' }}
     runs-on: ubuntu-latest
     environment: production
 
@@ -172,11 +190,16 @@ jobs:
           region: '${{ env.GCP_REGION }}'
 
   # ------------------------------------------------------------------
-  # AWS BACKEND (Legacy/Backup)
+  # AWS BACKEND (Legacy/Backup) - Mirrors Backend Logic
   # ------------------------------------------------------------------
   deploy_aws:
     name: Deploy Backend (AWS)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: 
+      - changes
+      - test
+      - lint
+      - security
+    if: ${{ github.ref == 'refs/heads/master' && needs.changes.outputs.server == 'true' }}
     runs-on: ubuntu-latest
     environment: production
 
