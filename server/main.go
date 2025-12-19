@@ -257,7 +257,8 @@ func processAndSaveFeed(ctx context.Context, deviceID string, eventJSON string, 
 			incomingNode = title
 		}
 	}
-	if incomingNode == "" || incomingNode == "ExtractDetails" || incomingNode == "ExtractCity" || incomingNode == "KnowledgeCheck" {
+	// Only drop technical extraction nodes. Allow KnowledgeCheck to show up.
+	if incomingNode == "" || incomingNode == "ExtractDetails" || incomingNode == "ExtractCity" {
 		fmt.Printf("DEBUG: Dropping message from node '%s': %s (len=%d)\n", incomingNode, message, len(message))
 		return
 	}

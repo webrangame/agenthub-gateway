@@ -54,7 +54,7 @@ agent TripGuardian {
         "X-Goog-Api-Key": "${env.GOOGLE_MAPS_KEY}" 
         "X-Goog-FieldMask": "places.displayName,places.rating,places.reviews"
       }
-      body: "{\"textQuery\": \"${input}\"}"
+      body: "{\"textQuery\": \"Attractions in ${input}\"}"
       timeout: 30
       optional: "true"
     }
@@ -94,7 +94,7 @@ agent TripGuardian {
     ExtractDetails -> KnowledgeCheck
     
     // New Parallel Branches
-    ExtractDetails -> FetchReviews
+    ExtractCity -> FetchReviews
     FetchReviews -> ReviewSummarizer
     ExtractDetails -> NewsAlert
     ExtractDetails -> GeniusLoci

@@ -154,18 +154,19 @@ func (e *Engine) Run(agentPath string, input string, memory *MemoryConfig, onEve
 	}
 	cmd.Env = env
 
-	// DEBUG: Print Key Prefixes
-	gKey := os.Getenv("GOOGLE_API_KEY")
-	gMap := os.Getenv("GOOGLE_MAPS_KEY")
-	if len(gKey) > 10 {
-		fmt.Printf("DEBUG: GOOGLE_API_KEY prefix: %s...\n", gKey[:10])
-	} else {
-		fmt.Printf("DEBUG: GOOGLE_API_KEY length: %d\n", len(gKey))
+	// DEBUG: Print Key Prefixes explicitly from cmd.Env to be sure
+	var debugMapKey string
+	for _, e := range cmd.Env {
+		if strings.HasPrefix(e, "GOOGLE_MAPS_KEY=") {
+			debugMapKey = strings.TrimPrefix(e, "GOOGLE_MAPS_KEY=")
+			break
+		}
 	}
-	if len(gMap) > 10 {
-		fmt.Printf("DEBUG: GOOGLE_MAPS_KEY prefix: %s...\n", gMap[:10])
+	if len(debugMapKey) > 10 {
+		fmt.Printf("DEBUG SUBPROCESS: GOOGLE_MAPS_KEY sent to agent: %s...\n", debugMapKey[:15])
+		fmt.Printf("DEBUG SUBPROCESS: Key Length: %d\n", len(debugMapKey))
 	} else {
-		fmt.Printf("DEBUG: GOOGLE_MAPS_KEY length: %d\n", len(gMap))
+		fmt.Printf("DEBUG SUBPROCESS: GOOGLE_MAPS_KEY MISSING or TOO SHORT! (Val='%s')\n", debugMapKey)
 	}
 
 	// Create Pipes
