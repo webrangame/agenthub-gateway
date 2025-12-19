@@ -38,11 +38,30 @@ export async function authMe(): Promise<{ ok: boolean; user?: AuthUser; error?: 
   try {
     const res = await fetch(`${AUTH_BASE}/api/auth/me`, {
       method: 'GET',
-      credentials: 'include',
-      headers: { Accept: 'application/json' },
+      credentials: 'include', // Critical: sends cookies in cross-origin request
+      headers: { 
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
       cache: 'no-store',
+      mode: 'cors', // Explicitly enable CORS
     });
-    if (!res.ok) return { ok: false, error: await parseError(res) };
+    
+    // Log response details for debugging (always enabled for troubleshooting)
+    console.log('[authMe] Response status:', res.status);
+    console.log('[authMe] Response headers:', {
+      'access-control-allow-credentials': res.headers.get('access-control-allow-credentials'),
+      'access-control-allow-origin': res.headers.get('access-control-allow-origin'),
+      'set-cookie': res.headers.get('set-cookie'),
+    });
+    
+    if (!res.ok) {
+      const error = await parseError(res);
+      console.error('[authMe] Auth check failed:', error, 'Status:', res.status);
+      console.error('[authMe] Full response:', await res.clone().text().catch(() => 'Could not read response'));
+      return { ok: false, error };
+    }
+    
     const user = (await res.json()) as AuthUser;
     // Best-effort store a display name for the UI icon
     setUsername(
@@ -54,6 +73,11 @@ export async function authMe(): Promise<{ ok: boolean; user?: AuthUser; error?: 
     return { ok: true, user };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Network error';
+    console.error('[authMe] Network error:', msg, e);
+    // Check if it's a CORS error
+    if (e instanceof TypeError && e.message.includes('Failed to fetch')) {
+      return { ok: false, error: 'CORS error: Check if market.niyogen.com allows travel.niyogen.com origin' };
+    }
     return { ok: false, error: msg };
   }
 }
