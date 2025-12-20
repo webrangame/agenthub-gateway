@@ -298,7 +298,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
                     {onToggleCollapse && (
                         <button
                             onClick={onToggleCollapse}
-                            className="p-1.5 ml-1 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors border border-transparent hover:border-white/20"
+                            className="hidden md:block p-1.5 ml-1 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors border border-transparent hover:border-white/20"
                             title="Collapse Panel"
                         >
                             <ChevronLeft className="w-4 h-4" />
