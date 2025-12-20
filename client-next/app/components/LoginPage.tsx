@@ -11,6 +11,16 @@ interface LoginPageProps {
 const AUTH_BASE = process.env.NEXT_PUBLIC_AUTH_BASE_URL?.replace(/\/$/, '') || 'https://market.niyogen.com';
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
+    const [showVip, setShowVip] = React.useState(false);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('vip') === 'true') {
+                setShowVip(true);
+            }
+        }
+    }, []);
     const handleRedirectToMarket = () => {
         // Get current URL to redirect back after login
         const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
@@ -92,8 +102,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                         </button>
                     </div>
 
-                    {/* Local Dev Bypass */}
-                    {process.env.NODE_ENV === 'development' && (
+                    {/* Local Dev / VIP Bypass */}
+                    {(process.env.NODE_ENV === 'development' || showVip) && (
                         <div className="pt-2">
                             <div className="relative flex py-2 items-center">
                                 <div className="flex-grow border-t border-gray-300"></div>
