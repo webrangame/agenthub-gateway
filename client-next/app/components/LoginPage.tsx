@@ -11,6 +11,16 @@ interface LoginPageProps {
 const AUTH_BASE = process.env.NEXT_PUBLIC_AUTH_BASE_URL?.replace(/\/$/, '') || 'https://market.niyogen.com';
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
+    const [showVip, setShowVip] = React.useState(false);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('vip') === 'true') {
+                setShowVip(true);
+            }
+        }
+    }, []);
     const handleRedirectToMarket = () => {
         // Get current URL to redirect back after login
         const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
