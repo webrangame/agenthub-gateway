@@ -119,5 +119,18 @@ func (s *PostgresStore) GetFeed(ctx context.Context, ownerID string, limit int) 
 		feed = append(feed, &c)
 	}
 
+	fmt.Printf("DEBUG: GetFeed found %d cards for %s\n", len(feed), ownerID)
 	return feed, nil
+}
+
+// DeleteFeed removes all cards for a specific user/device
+func (s *PostgresStore) DeleteFeed(ctx context.Context, ownerID string) error {
+	query := `DELETE FROM cards WHERE owner_id = $1`
+	res, err := s.DB.ExecContext(ctx, query, ownerID)
+	if err != nil {
+		return err
+	}
+	rows, _ := res.RowsAffected()
+	fmt.Printf("DEBUG: DeleteFeed removed %d rows for %s\n", rows, ownerID)
+	return nil
 }

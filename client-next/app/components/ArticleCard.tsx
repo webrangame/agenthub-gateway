@@ -129,7 +129,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
                 </h3>
 
                 {/* Summary */}
-                <div className={`text-sm text-[#003580]/70 leading-relaxed mb-4 relative ${!isExpanded && shouldTruncate ? 'max-h-[120px] overflow-hidden' : ''
+                <div className={`text-sm text-[#003580]/70 leading-relaxed mb-4 relative ${!isExpanded && shouldTruncate ? 'max-h-[600px] overflow-hidden' : ''
                     }`}>
                     <ReactMarkdown
                         remarkPlugins={[remarkGfm, remarkBreaks]}
