@@ -264,10 +264,15 @@ func (e *Engine) Run(agentPath string, input string, memory *MemoryConfig, onEve
 
 						// Successfully parsed JSON - forward as chunk event with node metadata
 						chunkEvent := map[string]string{
-							"type":      "chunk",
-							"message":   content,
-							"node":      data.Node,
-							"node_name": data.NodeName,
+							"type":    "chunk",
+							"message": content,
+						}
+						// Only include node identifiers if they are present
+						if data.Node != "" {
+							chunkEvent["node"] = data.Node
+						}
+						if data.NodeName != "" {
+							chunkEvent["node_name"] = data.NodeName
 						}
 
 						if jsonBytes, err := json.Marshal(chunkEvent); err == nil {

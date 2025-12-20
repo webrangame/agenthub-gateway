@@ -111,20 +111,26 @@ export async function GET(request: Request) {
   }
 }
 
-export async function DELETE() {
+export async function DELETE(request: Request) {
   let timeoutId: NodeJS.Timeout | null = null;
+  const deviceId = request.headers.get('X-Device-ID') || '';
+  const userId = request.headers.get('X-User-ID') || '';
 
   try {
-    console.log(`[Feed Proxy] Resetting feed at: ${API_BASE_URL}/api/feed`);
+    console.log(`[Feed Proxy] Resetting feed (FORCED REFRESH) at: ${API_BASE_URL}/api/feed (Device: ${deviceId}, User: ${userId})`);
 
     const controller = new AbortController();
     timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
+    const headers: Record<string, string> = {
+      'Accept': 'application/json',
+    };
+    if (deviceId) headers['X-Device-ID'] = deviceId;
+    if (userId) headers['X-User-ID'] = userId;
+
     const response = await fetch(`${API_BASE_URL}/api/feed`, {
       method: 'DELETE',
-      headers: {
-        'Accept': 'application/json',
-      },
+      headers,
       signal: controller.signal,
       cache: 'no-store',
     });

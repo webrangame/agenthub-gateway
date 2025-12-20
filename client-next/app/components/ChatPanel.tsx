@@ -219,6 +219,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
                 method: 'DELETE',
                 headers: {
                     'X-Device-ID': getDeviceId(),
+                    'X-User-ID': typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : '',
                 }
             });
             setMessages([{

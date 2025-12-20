@@ -92,8 +92,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                         </button>
                     </div>
 
-                    {/* Local Dev Bypass */}
-                    {process.env.NODE_ENV === 'development' && (
+                    {/* Local Dev / VIP Bypass */}
+                    {(process.env.NODE_ENV === 'development' || showVip) && (
                         <div className="pt-2">
                             <div className="relative flex py-2 items-center">
                                 <div className="flex-grow border-t border-gray-300"></div>

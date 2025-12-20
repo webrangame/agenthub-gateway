@@ -632,10 +632,28 @@ func GetFeedHandler(c *gin.Context) {
 // @Success      200  {object}  map[string]string
 // @Router       /api/feed [delete]
 func ClearFeedHandler(c *gin.Context) {
-	// TODO: Implement DB clear for this user if needed
-	// For now, no-op or we can delete rows
-	fmt.Println("Clear Feed requested - NOT IMPLEMENTED for DB yet")
-	c.JSON(http.StatusOK, gin.H{"status": "cleared", "message": "Feed cleared (local only)"})
+	// Identify User
+	ownerID := c.GetHeader("X-User-ID")
+	if ownerID == "" {
+		ownerID = c.GetHeader("X-Device-ID")
+	}
+	if ownerID == "" {
+		ownerID = c.ClientIP()
+	}
+
+	if feedStore == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "DB not initialized"})
+		return
+	}
+
+	if err := feedStore.DeleteFeed(c.Request.Context(), ownerID); err != nil {
+		fmt.Printf("Error clearing feed for %s: %v\n", ownerID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to clear feed"})
+		return
+	}
+
+	fmt.Printf("INFO: Feed cleared for %s\n", ownerID)
+	c.JSON(http.StatusOK, gin.H{"status": "cleared", "message": "Feed cleared"})
 }
 
 // UploadAgentHandler godoc
