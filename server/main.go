@@ -84,6 +84,24 @@ func main() {
 	// Init Session Manager
 	session.Init()
 
+	// Auto-load pre-deployed agent
+	agentPath := "./agents/trip-guardian/trip_guardian_v3.m"
+	if _, err := os.Stat(agentPath); err == nil {
+		fmt.Printf("INFO: Loading pre-deployed agent: %s\n", agentPath)
+		meta, err := engine.Inspect(agentPath)
+		if err != nil {
+			fmt.Printf("WARNING: Failed to inspect agent: %v\n", err)
+		} else {
+			fmt.Printf("INFO: Agent loaded: %s (Capabilities: %v)\n", meta.Name, meta.Capabilities)
+			// Start scheduled execution if configured
+			if meta.Schedule != nil && meta.Schedule.Mode == "proactive" {
+				go startScheduledExecution(agentPath, meta.Schedule)
+			}
+		}
+	} else {
+		fmt.Printf("WARNING: Pre-deployed agent not found at %s\n", agentPath)
+	}
+
 	r := gin.Default()
 
 	// CORS Middleware
@@ -109,8 +127,8 @@ func main() {
 	// DELETE /api/feed
 	r.DELETE("/api/feed", ClearFeedHandler)
 
-	// POST /api/agent/upload
-	r.POST("/api/agent/upload", UploadAgentHandler)
+	// POST /api/agent/upload - DISABLED (agents are pre-deployed)
+	// r.POST("/api/agent/upload", UploadAgentHandler)
 
 	// POST /api/chat/stream
 	r.POST("/api/chat/stream", ChatStreamHandler)

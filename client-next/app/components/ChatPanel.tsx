@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Upload, Trash2, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
+import { Send, Trash2, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import DragDropZone from './DragDropZone';
 import { API_ENDPOINTS } from '../utils/api';
 import { getDeviceId } from '../utils/device';
 
@@ -309,10 +308,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
 
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                <div className="mb-6">
-                    <DragDropZone />
-                </div>
-
                 {messages.map((msg) => (
                     <div
                         key={msg.id}
