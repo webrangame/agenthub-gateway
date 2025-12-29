@@ -336,7 +336,11 @@ func shouldSkipMessage(message, eventType, rawJSON, nodeName string) bool {
 	// Skip ALL raw JSON logs (internal debug info)
 	if eventType == "log" {
 		// EXCEPTION: Allow logs from CheckWeather (it emits output as log)
-		if nodeName == "CheckWeather" {
+		// Some events don't include nodeName reliably, so also allow if the payload contains CheckWeather markers.
+		if nodeName == "CheckWeather" ||
+			strings.Contains(message, "CheckWeather") ||
+			strings.Contains(message, "CheckWeather_output") ||
+			strings.Contains(rawJSON, "CheckWeather") {
 			return false
 		}
 		return true
@@ -401,15 +405,22 @@ func mapToCard(message string, destination string) (string, string, map[string]i
 		"summary": message,
 	}
 
+	// Heuristic: Some CheckWeather outputs arrive without the "CheckWeather:" prefix.
+	// Ensure we keep a stable title so processAndSaveFeed can infer a node and won't drop the card.
+	if strings.Contains(message, "CheckWeather") || strings.Contains(message, "CheckWeather_output") {
+		data["title"] = "CheckWeather"
+	}
+
 	// PREFIX DETECTION LOGIC
 	// We check for "NodeName: Content" pattern
 	prefixMap := map[string]string{
-		"NewsAlert:":        "NewsAlert",
-		"CheckWeather:":     "CheckWeather",
-		"KnowledgeCheck:":   "KnowledgeCheck",
-		"ReviewSummarizer:": "ReviewSummarizer",
-		"GeniusLoci:":       "GeniusLoci",
-		"GenerateReport:":   "GenerateReport",
+		"NewsAlert:":           "NewsAlert",
+		"CheckWeather:":        "CheckWeather",
+		"CheckWeather_output:": "CheckWeather",
+		"KnowledgeCheck:":      "KnowledgeCheck",
+		"ReviewSummarizer:":    "ReviewSummarizer",
+		"GeniusLoci:":          "GeniusLoci",
+		"GenerateReport:":      "GenerateReport",
 	}
 
 	for prefix, nodeTitle := range prefixMap {
@@ -435,6 +446,10 @@ func mapToCard(message string, destination string) (string, string, map[string]i
 		data["colorTheme"] = "red"
 	} else if title == "CheckWeather" || contains(message, "Weather") {
 		cardType = "weather"
+		// If we matched by content (contains "Weather"), ensure node inference is stable.
+		if title == "" {
+			data["title"] = "CheckWeather"
+		}
 		data["source"] = "Weather Agent"
 		data["category"] = "Weather"
 		data["colorTheme"] = "blue"

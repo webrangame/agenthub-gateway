@@ -5,6 +5,9 @@ import { motion } from 'framer-motion';
 import { MapPin, Link as LinkIcon, ExternalLink, ChevronLeft, ChevronRight, Play, Image as ImageIcon, CloudRain } from 'lucide-react';
 import { cn } from '../utils/cn';
 import WeatherWidget from './WeatherWidget';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 
 interface LinkItem {
     label: string;
@@ -138,9 +141,49 @@ const TemplateTwo: React.FC<TemplateTwoProps> = ({
                                 {/* Section Description - Wraps around media */}
                                 {section.description && (
                                     <div className="prose prose-sm max-w-none text-[#003580]/80">
-                                        <p className="whitespace-pre-wrap leading-relaxed text-justify">
+                                        <ReactMarkdown
+                                            remarkPlugins={[remarkGfm, remarkBreaks]}
+                                            components={{
+                                                p: ({ node, ...props }) => (
+                                                    <p className="mb-2 last:mb-0 leading-relaxed text-justify" {...props} />
+                                                ),
+                                                strong: ({ node, ...props }) => (
+                                                    <strong className="font-bold text-[#003580]" {...props} />
+                                                ),
+                                                ul: ({ node, ...props }) => (
+                                                    <ul className="list-disc ml-5 mb-2 space-y-1" {...props} />
+                                                ),
+                                                ol: ({ node, ...props }) => (
+                                                    <ol className="list-decimal ml-5 mb-2 space-y-1" {...props} />
+                                                ),
+                                                li: ({ node, ...props }) => (
+                                                    <li className="leading-relaxed" {...props} />
+                                                ),
+                                                a: ({ node, ...props }) => (
+                                                    <a className="underline hover:text-blue-600" target="_blank" rel="noopener noreferrer" {...props} />
+                                                ),
+                                                hr: () => (
+                                                    <hr className="my-4 border-[#9DBEF8]/40" />
+                                                ),
+                                                h1: ({ node, ...props }) => (
+                                                    <h1 className="text-lg font-black text-[#003580] mt-4 mb-2" {...props} />
+                                                ),
+                                                h2: ({ node, ...props }) => (
+                                                    <h2 className="text-base font-extrabold text-[#003580] mt-4 mb-2" {...props} />
+                                                ),
+                                                h3: ({ node, ...props }) => (
+                                                    <h3 className="text-sm font-bold text-[#003580] mt-3 mb-1.5" {...props} />
+                                                ),
+                                                code: ({ node, ...props }) => (
+                                                    <code className="px-1 py-0.5 rounded bg-[#EEF5FF] border border-[#9DBEF8]/30 text-[11px]" {...props} />
+                                                ),
+                                                pre: ({ node, ...props }) => (
+                                                    <pre className="p-3 rounded bg-[#EEF5FF] border border-[#9DBEF8]/30 overflow-x-auto text-[11px]" {...props} />
+                                                ),
+                                            }}
+                                        >
                                             {section.description}
-                                        </p>
+                                        </ReactMarkdown>
                                     </div>
                                 )}
                             </div>
