@@ -2,10 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import WeatherCard from './WeatherCard';
 import AlertWidget from './AlertWidget';
-import VideoCard from './VideoCard';
-import ArticleCard from './ArticleCard';
+import TemplateTwo from './TemplateTwo';
 import { API_ENDPOINTS, API_BASE_URL } from '../utils/api';
 import { getDeviceId } from '../utils/device';
 import UserMenuInline from './UserMenuInline';
@@ -29,6 +27,89 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout }) => {
     const [showLogs, setShowLogs] = useState(false); // Default: Hide Logs
     const [mockTick, setMockTick] = useState(0);
     const [error, setError] = useState<string | null>(null);
+
+    const asNumber = (value: unknown): number | null => {
+        if (typeof value === 'number' && Number.isFinite(value)) return value;
+        if (typeof value === 'string') {
+            const n = Number(value);
+            if (Number.isFinite(n)) return n;
+        }
+        return null;
+    };
+
+    const toTemplateTwoProps = (item: FeedItem) => {
+        const d = item.data || {};
+
+        const title =
+            d.title ||
+            d.label ||
+            d.source_node ||
+            d.sourceNode ||
+            item.card_type ||
+            'Update';
+
+        const description = d.description ?? d.summary ?? d.message ?? '';
+
+        const videoUrl = d.video_url || d.videoUrl;
+        const imageUrl = d.imageUrl;
+
+        const descriptionMedia =
+            videoUrl
+                ? { type: 'video' as const, url: String(videoUrl) }
+                : imageUrl
+                    ? { type: 'image' as const, url: String(imageUrl) }
+                    : undefined;
+
+        // Weather sidebar
+        const weatherLocation =
+            item.card_type === 'weather' ? (d.location || 'Destination') : undefined;
+        const weatherData =
+            item.card_type === 'weather'
+                ? {
+                    temp: String(d.temp ?? '--°C'),
+                    condition: String(d.condition ?? '—'),
+                    description: d.description
+                        ? String(d.description)
+                        : d.summary
+                            ? String(d.summary)
+                            : undefined,
+                }
+                : undefined;
+
+        // Map embed + coordinates text
+        const lat = asNumber(d.lat);
+        const lng = asNumber(d.lng);
+        const hasCoords = lat !== null && lng !== null;
+        const mapLocation = hasCoords
+            ? { lat: lat as number, lng: lng as number, label: String(d.label || title) }
+            : undefined;
+
+        const sections = [
+            {
+                title: String(title),
+                description: String(description),
+                media: descriptionMedia,
+            },
+            ...(hasCoords
+                ? [
+                    {
+                        title: 'Coordinates',
+                        description: `${lat}, ${lng}`,
+                    },
+                ]
+                : []),
+        ];
+
+        const links = d.url ? [{ label: 'Open link', url: String(d.url) }] : [];
+
+        return {
+            sections,
+            links,
+            weatherLocation,
+            weatherData,
+            mapLocation,
+        };
+    };
 
     useEffect(() => {
         // Default behavior: use real API from production server
@@ -122,100 +203,32 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout }) => {
         // Filter Logs if toggle is off
         if (!showLogs && item.card_type === 'log') return null;
 
-        const content = (() => {
+        let content: React.ReactNode = null;
+
             switch (item.card_type) {
-                case 'weather':
-                    return <WeatherCard
-                        location={item.data.location}
-                        temp={item.data.temp}
-                        condition={item.data.condition}
-                        description={item.data.description}
-                    />;
                 case 'safe_alert':
-                    return <AlertWidget
-                        message={item.data.message}
-                        level={item.data.level}
-                    />;
-                case 'cultural_tip':
-                    const videoUrl = item.data.video_url || item.data.videoUrl;
-                    if (videoUrl) {
-                        return <VideoCard
-                            title={item.data.title}
-                            videoUrl={videoUrl}
-                            summary={item.data.summary}
-                        />;
-                    }
-                    return <ArticleCard
-                        title={item.data.title}
-                        summary={item.data.summary}
-                        source={item.data.source || 'Cultural Tip'}
-                        category={item.data.category as any || 'Culture'}
-                        colorTheme={item.data.colorTheme as any || 'purple'}
-                        imageUrl={item.data.imageUrl}
-                        imageUser={item.data.imageUser}
-                        imageUserLink={item.data.imageUserLink}
-                        timestamp={item.timestamp}
-                    />;
-                case 'article':
-                    return <ArticleCard
-                        title={item.data.title}
-                        summary={item.data.summary}
-                        source={item.data.source}
-                        imageUrl={item.data.imageUrl}
-                        imageUser={item.data.imageUser}
-                        imageUserLink={item.data.imageUserLink}
-                        videoUrl={item.data.videoUrl}
-                        url={item.data.url}
-                        category={item.data.category}
-                        colorTheme={item.data.colorTheme}
-                    />;
+                // Still show safe alerts, but NOT inside TemplateTwo
+                content = (
+                    <AlertWidget
+                        message={item.data?.message}
+                        level={item.data?.level}
+                    />
+                );
+                break;
                 case 'log':
-                    return (
+                // Logs are excluded from TemplateTwo; show only in Debug mode
+                content = (
                         <div className="p-3 border border-[#9DBEF8] rounded bg-[#EEF5FF] text-[10px] font-mono text-[#003580]/70 mb-2 shadow-sm">
-                            <span className="font-bold text-[#003580]">LOG:</span> {item.data.summary || JSON.stringify(item.data)}
+                        <span className="font-bold text-[#003580]">LOG:</span>{' '}
+                        {item.data?.summary || JSON.stringify(item.data)}
                         </div>
                     );
-                case 'map_coord':
-                    return (
-                        <div className="p-4 border border-[#9DBEF8] rounded-lg bg-[#EEF5FF] text-xs text-[#003580]">
-                            <div className="font-semibold mb-2">📍 Map Coordinates</div>
-                            <div className="text-[10px] font-mono">
-                                {item.data.lat && item.data.lng
-                                    ? `${item.data.lat}, ${item.data.lng}`
-                                    : JSON.stringify(item.data)}
-                            </div>
-                        </div>
-                    );
+                break;
                 default:
-                    // Generic card for unknown types - show all data
-                    return (
-                        <div className="p-4 border border-[#9DBEF8] rounded-lg bg-[#EEF5FF] text-xs text-[#003580] shadow-sm">
-                            <div className="font-semibold mb-2 text-[#003580] uppercase tracking-wide">
-                                {item.card_type || 'Unknown'}
-                            </div>
-                            <div className="text-[10px] space-y-1">
-                                {item.data && Object.keys(item.data).length > 0 ? (
-                                    Object.entries(item.data).map(([key, value]) => (
-                                        <div key={key} className="flex">
-                                            <span className="font-mono font-semibold mr-2">{key}:</span>
-                                            <span className="font-mono">
-                                                {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                                            </span>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <div className="text-gray-400 italic">No data</div>
-                                )}
-                            </div>
-                            {item.timestamp && (
-                                <div className="text-[9px] text-gray-400 mt-2">
-                                    {new Date(item.timestamp).toLocaleString()}
-                                </div>
-                            )}
-                        </div>
-                    );
+                // All other cards use TemplateTwo
+                content = <TemplateTwo {...toTemplateTwoProps(item)} />;
+                break;
             }
-        })();
 
         if (!content) return null;
 

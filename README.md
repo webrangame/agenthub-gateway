@@ -479,11 +479,13 @@ MIT License - see LICENSE file for details
 **Built with ❤️ for proactive AI experiences**
 
 ## How to run project
-cd "E:\Tuor agent\agenthub-gateway\server"
-powershell -ExecutionPolicy Bypass -File .\start-server.ps1
+<!-- cd "E:\Tuor agent\agenthub-gateway\server"
+powershell -ExecutionPolicy Bypass -File .\start-server.ps1 -->
 
 cd "E:\Tuor agent\agenthub-gateway\server"
 go run main.go
 
 cd "E:\Tuor agent\agenthub-gateway\client-next"
 npm run dev
+
+insted all cards can we use @client-next/app/components/TemplateTwo.tsx, exclude (AlertWidget ,log )
