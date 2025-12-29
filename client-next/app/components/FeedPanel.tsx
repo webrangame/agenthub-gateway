@@ -28,6 +28,13 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout }) => {
     const [mockTick, setMockTick] = useState(0);
     const [error, setError] = useState<string | null>(null);
 
+    const asStringArray = (value: unknown): string[] => {
+        if (!value) return [];
+        if (Array.isArray(value)) return value.map((v) => String(v)).filter(Boolean);
+        if (typeof value === 'string') return [value].filter(Boolean);
+        return [String(value)].filter(Boolean);
+    };
+
     const asNumber = (value: unknown): number | null => {
         if (typeof value === 'number' && Number.isFinite(value)) return value;
         if (typeof value === 'string') {
@@ -59,6 +66,29 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout }) => {
                 : imageUrl
                     ? { type: 'image' as const, url: String(imageUrl) }
                     : undefined;
+
+        // Sidebar: gallery + videos
+        // Supports both single fields (imageUrl/videoUrl) and potential array fields (images/videos/imageUrls/videoUrls).
+        const images = Array.from(
+            new Set(
+                [
+                    ...asStringArray(d.images),
+                    ...asStringArray(d.imageUrls),
+                    ...asStringArray(d.imageUrl),
+                ].filter(Boolean)
+            )
+        );
+
+        const videos = Array.from(
+            new Set(
+                [
+                    ...asStringArray(d.videos),
+                    ...asStringArray(d.videoUrls),
+                    ...asStringArray(d.videoUrl),
+                    ...asStringArray(d.video_url),
+                ].filter(Boolean)
+            )
+        );
 
         // Weather sidebar
         const weatherLocation =
@@ -100,10 +130,47 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout }) => {
                 : []),
         ];
 
-        const links = d.url ? [{ label: 'Open link', url: String(d.url) }] : [];
+        // Sidebar: links
+        // Supports:
+        // - data.url (primary)
+        // - data.links (array of {label,url} or strings)
+        // - Unsplash attribution links (imageUserLink) + direct image link (imageUrl)
+        const rawLinks: Array<{ label: string; url: string }> = [];
+
+        if (d.url) rawLinks.push({ label: 'Open link', url: String(d.url) });
+
+        // Optional: accept links array from backend
+        if (Array.isArray(d.links)) {
+            for (const link of d.links) {
+                if (!link) continue;
+                if (typeof link === 'string') {
+                    rawLinks.push({ label: 'Open link', url: link });
+                    continue;
+                }
+                if (typeof link === 'object') {
+                    const label = (link as any).label ?? (link as any).title ?? 'Open link';
+                    const url = (link as any).url ?? (link as any).href;
+                    if (url) rawLinks.push({ label: String(label), url: String(url) });
+                }
+            }
+        }
+
+        if (d.imageUserLink) {
+            rawLinks.push({
+                label: d.imageUser ? `Photo by ${String(d.imageUser)}` : 'Photo credit',
+                url: String(d.imageUserLink),
+            });
+        }
+        if (d.imageUrl) rawLinks.push({ label: 'Open image', url: String(d.imageUrl) });
+
+        const links = Array.from(
+            new Map(rawLinks.filter((l) => l?.url).map((l) => [l.url, l])).values()
+        );
 
         return {
             sections,
+            images,
+            videos,
             links,
             weatherLocation,
             weatherData,
@@ -191,12 +258,43 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout }) => {
         };
 
         fetchFeed();
-        // Poll every 3 seconds for real-time updates
+
+        // SSE: refresh feed immediately when backend saves a new card (streaming feel)
+        let es: EventSource | null = null;
+        let debounceTimer: any = null;
+
+        const scheduleFetch = () => {
+            if (debounceTimer) clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                fetchFeed();
+            }, 200);
+        };
+
+        if (!useMock && typeof window !== 'undefined') {
+            const userId = localStorage.getItem('userid') || '';
+            const deviceId = getDeviceId();
+            const qs = new URLSearchParams({ userId, deviceId }).toString();
+            es = new EventSource(`/api/proxy/feed/stream?${qs}`);
+            es.addEventListener('feed_updated', scheduleFetch as any);
+            es.addEventListener('ping', () => { /* keep-alive */ });
+            es.onerror = (e) => {
+                console.warn('Feed SSE error (fallback to polling):', e);
+                try { es?.close(); } catch { /* noop */ }
+                es = null;
+            };
+        }
+
+        // Poll as fallback (slower) in case SSE drops
         const interval = setInterval(() => {
             if (useMock) setMockTick((t) => t + 1);
             fetchFeed();
-        }, 3000);
-        return () => clearInterval(interval);
+        }, 15000);
+
+        return () => {
+            clearInterval(interval);
+            if (debounceTimer) clearTimeout(debounceTimer);
+            try { es?.close(); } catch { /* noop */ }
+        };
     }, [mockTick]);
 
     const renderCard = (item: FeedItem) => {
