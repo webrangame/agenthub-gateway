@@ -69,9 +69,8 @@ func main() {
 	// Init Database Store
 	connStr := os.Getenv("DATABASE_URL")
 	if connStr == "" {
-		// Fallback for local testing if env not set, though setup_db should have verified it
-		connStr = "postgresql://postgres:it371Ananda@agent-marketplace-db.cmt466aga8u0.us-east-1.rds.amazonaws.com:5432/tg_cards?sslmode=require"
-		fmt.Println("INFO: Using default DB connection string")
+		fmt.Println("FATAL: DATABASE_URL environment variable is required")
+		os.Exit(1)
 	}
 	var err error
 	feedStore, err = store.NewPostgresStore(connStr)
@@ -83,6 +82,24 @@ func main() {
 
 	// Init Session Manager
 	session.Init()
+
+	// Auto-load pre-deployed agent
+	agentPath := "./agents/trip-guardian/trip_guardian_v3.m"
+	if _, err := os.Stat(agentPath); err == nil {
+		fmt.Printf("INFO: Loading pre-deployed agent: %s\n", agentPath)
+		meta, err := engine.Inspect(agentPath)
+		if err != nil {
+			fmt.Printf("WARNING: Failed to inspect agent: %v\n", err)
+		} else {
+			fmt.Printf("INFO: Agent loaded: %s (Capabilities: %v)\n", meta.Name, meta.Capabilities)
+			// Start scheduled execution if configured
+			if meta.Schedule != nil && meta.Schedule.Mode == "proactive" {
+				go startScheduledExecution(agentPath, meta.Schedule)
+			}
+		}
+	} else {
+		fmt.Printf("WARNING: Pre-deployed agent not found at %s\n", agentPath)
+	}
 
 	r := gin.Default()
 
@@ -109,8 +126,8 @@ func main() {
 	// DELETE /api/feed
 	r.DELETE("/api/feed", ClearFeedHandler)
 
-	// POST /api/agent/upload
-	r.POST("/api/agent/upload", UploadAgentHandler)
+	// POST /api/agent/upload - DISABLED (agents are pre-deployed)
+	// r.POST("/api/agent/upload", UploadAgentHandler)
 
 	// POST /api/chat/stream
 	r.POST("/api/chat/stream", ChatStreamHandler)
@@ -400,11 +417,14 @@ func mapToCard(message string, destination string) (string, string, map[string]i
 		data["location"] = "Destination"
 		data["condition"] = "Cloudy"
 		data["condition"] = "Cloudy"
-		query := "weather sky"
-		if destination != "" {
-			query = destination + " weather sky"
+
+		// Extract country from destination (e.g., "Delhi, India" -> "India")
+		country := extractCountry(destination)
+		query := "landscape"
+		if country != "" {
+			query = country // Just the country name
 		}
-		fmt.Printf("DEBUG: Unsplash Weather Query: '%s' (Dest: '%s')\n", query, destination)
+		fmt.Printf("DEBUG: Unsplash Weather Query: '%s' (Country: '%s')\n", query, country)
 		if img, name, link := fetchUnsplashImage(query); img != "" {
 			data["imageUrl"] = img
 			data["imageUser"] = name
@@ -417,11 +437,13 @@ func mapToCard(message string, destination string) (string, string, map[string]i
 		data["source"] = "Genius Loci"
 		data["category"] = "Culture"
 		data["colorTheme"] = "purple"
-		query := "Sri Lanka travel culture"
-		if destination != "" {
-			query = destination + " culture travel"
+
+		country := extractCountry(destination)
+		query := "culture"
+		if country != "" {
+			query = country // Just the country name
 		}
-		fmt.Printf("DEBUG: Unsplash Culture Query: '%s' (Dest: '%s')\n", query, destination)
+		fmt.Printf("DEBUG: Unsplash Culture Query: '%s' (Country: '%s')\n", query, country)
 		if img, name, link := fetchUnsplashImage(query); img != "" {
 			data["imageUrl"] = img
 			data["imageUser"] = name
@@ -434,11 +456,13 @@ func mapToCard(message string, destination string) (string, string, map[string]i
 		data["source"] = "Final Synthesis"
 		data["category"] = "Report"
 		data["colorTheme"] = "green"
-		query := "travel itinerary planner"
-		if destination != "" {
-			query = destination + " travel landscape"
+
+		country := extractCountry(destination)
+		query := "travel"
+		if country != "" {
+			query = country // Just the country name
 		}
-		fmt.Printf("DEBUG: Unsplash Report Query: '%s' (Dest: '%s')\n", query, destination)
+		fmt.Printf("DEBUG: Unsplash Report Query: '%s' (Country: '%s')\n", query, country)
 		if img, name, link := fetchUnsplashImage(query); img != "" {
 			data["imageUrl"] = img
 			data["imageUser"] = name
@@ -470,9 +494,10 @@ func refineCardType(title string, message string, cardType *string, priority *st
 		data["location"] = "Destination"
 		data["condition"] = "Cloudy"
 		data["condition"] = "Cloudy"
-		query := "sky clouds weather"
-		if destination != "" {
-			query = destination + " weather"
+		country := extractCountry(destination)
+		query := "landscape"
+		if country != "" {
+			query = country // Just the country name
 		}
 		if img, name, link := fetchUnsplashImage(query); img != "" {
 			data["imageUrl"] = img
@@ -487,9 +512,10 @@ func refineCardType(title string, message string, cardType *string, priority *st
 		data["category"] = "Culture"
 		data["colorTheme"] = "purple"
 		data["colorTheme"] = "purple"
-		query := "Sri Lanka culture tradition"
-		if destination != "" {
-			query = destination + " culture tradition"
+		country := extractCountry(destination)
+		query := "culture"
+		if country != "" {
+			query = country // Just the country name
 		}
 		if img, name, link := fetchUnsplashImage(query); img != "" {
 			data["imageUrl"] = img
@@ -504,9 +530,10 @@ func refineCardType(title string, message string, cardType *string, priority *st
 		data["category"] = "Report"
 		data["colorTheme"] = "green"
 		data["colorTheme"] = "green"
-		query := "travel landscape destination"
-		if destination != "" {
-			query = destination + " travel"
+		country := extractCountry(destination)
+		query := "travel landscape"
+		if country != "" {
+			query = country + " travel landscape"
 		}
 		if img, name, link := fetchUnsplashImage(query); img != "" {
 			data["imageUrl"] = img
@@ -521,8 +548,10 @@ func refineCardType(title string, message string, cardType *string, priority *st
 // fetchUnsplashImage queries the Unsplash API for a random photo matching the query.
 // It returns the photo URL, photographer name, and profile link (or empty strings).
 func fetchUnsplashImage(query string) (string, string, string) {
+	fmt.Printf("🔍 fetchUnsplashImage called with query: '%s'\n", query)
 	apiKey := os.Getenv("UNSPLASH_ACCESS_KEY")
 	if apiKey == "" {
+		fmt.Println("❌ UNSPLASH_ACCESS_KEY not set!")
 		return "", "", ""
 	}
 
@@ -540,6 +569,29 @@ func fetchUnsplashImage(query string) (string, string, string) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusNotFound {
+		// Query too specific, try simpler fallback
+		fmt.Printf("⚠️ Unsplash returned 404 for '%s', trying simpler query...\n", query)
+
+		// Extract just the destination (remove ", Sri Lanka" or similar patterns)
+		simplifiedQuery := query
+		if idx := strings.Index(query, ","); idx > 0 {
+			simplifiedQuery = strings.TrimSpace(query[:idx])
+		}
+		// Remove very specific terms
+		simplifiedQuery = strings.ReplaceAll(simplifiedQuery, " culture tradition", " travel")
+		simplifiedQuery = strings.ReplaceAll(simplifiedQuery, " weather sky", " landscape")
+
+		if simplifiedQuery != query {
+			fmt.Printf("🔄 Retrying with: '%s'\n", simplifiedQuery)
+			// Recursive retry with simplified query
+			return fetchUnsplashImage(simplifiedQuery)
+		}
+
+		fmt.Printf("⚠️ Unsplash API Returned: 404 (No images found)\n")
+		return "", "", ""
+	}
+
 	if resp.StatusCode != http.StatusOK {
 		fmt.Printf("⚠️ Unsplash API Returned: %d\n", resp.StatusCode)
 		return "", "", ""
@@ -550,6 +602,9 @@ func fetchUnsplashImage(query string) (string, string, string) {
 			Regular string `json:"regular"`
 			Small   string `json:"small"`
 		} `json:"urls"`
+		Links struct {
+			DownloadLocation string `json:"download_location"`
+		} `json:"links"`
 		User struct {
 			Name  string `json:"name"`
 			Links struct {
@@ -561,6 +616,31 @@ func fetchUnsplashImage(query string) (string, string, string) {
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		fmt.Printf("⚠️ Unsplash Decode Error: %v\n", err)
 		return "", "", ""
+	}
+
+	// Trigger download tracking (required by Unsplash API guidelines)
+	// Run asynchronously with timeout to prevent blocking if Unsplash is down
+	if result.Links.DownloadLocation != "" {
+		fmt.Printf("📸 Unsplash: Triggering download for image...\n")
+		go func(downloadURL, clientID string) {
+			// Append client_id to download URL (required for authentication)
+			if !strings.Contains(downloadURL, "client_id=") {
+				separator := "?"
+				if strings.Contains(downloadURL, "?") {
+					separator = "&"
+				}
+				downloadURL = fmt.Sprintf("%s%sclient_id=%s", downloadURL, separator, clientID)
+			}
+
+			trackClient := &http.Client{Timeout: 2 * time.Second}
+			trackResp, err := trackClient.Get(downloadURL)
+			if err != nil {
+				fmt.Printf("⚠️ Unsplash download tracking failed (non-critical): %v\n", err)
+				return
+			}
+			defer trackResp.Body.Close()
+			fmt.Printf("✅ Unsplash download tracked! (Status: %d)\n", trackResp.StatusCode)
+		}(result.Links.DownloadLocation, apiKey)
 	}
 
 	return result.Urls.Regular, result.User.Name, result.User.Links.Html
@@ -580,6 +660,23 @@ func cleanMessage(msg string) string {
 
 func contains(s, substr string) bool {
 	return strings.Contains(s, substr)
+}
+
+// extractCountry extracts the country from a destination string
+// Examples: "Delhi, India" -> "India", "Pasikuda, Sri Lanka" -> "Sri Lanka"
+func extractCountry(destination string) string {
+	if destination == "" {
+		return ""
+	}
+
+	// Check if destination contains a comma (e.g., "City, Country")
+	if idx := strings.LastIndex(destination, ","); idx > 0 && idx < len(destination)-1 {
+		country := strings.TrimSpace(destination[idx+1:])
+		return country
+	}
+
+	// If no comma, assume the whole destination is the country/region
+	return destination
 }
 
 // HealthHandler godoc

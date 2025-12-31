@@ -1,7 +1,23 @@
 steps:
+  # Build
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/guardian-repo/guardian-gateway', '-f', 'server/Dockerfile', '.']
+  
+  # Push
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/guardian-repo/guardian-gateway']
+  
+  # Deploy to Cloud Run with secrets
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'guardian-gateway'
+      - '--image=us-central1-docker.pkg.dev/$PROJECT_ID/guardian-repo/guardian-gateway'
+      - '--region=us-central1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--set-secrets=LITELLM_PROXY_URL=LITELLM_PROXY_URL:latest,LITELLM_API_KEY=LITELLM_API_KEY:latest,LITELLM_MODEL=LITELLM_MODEL:latest,DATABASE_URL=DATABASE_URL:latest'
+
 images:
   - 'us-central1-docker.pkg.dev/$PROJECT_ID/guardian-repo/guardian-gateway'
