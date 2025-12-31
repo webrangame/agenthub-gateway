@@ -112,6 +112,9 @@ describe('ChatPanel', () => {
         const mockResponse = new Response('', { status: 200 });
         (global.fetch as jest.Mock).mockResolvedValueOnce(mockResponse);
 
+        // Spy on custom event dispatch
+        const dispatchEventSpy = jest.spyOn(window, 'dispatchEvent');
+
         render(<ChatPanel />);
 
         const resetButton = screen.getByTitle(/Reset Conversation/i);
@@ -124,7 +127,18 @@ describe('ChatPanel', () => {
             );
         });
 
+        // Verify feedReset event was dispatched
+        await waitFor(() => {
+            expect(dispatchEventSpy).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    type: 'feedReset'
+                })
+            );
+        });
+
         expect(screen.getByText(/Conversations cleared/i)).toBeInTheDocument();
+
+        dispatchEventSpy.mockRestore();
     });
 
     it('shows error message on fetch failure', async () => {

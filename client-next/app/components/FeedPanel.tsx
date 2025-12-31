@@ -111,12 +111,29 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout }) => {
         };
 
         fetchFeed();
+
         // Poll every 3 seconds for real-time updates
         const interval = setInterval(() => {
             if (useMock) setMockTick((t) => t + 1);
             fetchFeed();
         }, 3000);
-        return () => clearInterval(interval);
+
+        // Listen for reset events from ChatPanel
+        const handleFeedReset = () => {
+            console.log('[FeedPanel] Received feedReset event, refreshing immediately...');
+            fetchFeed();
+        };
+
+        if (typeof window !== 'undefined') {
+            window.addEventListener('feedReset', handleFeedReset);
+        }
+
+        return () => {
+            clearInterval(interval);
+            if (typeof window !== 'undefined') {
+                window.removeEventListener('feedReset', handleFeedReset);
+            }
+        };
     }, [mockTick]);
 
     const renderCard = (item: FeedItem) => {

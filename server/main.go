@@ -738,6 +738,10 @@ func ClearFeedHandler(c *gin.Context) {
 		ownerID = c.ClientIP()
 	}
 
+	fmt.Printf("DEBUG ClearFeed: Attempting to delete for ownerID='%s'\n", ownerID)
+	fmt.Printf("DEBUG ClearFeed: X-User-ID='%s', X-Device-ID='%s', ClientIP='%s'\n",
+		c.GetHeader("X-User-ID"), c.GetHeader("X-Device-ID"), c.ClientIP())
+
 	if feedStore == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "DB not initialized"})
 		return

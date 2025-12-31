@@ -9,7 +9,7 @@ agent TripGuardianV3 {
 
   nodes {
     // 0. The Chronometer (Time Awareness)
-    http_request GetDate {
+    http_request getDate {
       url: "https://timeapi.io/api/Time/current/zone?timeZone=Asia/Colombo"
       method: "GET"
       timeout: 30
@@ -17,9 +17,9 @@ agent TripGuardianV3 {
     }
 
     // 1. Extract what the user provided + identify what's MISSING
-    llm ExtractDetails {
-      model: "gemini-flash-latest"
-      prompt: "CURRENT DATE/TIME: ${GetDate_output}
+    llm extractDetails {
+      model: "gemini-2.0-flash"
+      prompt: "CURRENT DATE/TIME: ${getDate_output}
 
 Extract trip details from: '${input}'.
 
@@ -36,32 +36,32 @@ CRITICAL RULE: If the user did NOT provide a specific piece of information, writ
     }
 
     // 2. Extract Destination City
-    llm ExtractCity {
-      model: "gemini-flash-latest"
-      prompt: "CURRENT DATE/TIME: ${GetDate_output}
+    llm extractCity {
+      model: "gemini-2.0-flash"
+      prompt: "CURRENT DATE/TIME: ${getDate_output}
 
 Extract just the main destination city name from: '${input}'. Return ONLY the city name (e.g., 'Delhi'). If no city is mentioned, return 'MISSING'."
     }
 
     // 3. Sky Watch (Direct Fetch) - only if city is known
-    http_request CheckWeather {
-      url: "https://wttr.in/${ExtractCity_output}?format=3"
+    http_request checkWeather {
+      url: "https://wttr.in/${extractCity_output}?format=3"
       method: "GET"
       timeout: 30
       optional: "true"
     }
 
     // 4. Logistical Validation - provide timing warnings based on available data
-    llm KnowledgeCheck {
-      model: "gemini-flash-latest"
-      prompt: "CURRENT DATE/TIME: ${GetDate_output}
+    llm knowledgeCheck {
+      model: "gemini-2.0-flash"
+      prompt: "CURRENT DATE/TIME: ${getDate_output}
 
-You are a Logistical Validator for ${ExtractCity_output}.
+You are a Logistical Validator for ${extractCity_output}.
 
-User trip details: ${ExtractDetails_output}
+User trip details: ${extractDetails_output}
 
 Check if the destination is valid:
-- If '${ExtractCity_output}' is 'MISSING' or 'unknown', output:
+- If '${extractCity_output}' is 'MISSING' or 'unknown', output:
   'Cannot provide logistics advice without a destination.'
 
 If destination is valid, provide timing warnings and logistics advice based on the information available:
@@ -75,7 +75,7 @@ CRITICAL RULE: DO NOT invent specific opening hours, closure days, or travel tim
     }
 
     // 5. Real Review Analysis (Google Places)
-    http_request FetchReviews {
+    http_request fetchReviews {
       url: "https://places.googleapis.com/v1/places:searchText"
       method: "POST"
       headers: {
@@ -83,19 +83,19 @@ CRITICAL RULE: DO NOT invent specific opening hours, closure days, or travel tim
         "X-Goog-Api-Key": "${env.GOOGLE_MAPS_KEY}"
         "X-Goog-FieldMask": "places.displayName,places.rating,places.reviews"
       }
-      body: "{\"textQuery\": \"Attractions in ${ExtractCity_output}\"}"
+      body: "{\"textQuery\": \"Attractions in ${extractCity_output}\"}"
       timeout: 30
       optional: "true"
     }
 
     // 6. Review Summarizer - provide fallback tips if live data missing
-    llm ReviewSummarizer {
-      model: "gemini-flash-latest"
-      prompt: "CURRENT DATE/TIME: ${GetDate_output}
+    llm reviewSummarizer {
+      model: "gemini-2.0-flash"
+      prompt: "CURRENT DATE/TIME: ${getDate_output}
 
-Review Data Analysis for ${ExtractCity_output}.
+Review Data Analysis for ${extractCity_output}.
 
-Review data: ${FetchReviews_output}
+Review data: ${fetchReviews_output}
 User trip: ${input}
 
 If the destination is missing/unknown, briefly ask for the city and stop.
@@ -111,20 +111,20 @@ If reviews are not available or API fails:
     }
 
     // 7. Safety Briefing - provide general safety if live data missing
-    llm NewsAlert {
-      model: "gemini-flash-latest"
-      prompt: "CURRENT DATE/TIME: ${GetDate_output}
+    llm newsAlert {
+      model: "gemini-2.0-flash"
+      prompt: "CURRENT DATE/TIME: ${getDate_output}
 
-Safety Briefing for ${ExtractCity_output}.
+Safety Briefing for ${extractCity_output}.
 
 User trip: ${input}
-Extracted details: ${ExtractDetails_output}
+Extracted details: ${extractDetails_output}
 
 If destination is missing/unknown: briefly ask for the city and stop.
 
 If destination is known:
 1. State: 'No verified live news data available in this run (as of execution time).'
-2. Provide common, well-known safety risks for ${ExtractCity_output}.
+2. Provide common, well-known safety risks for ${extractCity_output}.
 3. Include emergency numbers (police, ambulance).
 4. Provide general transport safety tips.
 5. If specific neighborhoods/dates would improve accuracy, note that briefly without blocking the output.
@@ -146,11 +146,11 @@ CRITICAL RULE: DO NOT invent breaking news. Avoid 'MISSING' messaging; provide s
     }
 
     // 8. Cultural Wisdom - always provide timeless guidance
-    llm GeniusLoci {
-      model: "gemini-flash-latest"
-      prompt: "CURRENT DATE/TIME: ${GetDate_output}
+    llm geniusLoci {
+      model: "gemini-2.0-flash"
+      prompt: "CURRENT DATE/TIME: ${getDate_output}
 
-Cultural Wisdom for ${ExtractCity_output}.
+Cultural Wisdom for ${extractCity_output}.
 
 User trip: ${input}
 
@@ -158,28 +158,28 @@ If destination is missing/unknown: briefly ask for the city, then provide generi
 
 If destination is known, provide timeless, well-established cultural guidance:
   1. Behavior: Dress codes, etiquette (at religious sites, on public transport, etc.)
-  2. Connection: A verified historical fact about ${ExtractCity_output}
+  2. Connection: A verified historical fact about ${extractCity_output}
   3. Local Secret: A known local custom or hidden spot (not invented)
 
 CRITICAL RULE: Do NOT invent specific local customs if unknown; fall back to generic safe etiquette rather than 'MISSING'."
     }
 
     // 9. Final Report - compile missing data list + what's available
-    llm GenerateReport {
-      model: "gemini-flash-latest"
-      prompt: "CURRENT DATE/TIME: ${GetDate_output}
+    llm generateReport {
+      model: "gemini-2.0-flash"
+      prompt: "CURRENT DATE/TIME: ${getDate_output}
 
-Trip Guardian Report for ${ExtractCity_output}.
+Trip Guardian Report for ${extractCity_output}.
 
 User input: ${input}
-Extracted details: ${ExtractDetails_output}
+Extracted details: ${extractDetails_output}
 
 Data sources:
-- Logistics: ${KnowledgeCheck_output}
-- Reviews: ${ReviewSummarizer_output}
-- Safety: ${NewsAlert_output}
-- Culture: ${GeniusLoci_output}
-- Weather: ${CheckWeather_output}
+- Logistics: ${knowledgeCheck_output}
+- Reviews: ${reviewSummarizer_output}
+- Safety: ${newsAlert_output}
+- Culture: ${geniusLoci_output}
+- Weather: ${checkWeather_output}
 
 STRUCTURE YOUR OUTPUT EXACTLY AS FOLLOWS (use these exact section headers):
 
@@ -187,7 +187,7 @@ STRUCTURE YOUR OUTPUT EXACTLY AS FOLLOWS (use these exact section headers):
 SECTION 1: WEATHER BRIEFING
 ═══════════════════════════════════════════
 
-[If weather data exists from ${CheckWeather_output}:]
+[If weather data exists from ${checkWeather_output}:]
 **Current Conditions:** [state exactly what the tool returned]
 
 **Impact:** [explain how this affects the trip in 1-2 complete sentences]
@@ -207,7 +207,7 @@ FORMATTING RULES FOR THIS SECTION:
 SECTION 2: SAFETY BRIEFING
 ═══════════════════════════════════════════
 
-[From ${NewsAlert_output}, include ONLY:]
+[From ${newsAlert_output}, include ONLY:]
 - Common risks (pickpocketing, scams, etc.)
 - Emergency numbers
 - Transport safety tips
@@ -226,7 +226,7 @@ DO NOT invent current events or breaking news.
 SECTION 3: CULTURAL GUIDANCE
 ═══════════════════════════════════════════
 
-[From ${GeniusLoci_output}, include:]
+[From ${geniusLoci_output}, include:]
 1. Dress codes and etiquette
 2. Historical fact
 3. Local secret/custom
@@ -235,7 +235,7 @@ SECTION 3: CULTURAL GUIDANCE
 SECTION 4: LOGISTICS & TIMING ADVICE
 ═══════════════════════════════════════════
 
-[From ${KnowledgeCheck_output}:]
+[From ${knowledgeCheck_output}:]
 [Provide any available logistics advice, timing warnings, or general tips]
 [If no specific logistics data available, provide general city-level advice]
 
@@ -251,34 +251,32 @@ CRITICAL RULES:
   }
 
   edges {
-    START -> GetDate
-    START -> ExtractDetails
-    START -> ExtractCity
+    START -> getDate
 
-    // GetDate provides temporal context to all LLM nodes
-    GetDate -> ExtractDetails
-    GetDate -> ExtractCity
-    GetDate -> KnowledgeCheck
-    GetDate -> ReviewSummarizer
-    GetDate -> NewsAlert
-    GetDate -> GeniusLoci
-    GetDate -> GenerateReport
+    // getDate provides temporal context to all LLM nodes
+    getDate -> extractDetails
+    getDate -> extractCity
+    getDate -> knowledgeCheck
+    getDate -> reviewSummarizer
+    getDate -> newsAlert
+    getDate -> geniusLoci
+    getDate -> generateReport
 
-    ExtractCity -> CheckWeather
-    ExtractCity -> KnowledgeCheck
-    ExtractCity -> FetchReviews
-    ExtractCity -> NewsAlert
-    ExtractCity -> GeniusLoci
+    extractCity -> checkWeather
+    extractCity -> knowledgeCheck
+    extractCity -> fetchReviews
+    extractCity -> newsAlert
+    extractCity -> geniusLoci
 
-    ExtractDetails -> KnowledgeCheck
+    extractDetails -> knowledgeCheck
 
-    FetchReviews -> ReviewSummarizer
+    fetchReviews -> reviewSummarizer
 
-    CheckWeather -> GenerateReport
-    KnowledgeCheck -> GenerateReport
-    ReviewSummarizer -> GenerateReport
-    NewsAlert -> GenerateReport
-    GeniusLoci -> GenerateReport
-    GenerateReport -> END
+    checkWeather -> generateReport
+    knowledgeCheck -> generateReport
+    reviewSummarizer -> generateReport
+    newsAlert -> generateReport
+    geniusLoci -> generateReport
+    generateReport -> END
   }
 }
