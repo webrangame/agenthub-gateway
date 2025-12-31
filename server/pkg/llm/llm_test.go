@@ -32,7 +32,7 @@ func TestGenerateContent_Success(t *testing.T) {
 				}{Content: "UPDATE_STATE: Destination=Paris\nACTION: ASK_QUESTION How many days?"}},
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp) // Error writing to test response writer can be ignored
 	}))
 	defer server.Close()
 
@@ -68,7 +68,7 @@ func TestGenerateContent_RateLimit(t *testing.T) {
 				Type:    "rate_limit_error",
 			},
 		}
-		json.NewEncoder(w).Encode(errResp)
+		_ = json.NewEncoder(w).Encode(errResp) // Error writing to test response writer can be ignored
 	}))
 	defer server.Close()
 
@@ -141,7 +141,7 @@ func TestGenerateContent_EmptyResponse(t *testing.T) {
 				} `json:"message"`
 			}{},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp) // Error writing to test response writer can be ignored
 	}))
 	defer server.Close()
 
@@ -168,7 +168,7 @@ func TestGenerateContent_EmptyResponse(t *testing.T) {
 func TestGenerateContent_RoleNormalization(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var reqBody map[string]interface{}
-		json.NewDecoder(r.Body).Decode(&reqBody)
+		_ = json.NewDecoder(r.Body).Decode(&reqBody) // Error decoding test request can be ignored
 
 		messages := reqBody["messages"].([]interface{})
 		// Check second message (first is system) has role "assistant"
@@ -188,7 +188,7 @@ func TestGenerateContent_RoleNormalization(t *testing.T) {
 				}{Content: "Test"}},
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp) // Error writing to test response writer can be ignored
 	}))
 	defer server.Close()
 
