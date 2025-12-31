@@ -60,8 +60,8 @@ jobs:
 
       - name: Setup Test Environment
         run: |
-          chmod +x installer_v0.3.3/linux/fastgraph
-          cp installer_v0.3.3/linux/fastgraph server/fastgraph
+          chmod +x installer_v0.4.1/linux/fastgraph
+          cp installer_v0.4.1/linux/fastgraph server/fastgraph
           chmod +x server/fastgraph
 
       - name: Run Tests
