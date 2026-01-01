@@ -905,8 +905,14 @@ INSTRUCTIONS:
 UPDATE_STATE: Key=Value
 ACTION: ...`, string(varsJSON), isPostReport)
 
+	// Get LiteLLM API Key from header if provided (user-specific key from market.niyogen.com)
+	litellmApiKey := c.GetHeader("X-LiteLLM-API-Key")
+	
 	fmt.Printf("GATEWAY: Thinking... (History: %d msgs)\n", len(history))
-	decision, err := GenerateContentFunc(convertHistory(history), systemMsg)
+	if litellmApiKey != "" {
+		fmt.Printf("GATEWAY: Using user-provided LiteLLM API Key\n")
+	}
+	decision, err := GenerateContentFunc(convertHistory(history), systemMsg, litellmApiKey)
 
 	// Default fallback
 	action := "ACTION: ASK_QUESTION Sorry, I am having trouble thinking right now."

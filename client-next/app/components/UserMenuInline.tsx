@@ -4,14 +4,16 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getUsername, authLogout } from '../utils/auth';
 import ChangePasswordModal from './ChangePasswordModal';
+import LiteLLMKeyModal from './LiteLLMKeyModal';
 
 interface UserMenuInlineProps {
-    onLogout: () => void;
+    onLogout?: () => void;
 }
 
 const UserMenuInline: React.FC<UserMenuInlineProps> = ({ onLogout }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [showChangePassword, setShowChangePassword] = useState(false);
+    const [showLiteLLMKey, setShowLiteLLMKey] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const username = getUsername();
 
@@ -34,12 +36,19 @@ const UserMenuInline: React.FC<UserMenuInlineProps> = ({ onLogout }) => {
 
     const handleLogout = async () => {
         await authLogout();
-        onLogout();
+        if (onLogout) {
+            onLogout();
+        }
         setIsOpen(false);
     };
 
     const handleChangePassword = () => {
         setShowChangePassword(true);
+        setIsOpen(false);
+    };
+
+    const handleShowLiteLLMKey = () => {
+        setShowLiteLLMKey(true);
         setIsOpen(false);
     };
 
@@ -60,8 +69,9 @@ const UserMenuInline: React.FC<UserMenuInlineProps> = ({ onLogout }) => {
                 {/* User Icon Button - Inline version */}
                 <button
                     onClick={() => setIsOpen(!isOpen)}
-                    className="w-8 h-8 rounded-full bg-[#003580] hover:bg-[#002a66] text-white shadow-md transition-all duration-200 flex items-center justify-center font-semibold text-xs focus:outline-none focus:ring-2 focus:ring-[#003580] focus:ring-offset-1"
+                    className="w-10 h-10 rounded-full bg-[#003580] hover:bg-[#002a66] text-white shadow-lg transition-all duration-200 flex items-center justify-center font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-[#003580] focus:ring-offset-2 border-2 border-white"
                     title={username || 'User'}
+                    aria-label="User menu"
                 >
                     {username ? getInitials() : (
                         <svg
@@ -98,6 +108,32 @@ const UserMenuInline: React.FC<UserMenuInlineProps> = ({ onLogout }) => {
 
                             {/* Menu Items */}
                             <div className="py-1">
+                                <button
+                                    onClick={handleShowLiteLLMKey}
+                                    className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center gap-3"
+                                >
+                                    <svg
+                                        className="w-4 h-4 text-gray-500"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                        />
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                        />
+                                    </svg>
+                                    LiteLLM API Key
+                                </button>
+
                                 <button
                                     onClick={handleChangePassword}
                                     className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center gap-3"
@@ -148,6 +184,13 @@ const UserMenuInline: React.FC<UserMenuInlineProps> = ({ onLogout }) => {
                 <ChangePasswordModal
                     onClose={() => setShowChangePassword(false)}
                     onSuccess={() => setShowChangePassword(false)}
+                />
+            )}
+
+            {/* LiteLLM Key Modal */}
+            {showLiteLLMKey && (
+                <LiteLLMKeyModal
+                    onClose={() => setShowLiteLLMKey(false)}
                 />
             )}
         </>

@@ -32,7 +32,7 @@ func TestChatStreamHandler(t *testing.T) {
 	// Mock GenerateContentFunc
 	originalGenerate := GenerateContentFunc
 	defer func() { GenerateContentFunc = originalGenerate }()
-	GenerateContentFunc = func(history []map[string]interface{}, systemPrompt string) (string, error) {
+	GenerateContentFunc = func(history []map[string]interface{}, systemPrompt string, userApiKey ...string) (string, error) {
 		return "ACTION: RUN_AGENT SUMMARY: Run requested by test", nil
 	}
 

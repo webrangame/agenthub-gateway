@@ -9,6 +9,14 @@ export type AuthUser = {
   email?: string;
   username?: string;
   name?: string;
+  litellmApiKey?: string; // LiteLLM Virtual Key from market.niyogen.com
+  litellmKeyInfo?: {
+    key?: string;
+    tpmLimit?: number;
+    rpmLimit?: number;
+    spent?: number;
+    keyName?: string;
+  };
   [key: string]: unknown;
 };
 
@@ -32,6 +40,22 @@ export const setUsername = (username?: string | null) => {
   if (typeof window === 'undefined') return;
   if (username) localStorage.setItem('username', username);
   else localStorage.removeItem('username');
+};
+
+export const getLiteLLMApiKey = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('litellm_api_key');
+};
+
+export const getLiteLLMKeyInfo = (): { key?: string; tpmLimit?: number; rpmLimit?: number; spent?: number; keyName?: string } | null => {
+  if (typeof window === 'undefined') return null;
+  const info = localStorage.getItem('litellm_key_info');
+  if (!info) return null;
+  try {
+    return JSON.parse(info);
+  } catch {
+    return null;
+  }
 };
 
 export async function authMe(): Promise<{ ok: boolean; user?: AuthUser; error?: string }> {
@@ -74,6 +98,16 @@ export async function authMe(): Promise<{ ok: boolean; user?: AuthUser; error?: 
     if (typeof window !== 'undefined' && user?.id) {
       localStorage.setItem('userid', user.id);
       console.log('[authMe] Store User ID:', user.id);
+    }
+    // Store LiteLLM Virtual Key if provided by market.niyogen.com
+    if (typeof window !== 'undefined' && user?.litellmApiKey) {
+      localStorage.setItem('litellm_api_key', user.litellmApiKey);
+      console.log('[authMe] Store LiteLLM API Key');
+    }
+    // Store LiteLLM key info (TPM, RPM, Spent) if provided
+    if (typeof window !== 'undefined' && user?.litellmKeyInfo) {
+      localStorage.setItem('litellm_key_info', JSON.stringify(user.litellmKeyInfo));
+      console.log('[authMe] Store LiteLLM Key Info:', user.litellmKeyInfo);
     }
     return { ok: true, user };
   } catch (e: unknown) {
@@ -119,7 +153,11 @@ export async function authLogout(): Promise<{ ok: boolean; error?: string }> {
     });
     // Even if backend fails, clear local UI state
     setUsername(null);
-    if (typeof window !== 'undefined') localStorage.removeItem('userid');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('userid');
+      localStorage.removeItem('litellm_api_key');
+      localStorage.removeItem('litellm_key_info');
+    }
     if (!res.ok) return { ok: false, error: await parseError(res) };
     return { ok: true };
   } catch (e: unknown) {

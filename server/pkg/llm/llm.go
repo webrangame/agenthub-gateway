@@ -82,8 +82,15 @@ func mapToUserFriendlyError(err error, statusCode int) error {
 
 // GenerateContent calls the LiteLLM proxy with the conversation history
 // Production always uses LiteLLM proxy for billing tracking and rate limiting
-func GenerateContent(history []map[string]interface{}, systemPrompt string) (string, error) {
-	apiKey := os.Getenv("LITELLM_API_KEY")
+// If userApiKey is provided, it will be used instead of the environment variable
+func GenerateContent(history []map[string]interface{}, systemPrompt string, userApiKey ...string) (string, error) {
+	// Use user-provided API key if available, otherwise fall back to environment variable
+	var apiKey string
+	if len(userApiKey) > 0 && userApiKey[0] != "" {
+		apiKey = userApiKey[0]
+	} else {
+		apiKey = os.Getenv("LITELLM_API_KEY")
+	}
 	if apiKey == "" {
 		return "", fmt.Errorf("LITELLM_API_KEY not set")
 	}
@@ -151,6 +158,8 @@ func GenerateContent(history []map[string]interface{}, systemPrompt string) (str
 	}
 	resp, err := client.Do(req)
 	if err != nil {
+		// Log detailed error for debugging
+		fmt.Printf("LLM HTTP Error: %v (URL: %s)\n", err, url)
 		// Map to user-friendly error
 		return "", mapToUserFriendlyError(err, 0)
 	}
@@ -159,6 +168,8 @@ func GenerateContent(history []map[string]interface{}, systemPrompt string) (str
 	bodyBytes, _ := io.ReadAll(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
+		// Log detailed error for debugging
+		fmt.Printf("LLM Proxy Error: Status=%d, Body=%s\n", resp.StatusCode, string(bodyBytes))
 		// Try to parse error from LiteLLM
 		var errResp OpenAIResponse
 		if json.Unmarshal(bodyBytes, &errResp) == nil && errResp.Error != nil {
