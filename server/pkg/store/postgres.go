@@ -25,12 +25,12 @@ type Card struct {
 	Data       map[string]interface{} `json:"data"`
 }
 
-func NewPostgresStore(connStr string) (*PostgresStore, error) {
+func NewPostgresStore(ctx context.Context, connStr string) (*PostgresStore, error) {
 	db, err := sql.Open("pgx", connStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open db: %w", err)
 	}
-	if err := db.Ping(); err != nil {
+	if err := db.PingContext(ctx); err != nil {
 		return nil, fmt.Errorf("failed to ping db: %w", err)
 	}
 	return &PostgresStore{DB: db}, nil

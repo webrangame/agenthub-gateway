@@ -73,7 +73,12 @@ func main() {
 		os.Exit(1)
 	}
 	var err error
-	feedStore, err = store.NewPostgresStore(connStr)
+	// Attempt connection with timeout to avoid blocking startup indefinitely
+	// We'll treat the store as optional for startup to allow debugging logs to flush
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	feedStore, err = store.NewPostgresStore(ctx, connStr)
 	if err != nil {
 		fmt.Printf("WARNING: Failed to connect to DB, feed will fail: %v\n", err)
 	} else {
@@ -907,7 +912,7 @@ ACTION: ...`, string(varsJSON), isPostReport)
 
 	// Get LiteLLM API Key from header if provided (user-specific key from market.niyogen.com)
 	litellmApiKey := c.GetHeader("X-LiteLLM-API-Key")
-	
+
 	fmt.Printf("GATEWAY: Thinking... (History: %d msgs)\n", len(history))
 	if litellmApiKey != "" {
 		fmt.Printf("GATEWAY: Using user-provided LiteLLM API Key\n")
