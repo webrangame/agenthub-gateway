@@ -185,6 +185,10 @@ jobs:
           service: 'guardian-gateway'
           image: '${{ env.ARTIFACT_REGISTRY }}/guardian-gateway:${{ github.sha }}'
           region: '${{ env.GCP_REGION }}'
+          secrets: |
+            DATABASE_URL=DATABASE_URL:latest
+            OPENAI_API_KEY=OPENAI_API_KEY:latest
+            GOOGLE_MAPS_KEY=GOOGLE_MAPS_KEY:latest
 
   # ------------------------------------------------------------------
   # FRONTEND VALIDATION (Runs on PRs & Push if client changes)
