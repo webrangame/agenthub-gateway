@@ -99,6 +99,16 @@ export async function authMe(): Promise<{ ok: boolean; user?: AuthUser; error?: 
       localStorage.setItem('userid', user.id);
       console.log('[authMe] Store User ID:', user.id);
     }
+    // Store LiteLLM Virtual Key if provided by market.niyogen.com
+    if (typeof window !== 'undefined' && user?.litellmApiKey) {
+      localStorage.setItem('litellm_api_key', user.litellmApiKey);
+      console.log('[authMe] Store LiteLLM API Key');
+    }
+    // Store LiteLLM key info (TPM, RPM, Spent) if provided
+    if (typeof window !== 'undefined' && user?.litellmKeyInfo) {
+      localStorage.setItem('litellm_key_info', JSON.stringify(user.litellmKeyInfo));
+      console.log('[authMe] Store LiteLLM Key Info:', user.litellmKeyInfo);
+    }
     return { ok: true, user };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Network error';
