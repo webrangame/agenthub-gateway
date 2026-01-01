@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getLiteLLMApiKey } from '../utils/auth';
+import { getLiteLLMApiKey, getLiteLLMKeyInfo } from '../utils/auth';
 import { Copy, Check, X } from 'lucide-react';
 
 interface LiteLLMKeyModalProps {
@@ -12,12 +12,17 @@ interface LiteLLMKeyModalProps {
 
 const LiteLLMKeyModal: React.FC<LiteLLMKeyModalProps> = ({ onClose }) => {
     const [apiKey, setApiKey] = useState<string | null>(null);
+    const [keyInfo, setKeyInfo] = useState<{ key?: string; tpmLimit?: number; rpmLimit?: number; spent?: number; keyName?: string } | null>(null);
     const [copied, setCopied] = useState(false);
 
     useEffect(() => {
         // Get LiteLLM key from localStorage
         const key = getLiteLLMApiKey();
         setApiKey(key);
+        
+        // Get LiteLLM key info (TPM, RPM, Spent)
+        const info = getLiteLLMKeyInfo();
+        setKeyInfo(info);
         
         // Prevent body scroll when modal is open
         document.body.style.overflow = 'hidden';
@@ -70,35 +75,73 @@ const LiteLLMKeyModal: React.FC<LiteLLMKeyModalProps> = ({ onClose }) => {
 
                     {/* Content */}
                     <div className="p-6 space-y-4">
+                        <div className="mb-4">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-1">LiteLLM API Keys</h3>
+                            <p className="text-sm text-gray-600">Your API keys for accessing LiteLLM services</p>
+                        </div>
+
                         {apiKey ? (
                             <>
-                                <p className="text-sm text-gray-600">
-                                    Your LiteLLM Virtual Key is used for AI chat requests. Keep this key secure.
-                                </p>
-                                
-                                {/* API Key Display */}
-                                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                                    <div className="flex items-center justify-between gap-2">
-                                        <code className="text-sm font-mono text-gray-800 break-all flex-1">
-                                            {apiKey}
-                                        </code>
-                                        <button
-                                            onClick={handleCopy}
-                                            className="flex-shrink-0 p-2 hover:bg-gray-200 rounded transition-colors"
-                                            title="Copy to clipboard"
-                                        >
-                                            {copied ? (
-                                                <Check className="w-5 h-5 text-green-600" />
-                                            ) : (
-                                                <Copy className="w-5 h-5 text-gray-600" />
-                                            )}
-                                        </button>
+                                {/* API Key Card */}
+                                <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className="w-10 h-10 bg-gradient-to-br from-[#003580] to-[#004a9f] rounded-lg flex items-center justify-center">
+                                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-semibold text-gray-900">{keyInfo?.keyName || 'API Key 1'}</h4>
+                                        </div>
+                                    </div>
+
+                                    {/* API Key Value */}
+                                    <div className="bg-gray-50 rounded-lg p-3 mb-3 border border-gray-200">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <code className="text-xs font-mono text-gray-800 break-all flex-1">
+                                                {apiKey}
+                                            </code>
+                                            <button
+                                                onClick={handleCopy}
+                                                className="flex-shrink-0 p-1.5 hover:bg-gray-200 rounded transition-colors"
+                                                title="Copy to clipboard"
+                                            >
+                                                {copied ? (
+                                                    <Check className="w-4 h-4 text-green-600" />
+                                                ) : (
+                                                    <Copy className="w-4 h-4 text-gray-600" />
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {copied && (
+                                        <p className="text-xs text-green-600 text-center mb-3">✓ Copied to clipboard!</p>
+                                    )}
+
+                                    {/* Key Limits and Usage */}
+                                    <div className="grid grid-cols-3 gap-3 pt-3 border-t border-gray-200">
+                                        <div>
+                                            <p className="text-xs text-gray-500 mb-1">TPM Limit</p>
+                                            <p className="text-sm font-semibold text-gray-900">
+                                                {keyInfo?.tpmLimit ? keyInfo.tpmLimit.toLocaleString() : '100,000'}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 mb-1">RPM Limit</p>
+                                            <p className="text-sm font-semibold text-gray-900">
+                                                {keyInfo?.rpmLimit || '100'}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 mb-1">Spent</p>
+                                            <p className="text-sm font-semibold text-gray-900">
+                                                ${keyInfo?.spent !== undefined ? keyInfo.spent.toFixed(2) : '0.00'}
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
-
-                                {copied && (
-                                    <p className="text-sm text-green-600 text-center">✓ Copied to clipboard!</p>
-                                )}
 
                                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                                     <p className="text-xs text-blue-800">
