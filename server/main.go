@@ -75,14 +75,31 @@ func main() {
 	var err error
 	// Attempt connection with timeout to avoid blocking startup indefinitely
 	// We'll treat the store as optional for startup to allow debugging logs to flush
+	// Try initial connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	pgStore, err := store.NewPostgresStore(ctx, connStr)
+	cancel()
 
-	feedStore, err = store.NewPostgresStore(ctx, connStr)
 	if err != nil {
-		fmt.Printf("WARNING: Failed to connect to DB, feed will fail: %v\n", err)
+		fmt.Printf("WARNING: Failed to connect to DB initially: %v. Retrying in background...\n", err)
+		// Retry in background
+		go func() {
+			for {
+				time.Sleep(10 * time.Second)
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				s, err := store.NewPostgresStore(ctx, connStr)
+				cancel()
+				if err == nil {
+					fmt.Println("INFO: Connected to Postgres Store (Background Recovery)")
+					feedStore = s
+					return
+				}
+				fmt.Printf("WARNING: Background DB retry failed: %v\n", err)
+			}
+		}()
 	} else {
 		fmt.Println("INFO: Connected to Postgres Store")
+		feedStore = pgStore
 	}
 
 	// Init Session Manager
