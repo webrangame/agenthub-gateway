@@ -58,7 +58,7 @@ export const getLiteLLMKeyInfo = (): { key?: string; tpmLimit?: number; rpmLimit
   }
 };
 
-export async function authMe(): Promise<{ ok: boolean; user?: AuthUser; error?: string }> {
+export async function authMe(): Promise<{ ok: boolean; user?: AuthUser; userId?: string; error?: string }> {
   try {
     const res = await fetch(`${AUTH_BASE}/api/auth/me`, {
       method: 'GET',
@@ -109,7 +109,7 @@ export async function authMe(): Promise<{ ok: boolean; user?: AuthUser; error?: 
       localStorage.setItem('litellm_key_info', JSON.stringify(user.litellmKeyInfo));
       console.log('[authMe] Store LiteLLM Key Info:', user.litellmKeyInfo);
     }
-    return { ok: true, user };
+    return { ok: true, user, userId: user?.id };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Network error';
     console.error('[authMe] Network error:', msg, e);

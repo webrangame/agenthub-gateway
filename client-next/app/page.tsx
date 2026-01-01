@@ -7,6 +7,7 @@ import { authMe, authLogout } from './utils/auth';
 
 export default function Home() {
   const [authenticated, setAuthenticated] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
 
   useEffect(() => {
@@ -34,6 +35,10 @@ export default function Home() {
       if (cancelled) return;
 
       console.log('[SSO Debug] Auth result:', res.ok ? '✅ Authenticated' : '❌ Not authenticated', res.error || '');
+
+      if (res.ok && res.userId) {
+        setUserId(res.userId);
+      }
 
       setAuthenticated(res.ok);
       setAuthChecking(false);
@@ -77,7 +82,7 @@ export default function Home() {
 
   return (
     <div className="relative">
-      <CapabilityLayoutMapper capabilities={activeCapabilities} onLogout={handleLogout} />
+      <CapabilityLayoutMapper capabilities={activeCapabilities} onLogout={handleLogout} userId={userId || undefined} />
     </div>
   );
 }
