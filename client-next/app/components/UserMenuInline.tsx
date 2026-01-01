@@ -13,6 +13,7 @@ interface UserMenuInlineProps {
 const UserMenuInline: React.FC<UserMenuInlineProps> = ({ onLogout }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [showChangePassword, setShowChangePassword] = useState(false);
+    const [showLiteLLMKey, setShowLiteLLMKey] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const username = getUsername();
 
