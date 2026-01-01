@@ -42,17 +42,8 @@ export default function Home() {
     // Initial SSO check (runs on every page load, including after redirect from market)
     checkSession();
 
-    // Keep travel UI in sync when user logs in/out on market in another tab
-    const onFocus = () => {
-      checkSession();
-    };
-    window.addEventListener('focus', onFocus);
-    document.addEventListener('visibilitychange', onFocus);
-
     return () => {
       cancelled = true;
-      window.removeEventListener('focus', onFocus);
-      document.removeEventListener('visibilitychange', onFocus);
     };
   }, []);
 
