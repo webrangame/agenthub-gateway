@@ -134,6 +134,7 @@ func main() {
 		"http://127.0.0.1:3000",
 		"https://market.niyogen.com",
 		"https://travel.niyogen.com",
+		"https://guardian-client-x6n5sofwia-uc.a.run.app", // Cloud Run Frontend
 	}
 	config.AllowCredentials = true
 	config.AddAllowHeaders("Authorization", "X-Device-ID") // Added X-Device-ID
