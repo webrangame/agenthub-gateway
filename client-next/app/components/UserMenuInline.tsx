@@ -7,7 +7,7 @@ import ChangePasswordModal from './ChangePasswordModal';
 import LiteLLMKeyModal from './LiteLLMKeyModal';
 
 interface UserMenuInlineProps {
-    onLogout: () => void;
+    onLogout?: () => void;
 }
 
 const UserMenuInline: React.FC<UserMenuInlineProps> = ({ onLogout }) => {
@@ -36,7 +36,9 @@ const UserMenuInline: React.FC<UserMenuInlineProps> = ({ onLogout }) => {
 
     const handleLogout = async () => {
         await authLogout();
-        onLogout();
+        if (onLogout) {
+            onLogout();
+        }
         setIsOpen(false);
     };
 
@@ -67,8 +69,9 @@ const UserMenuInline: React.FC<UserMenuInlineProps> = ({ onLogout }) => {
                 {/* User Icon Button - Inline version */}
                 <button
                     onClick={() => setIsOpen(!isOpen)}
-                    className="w-8 h-8 rounded-full bg-[#003580] hover:bg-[#002a66] text-white shadow-md transition-all duration-200 flex items-center justify-center font-semibold text-xs focus:outline-none focus:ring-2 focus:ring-[#003580] focus:ring-offset-1"
+                    className="w-10 h-10 rounded-full bg-[#003580] hover:bg-[#002a66] text-white shadow-lg transition-all duration-200 flex items-center justify-center font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-[#003580] focus:ring-offset-2 border-2 border-white"
                     title={username || 'User'}
+                    aria-label="User menu"
                 >
                     {username ? getInitials() : (
                         <svg
