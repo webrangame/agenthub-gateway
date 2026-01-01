@@ -281,7 +281,7 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout }) => {
                     >
                         {showLogs ? 'Hide Logs' : 'Debug'}
                     </button>
-                    {onLogout && <UserMenuInline onLogout={onLogout} />}
+                    <UserMenuInline onLogout={onLogout || (() => {})} />
                 </div>
             </div>
 
