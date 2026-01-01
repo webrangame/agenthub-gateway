@@ -8,18 +8,28 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    console.log(`[Chat Proxy] Sending request to: ${API_BASE_URL}/api/chat/stream`);
+    const deviceId = request.headers.get('X-Device-ID') || '';
+    const userId = request.headers.get('X-User-ID') || '';
+    // Get LiteLLM Virtual Key from request header (passed from client, set by market.niyogen.com)
+    const litellmApiKey = request.headers.get('X-LiteLLM-API-Key') || '';
+
+    console.log(`[Chat Proxy] Sending request to: ${API_BASE_URL}/api/chat/stream (Device: ${deviceId})`);
 
     // Create abort controller for timeout
     const controller = new AbortController();
     timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (deviceId) headers['X-Device-ID'] = deviceId;
+    if (userId) headers['X-User-ID'] = userId;
+    if (litellmApiKey) headers['X-LiteLLM-API-Key'] = litellmApiKey;
+
     // Forward the request to the backend and stream the response
     const response = await fetch(`${API_BASE_URL}/api/chat/stream`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(body),
       signal: controller.signal,
     });

@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y ca-certificates curl && rm -rf /var/lib
 WORKDIR /app
 
 # Copy Linux binary from installer directory (Root Context)
-COPY installer_v0.3.3/linux/fastgraph /app/fastgraph
+COPY installer_v0.4.1/linux/fastgraph /app/fastgraph
 RUN chmod +x /app/fastgraph
 
 # Copy built Gateway binary
@@ -24,8 +24,8 @@ COPY --from=builder /app/guardian-gateway /app/guardian-gateway
 
 # Copy Agents directory
 COPY server/agents/ /app/agents/
-# Copy default agent from public folder (trip_guardian_v3.m)
-COPY server/agents/trip_guardian_v3.m /app/trip_guardian_v3.m
+# Copy default agent (if exists in agents/trip-guardian/)
+COPY server/agents/trip-guardian/trip_guardian_v3.m /app/agents/trip-guardian/trip_guardian_v3.m 2>/dev/null || true
 RUN mkdir -p /app/uploads
 
 EXPOSE 8081

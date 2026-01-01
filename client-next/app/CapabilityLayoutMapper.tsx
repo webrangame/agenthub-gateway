@@ -11,6 +11,7 @@ import SingleColLayout from './layouts/SingleColLayout'; // We need to create th
 import ChatPanel from './components/ChatPanel';
 import FeedPanel from './components/FeedPanel';
 import TerminalPanel from './components/TerminalPanel'; // Placeholder
+import AiFooter from './components/AiFooter';
 
 interface CapabilityMapperProps {
   capabilities: string[];
@@ -46,29 +47,37 @@ const CapabilityLayoutMapper: React.FC<CapabilityMapperProps> = ({ capabilities,
     const [LeftCompName, RightCompName] = layoutConfig.components;
 
     return (
-      <SplitLayout
-        left={
-          <ComponentFactory
-            name={LeftCompName}
-            props={{
-              isCollapsed: isLeftCollapsed,
-              onToggleCollapse: () => setIsLeftCollapsed(!isLeftCollapsed),
-            }}
-            onLogout={onLogout}
+      <div className="flex flex-col h-screen overflow-hidden">
+        <div className="flex-1 overflow-hidden relative">
+          <SplitLayout
+            left={
+              <ComponentFactory
+                name={LeftCompName}
+                props={{
+                  isCollapsed: isLeftCollapsed,
+                  onToggleCollapse: () => setIsLeftCollapsed(!isLeftCollapsed),
+                }}
+                onLogout={onLogout}
+              />
+            }
+            right={<ComponentFactory name={RightCompName} onLogout={onLogout} />}
+            collapsed={isLeftCollapsed}
           />
-        }
-        right={<ComponentFactory name={RightCompName} onLogout={onLogout} />}
-        collapsed={isLeftCollapsed}
-      />
+        </div>
+        <AiFooter />
+      </div>
     );
   }
 
   // Fallback / Default
   return (
-    <div className="h-screen w-full flex items-center justify-center bg-gray-100">
-      <SingleColLayout>
-        <ComponentFactory name={layoutConfig.components[0]} onLogout={onLogout} />
-      </SingleColLayout>
+    <div className="flex flex-col h-screen overflow-hidden bg-gray-100">
+      <div className="flex-1 w-full flex items-center justify-center overflow-hidden">
+        <SingleColLayout>
+          <ComponentFactory name={layoutConfig.components[0]} onLogout={onLogout} />
+        </SingleColLayout>
+      </div>
+      <AiFooter />
     </div>
   );
 };

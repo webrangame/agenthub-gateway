@@ -7,21 +7,28 @@ import { API_BASE_URL } from '../../../utils/api';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export async function GET() {
+export async function GET(request: Request) {
   let timeoutId: NodeJS.Timeout | null = null;
+  const deviceId = request.headers.get('X-Device-ID') || '';
+  const userId = request.headers.get('X-User-ID') || '';
+  // Authorization might be needed too if we use it later
 
   try {
-    console.log(`[Feed Proxy] Fetching from: ${API_BASE_URL}/api/feed`);
+    console.log(`[Feed Proxy] Fetching from: ${API_BASE_URL}/api/feed (Device: ${deviceId}, User: ${userId})`);
 
     const controller = new AbortController();
     timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
+    const headers: Record<string, string> = {
+      'Accept': 'application/json',
+      'User-Agent': 'Next.js-Proxy/1.0',
+    };
+    if (deviceId) headers['X-Device-ID'] = deviceId;
+    if (userId) headers['X-User-ID'] = userId;
+
     const response = await fetch(`${API_BASE_URL}/api/feed`, {
       method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'Next.js-Proxy/1.0',
-      },
+      headers,
       signal: controller.signal,
       cache: 'no-store',
     });
@@ -104,20 +111,26 @@ export async function GET() {
   }
 }
 
-export async function DELETE() {
+export async function DELETE(request: Request) {
   let timeoutId: NodeJS.Timeout | null = null;
+  const deviceId = request.headers.get('X-Device-ID') || '';
+  const userId = request.headers.get('X-User-ID') || '';
 
   try {
-    console.log(`[Feed Proxy] Resetting feed at: ${API_BASE_URL}/api/feed`);
+    console.log(`[Feed Proxy] Resetting feed (FORCED REFRESH) at: ${API_BASE_URL}/api/feed (Device: ${deviceId}, User: ${userId})`);
 
     const controller = new AbortController();
     timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
+    const headers: Record<string, string> = {
+      'Accept': 'application/json',
+    };
+    if (deviceId) headers['X-Device-ID'] = deviceId;
+    if (userId) headers['X-User-ID'] = userId;
+
     const response = await fetch(`${API_BASE_URL}/api/feed`, {
       method: 'DELETE',
-      headers: {
-        'Accept': 'application/json',
-      },
+      headers,
       signal: controller.signal,
       cache: 'no-store',
     });

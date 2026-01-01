@@ -1,17 +1,18 @@
 package main
 
 import (
+	"context" // Added context
 	"encoding/json"
 	"fmt"
 	"guardian-gateway/pkg/fastgraph/runtime"
 	"guardian-gateway/pkg/llm"
 	"guardian-gateway/pkg/session"
+	"guardian-gateway/pkg/store" // New import
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -37,16 +38,15 @@ type FeedItem struct {
 }
 
 var engine *runtime.Engine
+var feedStore *store.PostgresStore // New Global Store
 
 // Atomic counter for unique IDs
-var eventCounter int64
+// var eventCounter int64 (Removed: Unused)
 
-// Global Feed - Start empty, only show real agent output
-var currentFeed = []*FeedItem{}
-
-// nodeBuckets holds the latest FeedItem for each source node
-var nodeBuckets = map[string]*FeedItem{}
-var bucketMutex sync.Mutex
+// Removed global in-memory feed/buckets
+// var currentFeed = []*FeedItem{}
+// var nodeBuckets = map[string]*FeedItem{}
+// var bucketMutex sync.Mutex
 
 // @title           AiGuardian Gateway API
 // @version         1.0
@@ -58,7 +58,7 @@ func main() {
 	// Load .env file if it exists
 	// Load .env file and OVERWRITE system env if present
 	if err := godotenv.Overload(); err != nil {
-		fmt.Println("INFO: No .env file found, relying on system env.")
+		fmt.Printf("INFO: No .env file loaded. Error: %v\n", err)
 	} else {
 		fmt.Println("INFO: Loaded and overloaded config from .env")
 	}
@@ -66,17 +66,55 @@ func main() {
 	// Init Engine
 	engine = runtime.New()
 
+	// Init Database Store
+	connStr := os.Getenv("DATABASE_URL")
+	if connStr == "" {
+		fmt.Println("FATAL: DATABASE_URL environment variable is required")
+		os.Exit(1)
+	}
+	var err error
+	feedStore, err = store.NewPostgresStore(connStr)
+	if err != nil {
+		fmt.Printf("WARNING: Failed to connect to DB, feed will fail: %v\n", err)
+	} else {
+		fmt.Println("INFO: Connected to Postgres Store")
+	}
+
 	// Init Session Manager
 	session.Init()
+
+	// Auto-load pre-deployed agent
+	agentPath := "./agents/trip-guardian/trip_guardian_v3.m"
+	if _, err := os.Stat(agentPath); err == nil {
+		fmt.Printf("INFO: Loading pre-deployed agent: %s\n", agentPath)
+		meta, err := engine.Inspect(agentPath)
+		if err != nil {
+			fmt.Printf("WARNING: Failed to inspect agent: %v\n", err)
+		} else {
+			fmt.Printf("INFO: Agent loaded: %s (Capabilities: %v)\n", meta.Name, meta.Capabilities)
+			// Start scheduled execution if configured
+			if meta.Schedule != nil && meta.Schedule.Mode == "proactive" {
+				go startScheduledExecution(agentPath, meta.Schedule)
+			}
+		}
+	} else {
+		fmt.Printf("WARNING: Pre-deployed agent not found at %s\n", agentPath)
+	}
 
 	r := gin.Default()
 
 	// CORS Middleware
 	// CORS Middleware
 	config := cors.DefaultConfig()
-	config.AllowAllOrigins = true
+	// config.AllowAllOrigins = true // Cannot use * with AllowCredentials
+	config.AllowOrigins = []string{
+		"http://localhost:3000",
+		"http://127.0.0.1:3000",
+		"https://market.niyogen.com",
+		"https://travel.niyogen.com",
+	}
 	config.AllowCredentials = true
-	config.AddAllowHeaders("Authorization")
+	config.AddAllowHeaders("Authorization", "X-Device-ID") // Added X-Device-ID
 	r.Use(cors.New(config))
 
 	// Health Check
@@ -88,8 +126,8 @@ func main() {
 	// DELETE /api/feed
 	r.DELETE("/api/feed", ClearFeedHandler)
 
-	// POST /api/agent/upload
-	r.POST("/api/agent/upload", UploadAgentHandler)
+	// POST /api/agent/upload - DISABLED (agents are pre-deployed)
+	// r.POST("/api/agent/upload", UploadAgentHandler)
 
 	// POST /api/chat/stream
 	r.POST("/api/chat/stream", ChatStreamHandler)
@@ -138,57 +176,63 @@ func startScheduledExecution(agentPath string, schedule *runtime.ScheduleInfo) {
 	for range ticker.C {
 		fmt.Println("SCHEDULE: Triggering proactive run...")
 		fmt.Println("SCHEDULE: Triggering proactive run...")
-		if err := engine.Run(agentPath, "Proactive Check", func(eventJSON string) {
-			processAndAppendFeed(eventJSON, "")
+		if err := engine.Run(agentPath, "Proactive Check", loadMemoryConfig(), func(eventJSON string) {
+			processAndSaveFeed(context.Background(), "system_broadcast", eventJSON, "")
 		}); err != nil {
 			fmt.Printf("Error running scheduled check for %s: %v\n", agentPath, err)
 		}
 	}
 }
 
-// Sticky Node State to associate orphaned chunks
+func loadMemoryConfig() *runtime.MemoryConfig {
+	projectID := os.Getenv("VERTEX_PROJECT_ID")
+	// Only enable if project ID is set, or forcing a specific store
+	if projectID == "" {
+		return nil
+	}
+	return &runtime.MemoryConfig{
+		Enabled:    true,
+		Store:      "inmemory", // Fallback to inmemory until Vertex allowlist is approved/binary supports it
+		ProjectID:  projectID,
+		Location:   os.Getenv("VERTEX_LOCATION"),
+		CorpusName: os.Getenv("VERTEX_CORPUS_NAME"),
+	}
+}
+
+// Sticky Node State to associate orphaned chunks - per user potentially?
+// For simplicity, keeping global for now as single-user demo, or refactor to map[deviceID]string
 var lastActiveNode string
 
-func processAndAppendFeed(eventJSON string, destination string) {
-	bucketMutex.Lock()
-	defer bucketMutex.Unlock()
-
+func processAndSaveFeed(ctx context.Context, deviceID string, eventJSON string, destination string) {
 	fmt.Println("ENGINE EVENT:", eventJSON)
 
+	// ... [Existing parsing logic mostly same, but need to adapt] ...
 	// Parse the JSON event to extract a clean message
 	var evt struct {
 		Type    string `json:"type"`
 		Message string `json:"message"`
 		Node    string `json:"node"`
-		Text    string `json:"text"` // Added 'text' field
+		Text    string `json:"text"`
 	}
 
-	message := eventJSON // fallback
+	message := eventJSON
 	incomingNode := ""
 
 	if err := json.Unmarshal([]byte(eventJSON), &evt); err == nil {
-		// Prioritize 'text' field if present, then 'message'
 		if evt.Text != "" {
 			message = evt.Text
 		} else if evt.Message != "" {
 			message = evt.Message
 		}
-
 		if evt.Node != "" {
 			incomingNode = evt.Node
-			// STICKY LOGIC: If we are currently locked on "GenerateReport" (streaming large text),
-			// don't let other intermittent nodes (like ReviewSummarizer) steal the sticky focus.
-			// This ensures subsequent unnamed chunks (tokens) are still attributed to GenerateReport.
-			if lastActiveNode != "GenerateReport" || evt.Node == "GenerateReport" {
-				lastActiveNode = evt.Node
-			}
+			// Update lastActiveNode logic if needed or keep loose
+			lastActiveNode = evt.Node
 		} else if evt.Type == "chunk" && lastActiveNode != "" {
-			// If it's a chunk but has no node, assume it belongs to the previous stream
 			incomingNode = lastActiveNode
 		}
 	}
 
-	// Skip useless messages (Pass incomingNode to allow exceptions)
 	if shouldSkipMessage(message, evt.Type, eventJSON, incomingNode) {
 		return
 	}
@@ -203,7 +247,7 @@ func processAndAppendFeed(eventJSON string, destination string) {
 	}
 	var cleanText string
 
-	// If Top-Level Node is empty, try to find it in the message
+	// Logic to refine incomingNode and cleanText...
 	if incomingNode == "" {
 		if err := json.Unmarshal([]byte(message), &nodeInfo); err == nil && nodeInfo.Node != "" {
 			incomingNode = nodeInfo.Node
@@ -215,86 +259,45 @@ func processAndAppendFeed(eventJSON string, destination string) {
 			data["summary"] = cleanText
 		}
 	} else {
-		// If we already have a Node ID, just clean the text
 		cleanText = cleanMessage(message)
-		// Re-run mapToCard to get category/color for this specific Node Title (if matched)
-		// But we need to leverage the known Node ID
-
-		// If mapToCard didn't find a title by prefix, use the Node ID as title
 		if t, ok := data["title"].(string); !ok || t == "" {
 			data["title"] = incomingNode
 		}
-
-		// Map again with the Node Name as the Title to get the correct styling
-		// We temporarily inject the Node Name as a title to mapToCard by faking a prefix?
-		// Better: explicitly refine the card type based on incomingNode
 		refineCardType(incomingNode, message, &cardType, &priority, data, destination)
-
 		data["summary"] = cleanText
 		data["source_node"] = incomingNode
 	}
 
-	// FILTER: If incomingNode is empty, check if mapToCard found a title
+	// Final filters
 	if incomingNode == "" {
 		if title, ok := data["title"].(string); ok && title != "" {
 			incomingNode = title
-			data["source_node"] = incomingNode
 		}
 	}
-
-	// FILTER: Skip if no node ID/Name is specified
-	if incomingNode == "" {
+	// Only drop technical extraction nodes. Allow KnowledgeCheck to show up.
+	if incomingNode == "" || incomingNode == "ExtractDetails" || incomingNode == "ExtractCity" {
+		fmt.Printf("DEBUG: Dropping message from node '%s': %s (len=%d)\n", incomingNode, message, len(message))
 		return
 	}
 
-	// FILTER: Hide internal utility nodes from the public feed to prevent clutter
-	if incomingNode == "ExtractDetails" || incomingNode == "ExtractCity" || incomingNode == "KnowledgeCheck" || incomingNode == "FetchReviews" {
-		return
-	}
-
-	// ---------- MAP‑BASED BUCKET LOGIC ----------
-
-	if existing, ok := nodeBuckets[incomingNode]; ok {
-		// Calculate time since last update
-		lastTime, err := time.Parse(time.RFC3339, existing.Timestamp)
-		resetThreshold := 60 * time.Second // 1 minute of silence triggers a reset
-
-		if err == nil && time.Since(lastTime) > resetThreshold {
-			// RESET: It's been a while, so this is likely a NEW run. Start fresh.
-			fmt.Printf("🔄 Resetting card for node %s (silence > %v)\n", incomingNode, resetThreshold)
-			existing.Data["summary"] = cleanText
-		} else {
-			// APPEND: Continue adding to the current card
-			lastSummary, _ := existing.Data["summary"].(string)
-			existing.Data["summary"] = lastSummary + cleanText
+	// SAVE TO DB
+	if feedStore != nil {
+		card := &store.Card{
+			CardType:   cardType,
+			Priority:   priority,
+			SourceNode: incomingNode,
+			Data:       data,
 		}
 
-		existing.Timestamp = time.Now().Format(time.RFC3339)
-		// DON'T return early - the existing pointer is already in currentFeed
-		return
-	}
+		// DEBUG: Check summary length
+		if summary, ok := data["summary"].(string); ok {
+			fmt.Printf("DEBUG: Saving Card Node='%s' SummaryLen=%d\n", incomingNode, len(summary))
+		}
 
-	// No bucket – create a new FeedItem and store it
-	uniqueID := atomic.AddInt64(&eventCounter, 1)
-	if incomingNode != "" {
-		data["title"] = incomingNode
+		if err := feedStore.UpsertCard(ctx, deviceID, card); err != nil { // Use deviceID parameter
+			fmt.Printf("DB ERROR: %v\n", err)
+		}
 	}
-	newItem := FeedItem{
-		ID:         fmt.Sprintf("evt-%d-%d", time.Now().UnixNano(), uniqueID),
-		CardType:   cardType,
-		Priority:   priority,
-		Timestamp:  time.Now().Format(time.RFC3339),
-		SourceNode: incomingNode,
-		Data:       data,
-	}
-
-	// Store pointer in bucket map AND add pointer to feed
-	itemPointer := &newItem
-	if incomingNode != "" {
-		nodeBuckets[incomingNode] = itemPointer
-	}
-	// Prepend to feed slice (most recent first) - using POINTER so updates propagate
-	currentFeed = append([]*FeedItem{itemPointer}, currentFeed...)
 }
 
 func shouldSkipMessage(message, eventType, rawJSON, nodeName string) bool {
@@ -414,11 +417,14 @@ func mapToCard(message string, destination string) (string, string, map[string]i
 		data["location"] = "Destination"
 		data["condition"] = "Cloudy"
 		data["condition"] = "Cloudy"
-		query := "weather sky"
-		if destination != "" {
-			query = destination + " weather sky"
+
+		// Extract country from destination (e.g., "Delhi, India" -> "India")
+		country := extractCountry(destination)
+		query := "landscape"
+		if country != "" {
+			query = country // Just the country name
 		}
-		fmt.Printf("DEBUG: Unsplash Weather Query: '%s' (Dest: '%s')\n", query, destination)
+		fmt.Printf("DEBUG: Unsplash Weather Query: '%s' (Country: '%s')\n", query, country)
 		if img, name, link := fetchUnsplashImage(query); img != "" {
 			data["imageUrl"] = img
 			data["imageUser"] = name
@@ -431,11 +437,13 @@ func mapToCard(message string, destination string) (string, string, map[string]i
 		data["source"] = "Genius Loci"
 		data["category"] = "Culture"
 		data["colorTheme"] = "purple"
-		query := "Sri Lanka travel culture"
-		if destination != "" {
-			query = destination + " culture travel"
+
+		country := extractCountry(destination)
+		query := "culture"
+		if country != "" {
+			query = country // Just the country name
 		}
-		fmt.Printf("DEBUG: Unsplash Culture Query: '%s' (Dest: '%s')\n", query, destination)
+		fmt.Printf("DEBUG: Unsplash Culture Query: '%s' (Country: '%s')\n", query, country)
 		if img, name, link := fetchUnsplashImage(query); img != "" {
 			data["imageUrl"] = img
 			data["imageUser"] = name
@@ -448,11 +456,13 @@ func mapToCard(message string, destination string) (string, string, map[string]i
 		data["source"] = "Final Synthesis"
 		data["category"] = "Report"
 		data["colorTheme"] = "green"
-		query := "travel itinerary planner"
-		if destination != "" {
-			query = destination + " travel landscape"
+
+		country := extractCountry(destination)
+		query := "travel"
+		if country != "" {
+			query = country // Just the country name
 		}
-		fmt.Printf("DEBUG: Unsplash Report Query: '%s' (Dest: '%s')\n", query, destination)
+		fmt.Printf("DEBUG: Unsplash Report Query: '%s' (Country: '%s')\n", query, country)
 		if img, name, link := fetchUnsplashImage(query); img != "" {
 			data["imageUrl"] = img
 			data["imageUser"] = name
@@ -484,9 +494,10 @@ func refineCardType(title string, message string, cardType *string, priority *st
 		data["location"] = "Destination"
 		data["condition"] = "Cloudy"
 		data["condition"] = "Cloudy"
-		query := "sky clouds weather"
-		if destination != "" {
-			query = destination + " weather"
+		country := extractCountry(destination)
+		query := "landscape"
+		if country != "" {
+			query = country // Just the country name
 		}
 		if img, name, link := fetchUnsplashImage(query); img != "" {
 			data["imageUrl"] = img
@@ -501,9 +512,10 @@ func refineCardType(title string, message string, cardType *string, priority *st
 		data["category"] = "Culture"
 		data["colorTheme"] = "purple"
 		data["colorTheme"] = "purple"
-		query := "Sri Lanka culture tradition"
-		if destination != "" {
-			query = destination + " culture tradition"
+		country := extractCountry(destination)
+		query := "culture"
+		if country != "" {
+			query = country // Just the country name
 		}
 		if img, name, link := fetchUnsplashImage(query); img != "" {
 			data["imageUrl"] = img
@@ -518,9 +530,10 @@ func refineCardType(title string, message string, cardType *string, priority *st
 		data["category"] = "Report"
 		data["colorTheme"] = "green"
 		data["colorTheme"] = "green"
-		query := "travel landscape destination"
-		if destination != "" {
-			query = destination + " travel"
+		country := extractCountry(destination)
+		query := "travel landscape"
+		if country != "" {
+			query = country + " travel landscape"
 		}
 		if img, name, link := fetchUnsplashImage(query); img != "" {
 			data["imageUrl"] = img
@@ -535,8 +548,10 @@ func refineCardType(title string, message string, cardType *string, priority *st
 // fetchUnsplashImage queries the Unsplash API for a random photo matching the query.
 // It returns the photo URL, photographer name, and profile link (or empty strings).
 func fetchUnsplashImage(query string) (string, string, string) {
+	fmt.Printf("🔍 fetchUnsplashImage called with query: '%s'\n", query)
 	apiKey := os.Getenv("UNSPLASH_ACCESS_KEY")
 	if apiKey == "" {
+		fmt.Println("❌ UNSPLASH_ACCESS_KEY not set!")
 		return "", "", ""
 	}
 
@@ -554,6 +569,29 @@ func fetchUnsplashImage(query string) (string, string, string) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusNotFound {
+		// Query too specific, try simpler fallback
+		fmt.Printf("⚠️ Unsplash returned 404 for '%s', trying simpler query...\n", query)
+
+		// Extract just the destination (remove ", Sri Lanka" or similar patterns)
+		simplifiedQuery := query
+		if idx := strings.Index(query, ","); idx > 0 {
+			simplifiedQuery = strings.TrimSpace(query[:idx])
+		}
+		// Remove very specific terms
+		simplifiedQuery = strings.ReplaceAll(simplifiedQuery, " culture tradition", " travel")
+		simplifiedQuery = strings.ReplaceAll(simplifiedQuery, " weather sky", " landscape")
+
+		if simplifiedQuery != query {
+			fmt.Printf("🔄 Retrying with: '%s'\n", simplifiedQuery)
+			// Recursive retry with simplified query
+			return fetchUnsplashImage(simplifiedQuery)
+		}
+
+		fmt.Printf("⚠️ Unsplash API Returned: 404 (No images found)\n")
+		return "", "", ""
+	}
+
 	if resp.StatusCode != http.StatusOK {
 		fmt.Printf("⚠️ Unsplash API Returned: %d\n", resp.StatusCode)
 		return "", "", ""
@@ -564,6 +602,9 @@ func fetchUnsplashImage(query string) (string, string, string) {
 			Regular string `json:"regular"`
 			Small   string `json:"small"`
 		} `json:"urls"`
+		Links struct {
+			DownloadLocation string `json:"download_location"`
+		} `json:"links"`
 		User struct {
 			Name  string `json:"name"`
 			Links struct {
@@ -575,6 +616,31 @@ func fetchUnsplashImage(query string) (string, string, string) {
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		fmt.Printf("⚠️ Unsplash Decode Error: %v\n", err)
 		return "", "", ""
+	}
+
+	// Trigger download tracking (required by Unsplash API guidelines)
+	// Run asynchronously with timeout to prevent blocking if Unsplash is down
+	if result.Links.DownloadLocation != "" {
+		fmt.Printf("📸 Unsplash: Triggering download for image...\n")
+		go func(downloadURL, clientID string) {
+			// Append client_id to download URL (required for authentication)
+			if !strings.Contains(downloadURL, "client_id=") {
+				separator := "?"
+				if strings.Contains(downloadURL, "?") {
+					separator = "&"
+				}
+				downloadURL = fmt.Sprintf("%s%sclient_id=%s", downloadURL, separator, clientID)
+			}
+
+			trackClient := &http.Client{Timeout: 2 * time.Second}
+			trackResp, err := trackClient.Get(downloadURL)
+			if err != nil {
+				fmt.Printf("⚠️ Unsplash download tracking failed (non-critical): %v\n", err)
+				return
+			}
+			defer trackResp.Body.Close()
+			fmt.Printf("✅ Unsplash download tracked! (Status: %d)\n", trackResp.StatusCode)
+		}(result.Links.DownloadLocation, apiKey)
 	}
 
 	return result.Urls.Regular, result.User.Name, result.User.Links.Html
@@ -596,6 +662,23 @@ func contains(s, substr string) bool {
 	return strings.Contains(s, substr)
 }
 
+// extractCountry extracts the country from a destination string
+// Examples: "Delhi, India" -> "India", "Pasikuda, Sri Lanka" -> "Sri Lanka"
+func extractCountry(destination string) string {
+	if destination == "" {
+		return ""
+	}
+
+	// Check if destination contains a comma (e.g., "City, Country")
+	if idx := strings.LastIndex(destination, ","); idx > 0 && idx < len(destination)-1 {
+		country := strings.TrimSpace(destination[idx+1:])
+		return country
+	}
+
+	// If no comma, assume the whole destination is the country/region
+	return destination
+}
+
 // HealthHandler godoc
 // @Summary      Health Check
 // @Description  Get service health status
@@ -615,7 +698,27 @@ func HealthHandler(c *gin.Context) {
 // @Success      200  {array}   FeedItem
 // @Router       /api/feed [get]
 func GetFeedHandler(c *gin.Context) {
-	c.JSON(http.StatusOK, currentFeed)
+	// Identify User
+	// Identify User (Hybrid: Auth User > Device > IP)
+	ownerID := c.GetHeader("X-User-ID")
+	if ownerID == "" {
+		ownerID = c.GetHeader("X-Device-ID")
+	}
+	if ownerID == "" {
+		ownerID = c.ClientIP()
+	}
+
+	if feedStore == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "DB not initialized"})
+		return
+	}
+
+	feed, err := feedStore.GetFeed(c.Request.Context(), ownerID, 50)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch feed"})
+		return
+	}
+	c.JSON(http.StatusOK, feed)
 }
 
 // ClearFeedHandler godoc
@@ -626,15 +729,32 @@ func GetFeedHandler(c *gin.Context) {
 // @Success      200  {object}  map[string]string
 // @Router       /api/feed [delete]
 func ClearFeedHandler(c *gin.Context) {
-	bucketMutex.Lock()
-	defer bucketMutex.Unlock()
+	// Identify User
+	ownerID := c.GetHeader("X-User-ID")
+	if ownerID == "" {
+		ownerID = c.GetHeader("X-Device-ID")
+	}
+	if ownerID == "" {
+		ownerID = c.ClientIP()
+	}
 
-	currentFeed = []*FeedItem{}
-	nodeBuckets = make(map[string]*FeedItem)
-	lastActiveNode = ""
+	fmt.Printf("DEBUG ClearFeed: Attempting to delete for ownerID='%s'\n", ownerID)
+	fmt.Printf("DEBUG ClearFeed: X-User-ID='%s', X-Device-ID='%s', ClientIP='%s'\n",
+		c.GetHeader("X-User-ID"), c.GetHeader("X-Device-ID"), c.ClientIP())
 
-	fmt.Println("Feed and buckets cleared")
-	c.JSON(http.StatusOK, gin.H{"status": "cleared", "message": "Feed has been reset"})
+	if feedStore == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "DB not initialized"})
+		return
+	}
+
+	if err := feedStore.DeleteFeed(c.Request.Context(), ownerID); err != nil {
+		fmt.Printf("Error clearing feed for %s: %v\n", ownerID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to clear feed"})
+		return
+	}
+
+	fmt.Printf("INFO: Feed cleared for %s\n", ownerID)
+	c.JSON(http.StatusOK, gin.H{"status": "cleared", "message": "Feed cleared"})
 }
 
 // UploadAgentHandler godoc
@@ -716,9 +836,15 @@ func ChatStreamHandler(c *gin.Context) {
 		return
 	}
 
-	// 1. Get Session
-	clientID := c.ClientIP()
-	sess := session.GlobalManager.GetOrCreate(clientID)
+	// 1. Get Session Key (Use Hybrid Identity)
+	sessionKey := c.GetHeader("X-User-ID")
+	if sessionKey == "" {
+		sessionKey = c.GetHeader("X-Device-ID")
+	}
+	if sessionKey == "" {
+		sessionKey = c.ClientIP()
+	}
+	sess := session.GlobalManager.GetOrCreate(sessionKey)
 
 	// 2. Append User Message
 	sess.AppendMessage("user", req.Input)
@@ -779,8 +905,14 @@ INSTRUCTIONS:
 UPDATE_STATE: Key=Value
 ACTION: ...`, string(varsJSON), isPostReport)
 
+	// Get LiteLLM API Key from header if provided (user-specific key from market.niyogen.com)
+	litellmApiKey := c.GetHeader("X-LiteLLM-API-Key")
+	
 	fmt.Printf("GATEWAY: Thinking... (History: %d msgs)\n", len(history))
-	decision, err := GenerateContentFunc(convertHistory(history), systemMsg)
+	if litellmApiKey != "" {
+		fmt.Printf("GATEWAY: Using user-provided LiteLLM API Key\n")
+	}
+	decision, err := GenerateContentFunc(convertHistory(history), systemMsg, litellmApiKey)
 
 	// Default fallback
 	action := "ACTION: ASK_QUESTION Sorry, I am having trouble thinking right now."
@@ -889,15 +1021,18 @@ ACTION: ...`, string(varsJSON), isPostReport)
 		// Prepare Accumulator
 		var fullOutput strings.Builder
 		var mu sync.Mutex
+		nodeAccumulators := make(map[string]string)
+		currentAccumulatingNode := ""
+		var finalDest string // Capture destination for final flush
 
 		// Reset Stream State
-		bucketMutex.Lock()
-		nodeBuckets = map[string]*FeedItem{}
+		// bucketMutex.Lock() // Removed
+		// nodeBuckets = map[string]*FeedItem{}
 		lastActiveNode = ""
-		bucketMutex.Unlock()
+		// bucketMutex.Unlock() // Removed
 
 		// Run Agent
-		err := engine.Run(agentPath, agentInput, func(eventJSON string) {
+		err := engine.Run(agentPath, agentInput, loadMemoryConfig(), func(eventJSON string) {
 			fmt.Println("RAW FASTGRAPH EVENT:", eventJSON)
 			mu.Lock()
 			defer mu.Unlock()
@@ -908,16 +1043,82 @@ ACTION: ...`, string(varsJSON), isPostReport)
 			if dest == "" {
 				dest = vars["destination"] // Try lowercase fallback
 			}
+			finalDest = dest // Capture for final flush
 			fmt.Printf("DEBUG: Feed Update - Destination: '%s'\n", dest)
-			processAndAppendFeed(eventJSON, dest)
 
-			// Stream to Client
+			// ACCUMULATION LOGIC:
+			// Parse event to extract content and node
+			var evt struct {
+				Node    string `json:"node"`
+				Message string `json:"message"`
+				Text    string `json:"text"`
+				Type    string `json:"type"`
+			}
+			// Best effort parse
+			_ = json.Unmarshal([]byte(eventJSON), &evt)
+
+			content := evt.Message
+			if content == "" {
+				content = evt.Text
+			}
+
+			// Update Current Node Context if explicit
+			if evt.Node != "" {
+				currentAccumulatingNode = evt.Node
+			}
+
+			// If we have a current node context and content, accumulate and send FULL content
+			if currentAccumulatingNode != "" && content != "" {
+				nodeAccumulators[currentAccumulatingNode] += content
+
+				// Construct Synthetic Event with FULL accumulated content
+				// This ensures the DB Upsert replaces the card with the COMPLETE text so far
+				fullEventObj := map[string]string{
+					"type":    evt.Type, // Use original type (chunk)
+					"node":    currentAccumulatingNode,
+					"message": nodeAccumulators[currentAccumulatingNode],
+				}
+				// Default type to chunk if missing
+				if fullEventObj["type"] == "" {
+					fullEventObj["type"] = "chunk"
+				}
+
+				if fullEventBytes, err := json.Marshal(fullEventObj); err == nil {
+					processAndSaveFeed(c.Request.Context(), sessionKey, string(fullEventBytes), dest)
+				}
+			} else {
+				// Fallback for system events (like done/error) or chunks before any node is seen
+				processAndSaveFeed(c.Request.Context(), sessionKey, eventJSON, dest)
+			}
+
+			// Stream to Client (Send ORIGINAL chunk)
 			c.SSEvent("message", eventJSON)
 			c.Writer.Flush()
 
 			// Accumulate for Done
 			fullOutput.WriteString(extractTextFromEvent(eventJSON))
 		})
+
+		// --- FINAL CONSISTENCY FLUSH ---
+		// Ensure all accumulated nodes are saved in their final state
+		fmt.Println("DEBUG: Performing Final Consistency Flush of all cards...")
+		mu.Lock() // Safe access to nodeAccumulators
+		for node, content := range nodeAccumulators {
+			if node != "" && content != "" {
+				// Re-construct the full event structure
+				fullEventObj := map[string]string{
+					"type":    "chunk",
+					"node":    node,
+					"message": content,
+				}
+				if fullEventBytes, err := json.Marshal(fullEventObj); err == nil {
+					// Use the existing processAndSaveFeed logic which handles mapToCard, DB upsert, etc.
+					processAndSaveFeed(c.Request.Context(), sessionKey, string(fullEventBytes), finalDest)
+				}
+			}
+		}
+		mu.Unlock()
+		// -------------------------------
 
 		if err != nil {
 			c.SSEvent("error", err.Error())

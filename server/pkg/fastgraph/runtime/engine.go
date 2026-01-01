@@ -48,18 +48,28 @@ type ScheduleInfo struct {
 	Mode     string `json:"mode"`
 }
 
+// MemoryConfig holds configuration for the FastGraph memory layer
+type MemoryConfig struct {
+	Enabled    bool
+	Store      string // e.g., "vertex" or "inmemory"
+	ProjectID  string
+	Location   string
+	CorpusName string
+}
+
 // Real Engine Wrapper
 type Engine struct {
 	BinPath string
-	MockRun func(agentPath, input string, onEvent func(string)) error
+	MockRun func(agentPath, input string, memory *MemoryConfig, onEvent func(string)) error
 }
 
 func New() *Engine {
+	// ... existing binary discovery logic ...
 	// Check if binary exists, try Linux binary first (for cloud), then Windows
-	binPath := "./installer_v0.3.4/linux/fastgraph"
+	binPath := "./installer_v0.4.1/linux/fastgraph"
 	if _, err := os.Stat(binPath); os.IsNotExist(err) {
 		// Fallback to Windows executable (for local dev)
-		binPath = "./installer_v0.3.4/windows-amd64/fastgraph.exe"
+		binPath = "./installer_v0.4.1/windows-amd64/fastgraph.exe"
 		if _, err := os.Stat(binPath); os.IsNotExist(err) {
 			// Fallback to v0.3.3 for backward compatibility
 			binPath = "./installer_v0.3.3/windows/fastgraph.exe"
@@ -94,36 +104,69 @@ func (e *Engine) Inspect(agentPath string) (*AgentMetadata, error) {
 	}
 
 	var meta AgentMetadata
-	if err := json.Unmarshal(output, &meta); err != nil {
-		return nil, fmt.Errorf("failed to parse inspect output: %v", err)
+	if err := json.Unmarshal(output, &meta); err == nil {
+		return &meta, nil
 	}
-	return &meta, nil
+	// Fallback/Warning handled by caller or improve error here
+	return nil, fmt.Errorf("failed to parse inspect output: %v", err)
 }
 
 // Run executes the agent via CLI and streams output to the callback
-func (e *Engine) Run(agentPath string, input string, onEvent func(string)) error {
+func (e *Engine) Run(agentPath string, input string, memory *MemoryConfig, onEvent func(string)) error {
 	if e.MockRun != nil {
-		return e.MockRun(agentPath, input, onEvent)
+		return e.MockRun(agentPath, input, memory, onEvent)
 	}
 
-	fmt.Printf("CLI: Executing %s run %s --stream\n", e.BinPath, agentPath)
+	args := []string{"run", agentPath, "--input", input, "--stream"}
 
-	cmd := exec.Command(e.BinPath, "run", agentPath, "--input", input, "--stream") // #nosec G204
-	// Pass environment variables to the subprocess (especially OPENAI_API_KEY)
-	cmd.Env = os.Environ()
-
-	// DEBUG: Print Key Prefixes
-	gKey := os.Getenv("GOOGLE_API_KEY")
-	gMap := os.Getenv("GOOGLE_MAPS_KEY")
-	if len(gKey) > 10 {
-		fmt.Printf("DEBUG: GOOGLE_API_KEY prefix: %s...\n", gKey[:10])
-	} else {
-		fmt.Printf("DEBUG: GOOGLE_API_KEY length: %d\n", len(gKey))
+	// Apply Memory Configuration
+	if memory != nil && memory.Enabled {
+		fmt.Printf("CLI: Memory Enabled (Store: %s)\n", memory.Store)
+		args = append(args, "--memory-enabled")
+		if memory.Store != "" {
+			args = append(args, "--memory-store="+memory.Store)
+		} else {
+			// default to inmemory if not specified but enabled
+			args = append(args, "--memory-store=inmemory")
+		}
+		// Hardcoded defaults as per plan requirements/best practices
+		args = append(args, "--memory-cache=inmemory") // Always use cache for speed
 	}
-	if len(gMap) > 10 {
-		fmt.Printf("DEBUG: GOOGLE_MAPS_KEY prefix: %s...\n", gMap[:10])
+
+	fmt.Printf("CLI: Executing %s %v\n", e.BinPath, args)
+
+	cmd := exec.Command(e.BinPath, args...) // #nosec G204
+
+	// Pass environment variables to the subprocess
+	env := os.Environ()
+
+	// Inject Vertex Config if available
+	if memory != nil {
+		if memory.ProjectID != "" {
+			env = append(env, "VERTEX_PROJECT_ID="+memory.ProjectID)
+		}
+		if memory.Location != "" {
+			env = append(env, "VERTEX_LOCATION="+memory.Location)
+		}
+		if memory.CorpusName != "" {
+			env = append(env, "VERTEX_CORPUS_NAME="+memory.CorpusName)
+		}
+	}
+	cmd.Env = env
+
+	// DEBUG: Print Key Prefixes explicitly from cmd.Env to be sure
+	var debugMapKey string
+	for _, e := range cmd.Env {
+		if strings.HasPrefix(e, "GOOGLE_MAPS_KEY=") {
+			debugMapKey = strings.TrimPrefix(e, "GOOGLE_MAPS_KEY=")
+			break
+		}
+	}
+	if len(debugMapKey) > 10 {
+		fmt.Printf("DEBUG SUBPROCESS: GOOGLE_MAPS_KEY sent to agent: %s...\n", debugMapKey[:15])
+		fmt.Printf("DEBUG SUBPROCESS: Key Length: %d\n", len(debugMapKey))
 	} else {
-		fmt.Printf("DEBUG: GOOGLE_MAPS_KEY length: %d\n", len(gMap))
+		fmt.Printf("DEBUG SUBPROCESS: GOOGLE_MAPS_KEY MISSING or TOO SHORT! (Val='%s')\n", debugMapKey)
 	}
 
 	// Create Pipes
@@ -221,10 +264,15 @@ func (e *Engine) Run(agentPath string, input string, onEvent func(string)) error
 
 						// Successfully parsed JSON - forward as chunk event with node metadata
 						chunkEvent := map[string]string{
-							"type":      "chunk",
-							"message":   content,
-							"node":      data.Node,
-							"node_name": data.NodeName,
+							"type":    "chunk",
+							"message": content,
+						}
+						// Only include node identifiers if they are present
+						if data.Node != "" {
+							chunkEvent["node"] = data.Node
+						}
+						if data.NodeName != "" {
+							chunkEvent["node_name"] = data.NodeName
 						}
 
 						if jsonBytes, err := json.Marshal(chunkEvent); err == nil {

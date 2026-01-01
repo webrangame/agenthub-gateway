@@ -6,7 +6,9 @@ import WeatherCard from './WeatherCard';
 import AlertWidget from './AlertWidget';
 import VideoCard from './VideoCard';
 import ArticleCard from './ArticleCard';
+import JsonViewer from './JsonViewer';
 import { API_ENDPOINTS, API_BASE_URL } from '../utils/api';
+import { getDeviceId } from '../utils/device';
 import UserMenuInline from './UserMenuInline';
 import { buildMockFeed } from '../mock/mockFeed';
 
@@ -57,6 +59,8 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout }) => {
                     headers: {
                         'Accept': 'application/json',
                         'Content-Type': 'application/json',
+                        'X-Device-ID': getDeviceId(),
+                        'X-User-ID': typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : '',
                     },
                     cache: 'no-store',
                     // Add credentials for same-origin requests
@@ -107,12 +111,29 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout }) => {
         };
 
         fetchFeed();
+
         // Poll every 3 seconds for real-time updates
         const interval = setInterval(() => {
             if (useMock) setMockTick((t) => t + 1);
             fetchFeed();
         }, 3000);
-        return () => clearInterval(interval);
+
+        // Listen for reset events from ChatPanel
+        const handleFeedReset = () => {
+            console.log('[FeedPanel] Received feedReset event, refreshing immediately...');
+            fetchFeed();
+        };
+
+        if (typeof window !== 'undefined') {
+            window.addEventListener('feedReset', handleFeedReset);
+        }
+
+        return () => {
+            clearInterval(interval);
+            if (typeof window !== 'undefined') {
+                window.removeEventListener('feedReset', handleFeedReset);
+            }
+        };
     }, [mockTick]);
 
     const renderCard = (item: FeedItem) => {
@@ -174,41 +195,52 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout }) => {
                     );
                 case 'map_coord':
                     return (
-                        <div className="p-4 border border-[#9DBEF8] rounded-lg bg-[#EEF5FF] text-xs text-[#003580]">
-                            <div className="font-semibold mb-2">📍 Map Coordinates</div>
-                            <div className="text-[10px] font-mono">
-                                {item.data.lat && item.data.lng
-                                    ? `${item.data.lat}, ${item.data.lng}`
-                                    : JSON.stringify(item.data)}
+                        <div className="p-4 border border-blue-100 rounded-xl bg-white text-xs shadow-sm">
+                            <div className="flex items-center gap-2 font-bold text-blue-900 mb-2 uppercase tracking-wide text-[10px]">
+                                📍 Location Data
                             </div>
+                            <div className="grid grid-cols-2 gap-2 text-[11px] mb-3">
+                                <div className="bg-blue-50 p-2 rounded">
+                                    <div className="text-blue-400 text-[9px] uppercase font-bold">Latitude</div>
+                                    <div className="font-mono text-blue-900">{item.data.lat}</div>
+                                </div>
+                                <div className="bg-blue-50 p-2 rounded">
+                                    <div className="text-blue-400 text-[9px] uppercase font-bold">Longitude</div>
+                                    <div className="font-mono text-blue-900">{item.data.lng}</div>
+                                </div>
+                            </div>
+                            <JsonViewer data={item.data} label="Full Trace" />
                         </div>
                     );
                 default:
-                    // Generic card for unknown types - show all data
+                    // Generic card for unknown types
                     return (
-                        <div className="p-4 border border-[#9DBEF8] rounded-lg bg-[#EEF5FF] text-xs text-[#003580] shadow-sm">
-                            <div className="font-semibold mb-2 text-[#003580] uppercase tracking-wide">
-                                {item.card_type || 'Unknown'}
-                            </div>
-                            <div className="text-[10px] space-y-1">
-                                {item.data && Object.keys(item.data).length > 0 ? (
-                                    Object.entries(item.data).map(([key, value]) => (
-                                        <div key={key} className="flex">
-                                            <span className="font-mono font-semibold mr-2">{key}:</span>
-                                            <span className="font-mono">
-                                                {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                                            </span>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <div className="text-gray-400 italic">No data</div>
+                        <div className="bg-white p-4 border border-blue-100 rounded-xl shadow-sm transition-all hover:shadow-md">
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="bg-blue-100 text-blue-800 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                    {item.card_type?.replace(/_/g, ' ') || 'SYSTEM EVENT'}
+                                </span>
+                                {item.timestamp && (
+                                    <span className="text-[10px] text-gray-400 font-medium">
+                                        {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
                                 )}
                             </div>
-                            {item.timestamp && (
-                                <div className="text-[9px] text-gray-400 mt-2">
-                                    {new Date(item.timestamp).toLocaleString()}
-                                </div>
-                            )}
+
+                            {/* Key-Value Pairs for simple data */}
+                            <div className="space-y-1 mb-3">
+                                {Object.entries(item.data).slice(0, 3).map(([key, value]) => {
+                                    if (typeof value === 'object' || String(value).length > 50) return null;
+                                    return (
+                                        <div key={key} className="flex justify-between text-[11px] py-1 border-b border-gray-50 last:border-0">
+                                            <span className="font-medium text-gray-600 capitalize">{key.replace(/_/g, ' ')}</span>
+                                            <span className="font-mono text-blue-600 truncate max-w-[150px]">{String(value)}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            <JsonViewer data={item.data} label="View Raw Payload" />
                         </div>
                     );
             }

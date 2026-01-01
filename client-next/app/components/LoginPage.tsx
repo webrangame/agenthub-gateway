@@ -2,6 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { setUsername } from '../utils/auth';
 
 interface LoginPageProps {
     onLogin: () => void;
@@ -10,13 +11,32 @@ interface LoginPageProps {
 const AUTH_BASE = process.env.NEXT_PUBLIC_AUTH_BASE_URL?.replace(/\/$/, '') || 'https://market.niyogen.com';
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
+    const [showVip, setShowVip] = React.useState(false);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('vip') === 'true') {
+                setShowVip(true);
+            }
+        }
+    }, []);
     const handleRedirectToMarket = () => {
         // Get current URL to redirect back after login
         const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
         const redirectUrl = encodeURIComponent(currentUrl);
-        
+
         // Redirect to market signin page with redirect parameter
         window.location.href = `${AUTH_BASE}/signin?redirect=${redirectUrl}`;
+    };
+
+    const handleDevLogin = () => {
+        setUsername('Developer');
+        // Set a mock user ID for hybrid identity testing
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('userid', 'dev-user-123');
+        }
+        onLogin();
     };
 
     // Auto-redirect on mount (optional - you can remove this if you want user to click button)
@@ -81,6 +101,24 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                             Sign In with AgentHub
                         </button>
                     </div>
+
+                    {/* Local Dev / VIP Bypass */}
+                    {(process.env.NODE_ENV === 'development' || showVip) && (
+                        <div className="pt-2">
+                            <div className="relative flex py-2 items-center">
+                                <div className="flex-grow border-t border-gray-300"></div>
+                                <span className="flex-shrink-0 mx-4 text-gray-400 text-xs">Development</span>
+                                <div className="flex-grow border-t border-gray-300"></div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleDevLogin}
+                                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200 text-sm shadow-sm"
+                            >
+                                🛠️ Local Dev Login (Bypass)
+                            </button>
+                        </div>
+                    )}
 
                     {/* Footer */}
                     <div className="text-center text-xs text-gray-500 pt-4 border-t border-gray-200">

@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Upload, Trash2, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
+import { Send, Trash2, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import DragDropZone from './DragDropZone';
 import { API_ENDPOINTS } from '../utils/api';
+import { getDeviceId } from '../utils/device';
+import { getLiteLLMApiKey } from '../utils/auth';
 
 interface Message {
     id: string;
@@ -76,11 +77,19 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
         setIsStreaming(true);
 
         try {
+            const litellmApiKey = getLiteLLMApiKey();
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+                'X-Device-ID': getDeviceId(),
+                'X-User-ID': typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : '',
+            };
+            if (litellmApiKey) {
+                headers['X-LiteLLM-API-Key'] = litellmApiKey;
+            }
+            
             const response = await fetch(API_ENDPOINTS.chat, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers,
                 body: JSON.stringify({ input: userMsg.content }),
             });
 
@@ -208,11 +217,32 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
         }
     };
 
-    const handleReset = async () => {
-        if (!confirm('Are you sure you want to reset the conversation? This will clear all history.')) return;
+    const handleReset = async (e?: React.MouseEvent) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // Removed confirm dialog to rule out popup blockers
+        console.log('[ChatPanel] Reset clicked (no confirm), attempting DELETE request...');
 
         try {
-            await fetch(API_ENDPOINTS.feed, { method: 'DELETE' });
+            console.log(`[ChatPanel] DELETE ${API_ENDPOINTS.feed}`);
+            const response = await fetch(API_ENDPOINTS.feed, {
+                method: 'DELETE',
+                headers: {
+                    'X-Device-ID': getDeviceId(),
+                    'X-User-ID': typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : '',
+                }
+            });
+            console.log('[ChatPanel] DELETE response status:', response.status);
+
+            // Trigger feed refresh (dispatch custom event for FeedPanel to listen to)
+            if (typeof window !== 'undefined') {
+                console.log('[ChatPanel] Dispatching feedReset event');
+                window.dispatchEvent(new CustomEvent('feedReset'));
+            }
+
             setMessages([{
                 id: Date.now().toString(),
                 role: 'assistant',
@@ -247,21 +277,19 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
                 </button>
 
                 {/* Vertical Text */}
-                <div className="flex-1 flex flex-col items-center gap-4 w-full">
-                    <div style={{ writingMode: 'vertical-rl' }} className="text-white font-bold tracking-wider uppercase text-sm rotate-180">
-                        Trip Guardian
-                    </div>
+                <div style={{ writingMode: 'vertical-rl' }} className="text-white font-bold tracking-wider uppercase text-sm rotate-180">
+                    Trip Guardian
+                </div>
 
-                    <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center mt-4">
-                        <MessageSquare className="w-5 h-5 text-white/80" />
-                    </div>
+                <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center mt-4">
+                    <MessageSquare className="w-5 h-5 text-white/80" />
+                </div>
 
-                    <div className="relative group cursor-help">
-                        <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse border-2 border-[#003580]" />
-                        <span className="absolute left-6 top-1/2 -translate-y-1/2 bg-black/80 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                            Online
-                        </span>
-                    </div>
+                <div className="relative group cursor-help">
+                    <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse border-2 border-[#003580]" />
+                    <span className="absolute left-6 top-1/2 -translate-y-1/2 bg-black/80 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                        Online
+                    </span>
                 </div>
             </div>
         );
@@ -273,13 +301,14 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
             <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#003580] z-10 sticky top-0">
                 <h2 className="font-bold text-white tracking-wider">Trip Guardian</h2>
                 <div className="flex items-center gap-2">
-                    <button
+                    <div
+                        role="button"
                         onClick={handleReset}
                         title="Reset Conversation"
-                        className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                        className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
                     >
                         <Trash2 className="w-4 h-4" />
-                    </button>
+                    </div>
                     <span className="text-xs px-2 py-1 bg-white/15 text-white rounded-full flex items-center gap-1 border border-white/20">
                         <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                         Online
@@ -289,7 +318,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
                     {onToggleCollapse && (
                         <button
                             onClick={onToggleCollapse}
-                            className="p-1.5 ml-1 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors border border-transparent hover:border-white/20"
+                            className="hidden md:block p-1.5 ml-1 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors border border-transparent hover:border-white/20"
                             title="Collapse Panel"
                         >
                             <ChevronLeft className="w-4 h-4" />
@@ -299,11 +328,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                <div className="mb-6">
-                    <DragDropZone />
-                </div>
-
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 {messages.map((msg) => (
                     <div
                         key={msg.id}
@@ -380,7 +405,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
             </div>
 
             {/* Input Area */}
-            <div className="p-4 border-t border-gray-300 bg-white">
+            <div className="p-6 border-t border-gray-300 bg-white">
                 <div className="flex items-center gap-2 border border-blue-200 rounded-xl px-4 py-2 focus-within:border-[#003580] transition-all shadow-[0_6px_18px_rgba(0,0,0,0.06)] focus-within:shadow-[0_8px_24px_rgba(0,53,128,0.18)]">
                     <input
                         ref={inputRef}
@@ -399,11 +424,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
                     >
                         <Send className="w-4 h-4" />
                     </button>
-                </div>
-                <div className="text-center mt-2">
-                    <p className="text-[10px] text-gray-400">
-                        AI Agent can make mistakes. Verify important travel info.
-                    </p>
                 </div>
             </div>
         </div>
