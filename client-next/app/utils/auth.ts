@@ -9,6 +9,7 @@ export type AuthUser = {
   email?: string;
   username?: string;
   name?: string;
+  litellmApiKey?: string; // LiteLLM Virtual Key from market.niyogen.com
   [key: string]: unknown;
 };
 
@@ -32,6 +33,11 @@ export const setUsername = (username?: string | null) => {
   if (typeof window === 'undefined') return;
   if (username) localStorage.setItem('username', username);
   else localStorage.removeItem('username');
+};
+
+export const getLiteLLMApiKey = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('litellm_api_key');
 };
 
 export async function authMe(): Promise<{ ok: boolean; user?: AuthUser; error?: string }> {
@@ -119,7 +125,10 @@ export async function authLogout(): Promise<{ ok: boolean; error?: string }> {
     });
     // Even if backend fails, clear local UI state
     setUsername(null);
-    if (typeof window !== 'undefined') localStorage.removeItem('userid');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('userid');
+      localStorage.removeItem('litellm_api_key');
+    }
     if (!res.ok) return { ok: false, error: await parseError(res) };
     return { ok: true };
   } catch (e: unknown) {

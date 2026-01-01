@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { API_ENDPOINTS } from '../utils/api';
 import { getDeviceId } from '../utils/device';
+import { getLiteLLMApiKey } from '../utils/auth';
 
 interface Message {
     id: string;
@@ -76,13 +77,19 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
         setIsStreaming(true);
 
         try {
+            const litellmApiKey = getLiteLLMApiKey();
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+                'X-Device-ID': getDeviceId(),
+                'X-User-ID': typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : '',
+            };
+            if (litellmApiKey) {
+                headers['X-LiteLLM-API-Key'] = litellmApiKey;
+            }
+            
             const response = await fetch(API_ENDPOINTS.chat, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Device-ID': getDeviceId(),
-                    'X-User-ID': typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : '',
-                },
+                headers,
                 body: JSON.stringify({ input: userMsg.content }),
             });
 

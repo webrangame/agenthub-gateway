@@ -185,3 +185,5 @@ The `travel.niyogen.com` side is correctly configured:
 - [ ] Add `Access-Control-Allow-Credentials: true` header
 - [ ] Handle OPTIONS preflight request
 - [ ] Test from `travel.niyogen.com` browser console
+
+
