@@ -66,10 +66,10 @@ type Engine struct {
 func New() *Engine {
 	// ... existing binary discovery logic ...
 	// Check if binary exists, try Linux binary first (for cloud), then Windows
-	binPath := "./installer_v0.3.4/linux/fastgraph"
+	binPath := "./installer_v0.4.1/linux/fastgraph"
 	if _, err := os.Stat(binPath); os.IsNotExist(err) {
 		// Fallback to Windows executable (for local dev)
-		binPath = "./installer_v0.3.4/windows-amd64/fastgraph.exe"
+		binPath = "./installer_v0.4.1/windows-amd64/fastgraph.exe"
 		if _, err := os.Stat(binPath); os.IsNotExist(err) {
 			// Fallback to v0.3.3 for backward compatibility
 			binPath = "./installer_v0.3.3/windows/fastgraph.exe"

@@ -29,17 +29,53 @@ jobs:
       client: ${{ steps.filter.outputs.client }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
         with:
-          filters: |
-            server:
-              - 'server/**'
-              - '.github/workflows/deploy.yml'
-              - 'aws/gateway-task-def.json'
-            client:
-              - 'client-next/**'
-              - '.github/workflows/deploy.yml'
+          fetch-depth: 0
+
+      - name: Detect Changes
+        id: filter
+        run: |
+          echo "Detecting changes..."
+          
+          # Default to false
+          SERVER_CHANGED="false"
+          CLIENT_CHANGED="false"
+
+          # If this is a PR, diff against the base branch
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            BASE_REF="origin/${{ github.base_ref }}"
+            HEAD_REF="${{ github.event.pull_request.head.sha }}"
+            echo "PR Detected. Diffing $BASE_REF...$HEAD_REF"
+            CHANGED_FILES=$(git diff --name-only $BASE_REF $HEAD_REF || echo "")
+          else
+            # For push, diff against the previous commit
+            BEFORE="${{ github.event.before }}"
+            AFTER="${{ github.sha }}"
+            echo "Push Detected. Diffing $BEFORE...$AFTER"
+            # Handle force push or new branch case where 'before' might be empty or zero
+            if [ -z "$BEFORE" ] || [ "$BEFORE" == "0000000000000000000000000000000000000000" ]; then
+               CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD || echo "")
+            else
+               CHANGED_FILES=$(git diff --name-only $BEFORE $AFTER || echo "")
+            fi
+          fi
+
+          echo "Changed Files:"
+          echo "$CHANGED_FILES"
+
+          if echo "$CHANGED_FILES" | grep -qE "^server/|^\.github/workflows/deploy.yml|^aws/gateway-task-def.json"; then
+            SERVER_CHANGED="true"
+          fi
+
+          if echo "$CHANGED_FILES" | grep -qE "^client-next/|^\.github/workflows/deploy.yml"; then
+            CLIENT_CHANGED="true"
+          fi
+
+          echo "Server Changed: $SERVER_CHANGED"
+          echo "Client Changed: $CLIENT_CHANGED"
+
+          echo "server=$SERVER_CHANGED" >> $GITHUB_OUTPUT
+          echo "client=$CLIENT_CHANGED" >> $GITHUB_OUTPUT
 
   # ------------------------------------------------------------------
   # BACKEND VALIDATION (Runs on PRs & Push if server changes)
@@ -60,8 +96,8 @@ jobs:
 
       - name: Setup Test Environment
         run: |
-          chmod +x installer_v0.3.3/linux/fastgraph
-          cp installer_v0.3.3/linux/fastgraph server/fastgraph
+          chmod +x installer_v0.4.1/linux/fastgraph
+          cp installer_v0.4.1/linux/fastgraph server/fastgraph
           chmod +x server/fastgraph
 
       - name: Run Tests
