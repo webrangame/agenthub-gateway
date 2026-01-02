@@ -1,0 +1,114 @@
+﻿
+[1m[46m RUN [49m[22m [36mv4.0.16 [39m[90mC:/Users/Antigravity/AiGuardian/client-next[39m
+
+ [31m❯[39m app/components/ChatPanel.test.tsx [2m([22m[2m8 tests[22m[2m | [22m[31m8 failed[39m[2m)[22m[32m 52[2mms[22m[39m
+[31m     [31m×[31m renders welcome message[39m[32m 28[2mms[22m[39m
+[31m     [31m×[31m sends message on button click[39m[32m 6[2mms[22m[39m
+[31m     [31m×[31m sends message on Enter key press[39m[32m 3[2mms[22m[39m
+[31m     [31m×[31m does not send on Shift+Enter[39m[32m 2[2mms[22m[39m
+[31m     [31m×[31m renders in collapsed mode[39m[32m 4[2mms[22m[39m
+[31m     [31m×[31m calls onToggleCollapse when expand button is clicked[39m[32m 2[2mms[22m[39m
+[31m     [31m×[31m clears conversation on reset[39m[32m 3[2mms[22m[39m
+[31m     [31m×[31m shows error message on fetch failure[39m[32m 2[2mms[22m[39m
+node.exe : 
+At C:\nvm4w\nodejs\npx.ps1:29 char:3
++   & $NODE_EXE $NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandEr 
+   ror
+ 
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 8 
+[49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m 
+app/components/ChatPanel.test.tsx[2m > 
+[22mChatPanel[2m > [22mrenders welcome 
+message
+[41m[1m FAIL [22m[49m 
+app/components/ChatPanel.test.tsx[2m > 
+[22mChatPanel[2m > [22msends message on 
+button click
+[41m[1m FAIL [22m[49m 
+app/components/ChatPanel.test.tsx[2m > 
+[22mChatPanel[2m > [22msends message on 
+Enter key press
+[41m[1m FAIL [22m[49m 
+app/components/ChatPanel.test.tsx[2m > 
+[22mChatPanel[2m > [22mdoes not send on 
+Shift+Enter
+[41m[1m FAIL [22m[49m 
+app/components/ChatPanel.test.tsx[2m > 
+[22mChatPanel[2m > [22mrenders in 
+collapsed mode
+[41m[1m FAIL [22m[49m 
+app/components/ChatPanel.test.tsx[2m > 
+[22mChatPanel[2m > [22mcalls 
+onToggleCollapse when expand button is clicked
+[41m[1m FAIL [22m[49m 
+app/components/ChatPanel.test.tsx[2m > 
+[22mChatPanel[2m > [22mclears conversation 
+on reset
+[41m[1m FAIL [22m[49m 
+app/components/ChatPanel.test.tsx[2m > 
+[22mChatPanel[2m > [22mshows error message 
+on fetch failure
+[31m[1mError[22m: could not find 
+react-redux context value; please ensure the 
+component is wrapped in a <Provider>[39m
+[90m [2m❯[22m useReduxContext2 node_modules
+/react-redux/dist/react-redux.mjs:[2m916:13[
+22m[39m
+[90m [2m❯[22m useSelector2 node_modules/rea
+ct-redux/dist/react-redux.mjs:[2m976:26[22m
+[39m
+[36m [2m❯[22m ChatPanel app/components/Chat
+Panel.tsx:[2m40:18[22m[39m
+    [90m 38| [39mconst ChatPanel: 
+React.FC<ChatPanelProps> = ({ isCollapsed = 
+false, on…
+    [90m 39| [39m    [90m// Get user ID 
+from Redux store (preferred) or use prop as 
+fallback[39m
+    [90m 40| [39m    [35mconst[39m user 
+[33m=[39m [34museAppSelector[39m((state) 
+[33m=>[39m state[33m.[39muser[33m.[39mus
+er)[33m;[39m
+    [90m   | [39m                 
+[31m^[39m
+    [90m 41| [39m    const effectiveUserId 
+= user?.id?.toString() || userId || (typeof …
+    [90m 42| [39m
+[90m [2m❯[22m 
+Object.react_stack_bottom_frame node_modules/r
+eact-dom/cjs/react-dom-client.development.js:
+[2m25904:20[22m[39m
+[90m [2m❯[22m renderWithHooks node_modules/
+react-dom/cjs/react-dom-client.development.js:
+[2m7662:22[22m[39m
+[90m [2m❯[22m updateFunctionComponent node_
+modules/react-dom/cjs/react-dom-client.develop
+ment.js:[2m10166:19[22m[39m
+[90m [2m❯[22m beginWork node_modules/react-
+dom/cjs/react-dom-client.development.js:[2m11
+778:18[22m[39m
+[90m [2m❯[22m runWithFiberInDEV node_module
+s/react-dom/cjs/react-dom-client.development.j
+s:[2m874:13[22m[39m
+[90m [2m❯[22m performUnitOfWork node_module
+s/react-dom/cjs/react-dom-client.development.j
+s:[2m17641:22[22m[39m
+[90m [2m❯[22m workLoopSync node_modules/rea
+ct-dom/cjs/react-dom-client.development.js:[2
+m17469:41[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯[22m[
+39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m8 failed[39m[22m[90m (8)[39m
+[2m   Start at [22m 17:09:58
+[2m   Duration [22m 2.61s[2m (transform 188ms, setup 0ms, import 1.12s, tests 52ms, environment 1.19s)[22m
+

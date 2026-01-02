@@ -33,18 +33,18 @@ const baseQuery = fetchBaseQuery({
   baseUrl: '/',
   prepareHeaders: (headers, { getState }) => {
     const state = getState() as RootState;
-    const userId = state.user.user?.id;
-    
+    const userId = state.user.user?.id || (typeof window !== 'undefined' ? localStorage.getItem('userid') : null);
+
     if (userId) {
       headers.set('X-User-ID', userId.toString());
     }
-    
+
     // Get device ID
     const deviceId = getDeviceId();
     if (deviceId) {
       headers.set('X-Device-ID', deviceId);
     }
-    
+
     // Get LiteLLM API key from localStorage
     if (typeof window !== 'undefined') {
       const litellmApiKey = localStorage.getItem('litellm_api_key');
@@ -52,7 +52,7 @@ const baseQuery = fetchBaseQuery({
         headers.set('X-LiteLLM-API-Key', litellmApiKey);
       }
     }
-    
+
     return headers;
   },
   credentials: 'include',
@@ -163,7 +163,7 @@ export const apiSlice = createApi({
         }
       },
     }),
-    
+
     // Chat endpoint - streaming response (custom queryFn for streaming)
     sendChatMessage: builder.mutation<Response, { input: string }>({
       queryFn: async ({ input }, { getState }) => {
@@ -204,7 +204,7 @@ export const apiSlice = createApi({
       },
       invalidatesTags: ['Chat', 'Feed'],
     }),
-    
+
     // Feed endpoint - GET
     getFeed: builder.query<any[], void>({
       query: () => ({

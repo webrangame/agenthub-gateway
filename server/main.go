@@ -199,8 +199,10 @@ func startScheduledExecution(agentPath string, schedule *runtime.ScheduleInfo) {
 	for range ticker.C {
 		fmt.Println("SCHEDULE: Triggering proactive run...")
 		fmt.Println("SCHEDULE: Triggering proactive run...")
+		// Per-run image cache
+		nodeImages := make(map[string]string)
 		if err := engine.Run(agentPath, "Proactive Check", loadMemoryConfig(), func(eventJSON string) {
-			processAndSaveFeed(context.Background(), "system_broadcast", eventJSON, "")
+			processAndSaveFeed(context.Background(), "system_broadcast", eventJSON, "", nodeImages)
 		}); err != nil {
 			fmt.Printf("Error running scheduled check for %s: %v\n", agentPath, err)
 		}
@@ -226,7 +228,7 @@ func loadMemoryConfig() *runtime.MemoryConfig {
 // For simplicity, keeping global for now as single-user demo, or refactor to map[deviceID]string
 var lastActiveNode string
 
-func processAndSaveFeed(ctx context.Context, deviceID string, eventJSON string, destination string) {
+func processAndSaveFeed(ctx context.Context, deviceID string, eventJSON string, destination string, nodeImages map[string]string) {
 	fmt.Println("ENGINE EVENT:", eventJSON)
 
 	// ... [Existing parsing logic mostly same, but need to adapt] ...
@@ -291,6 +293,19 @@ func processAndSaveFeed(ctx context.Context, deviceID string, eventJSON string, 
 		data["source_node"] = incomingNode
 	}
 
+	// IMAGE CACHING LOGIC
+	if incomingNode != "" && nodeImages != nil {
+		if cachedImg, ok := nodeImages[incomingNode]; ok {
+			// Reuse cached image
+			data["imageUrl"] = cachedImg
+		} else {
+			// Save new image to cache if present
+			if img, ok := data["imageUrl"].(string); ok && img != "" {
+				nodeImages[incomingNode] = img
+			}
+		}
+	}
+
 	// Final filters
 	if incomingNode == "" {
 		if title, ok := data["title"].(string); ok && title != "" {
@@ -298,7 +313,7 @@ func processAndSaveFeed(ctx context.Context, deviceID string, eventJSON string, 
 		}
 	}
 	// Only drop technical extraction nodes. Allow KnowledgeCheck to show up.
-	if incomingNode == "" || incomingNode == "ExtractDetails" || incomingNode == "ExtractCity" {
+	if incomingNode == "" || incomingNode == "ExtractDetails" || incomingNode == "ExtractCity" || incomingNode == "extractDetails" || incomingNode == "extractCity" {
 		fmt.Printf("DEBUG: Dropping message from node '%s': %s (len=%d)\n", incomingNode, message, len(message))
 		return
 	}
@@ -499,14 +514,14 @@ func mapToCard(message string, destination string) (string, string, map[string]i
 }
 
 func refineCardType(title string, message string, cardType *string, priority *string, data map[string]interface{}, destination string) {
-	if title == "NewsAlert" || contains(message, "SAFETY:") || contains(message, "Warning") {
+	if title == "newsAlert" || title == "NewsAlert" || contains(message, "SAFETY:") || contains(message, "Warning") {
 		*cardType = "safe_alert"
 		*priority = "high"
 		data["message"] = data["summary"]
 		data["level"] = "warning"
 		data["category"] = "Safety"
 		data["colorTheme"] = "red"
-	} else if title == "CheckWeather" || contains(message, "Weather") {
+	} else if title == "checkWeather" || title == "CheckWeather" || contains(message, "Weather") {
 		*cardType = "weather"
 		data["source"] = "Weather Agent"
 		data["category"] = "Weather"
@@ -515,7 +530,6 @@ func refineCardType(title string, message string, cardType *string, priority *st
 		data["description"] = data["summary"]
 		data["temp"] = "22°C"
 		data["location"] = "Destination"
-		data["condition"] = "Cloudy"
 		data["condition"] = "Cloudy"
 		country := extractCountry(destination)
 		query := "landscape"
@@ -529,11 +543,10 @@ func refineCardType(title string, message string, cardType *string, priority *st
 		} else {
 			data["imageUrl"] = "https://images.unsplash.com/photo-1592210454359-9043f067919b?auto=format&fit=crop&w=800&q=80"
 		}
-	} else if title == "GeniusLoci" || title == "KnowledgeCheck" || title == "ReviewSummarizer" {
+	} else if title == "geniusLoci" || title == "GeniusLoci" || title == "knowledgeCheck" || title == "KnowledgeCheck" || title == "reviewSummarizer" || title == "ReviewSummarizer" {
 		*cardType = "cultural_tip"
 		data["source"] = "Genius Loci"
 		data["category"] = "Culture"
-		data["colorTheme"] = "purple"
 		data["colorTheme"] = "purple"
 		country := extractCountry(destination)
 		query := "culture"
@@ -547,7 +560,7 @@ func refineCardType(title string, message string, cardType *string, priority *st
 		} else {
 			data["imageUrl"] = "https://images.unsplash.com/photo-1528642474498-1af0c17fd8c3?auto=format&fit=crop&w=800&q=80"
 		}
-	} else if title == "GenerateReport" {
+	} else if title == "generateReport" || title == "GenerateReport" {
 		*cardType = "article"
 		data["source"] = "Final Synthesis"
 		data["category"] = "Report"
@@ -851,8 +864,10 @@ var GenerateContentFunc = llm.GenerateContent
 
 func ChatStreamHandler(c *gin.Context) {
 	var req struct {
-		Input     string `json:"input"`
-		AgentPath string `json:"agent_path"`
+		Input        string `json:"input"`
+		AgentPath    string `json:"agent_path"`
+		ClientTime   string `json:"client_time"`   // ISO string or human readable
+		UserLocation string `json:"user_location"` // "City, Country"
 	}
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
@@ -881,58 +896,63 @@ func ChatStreamHandler(c *gin.Context) {
 	// Check State
 	isPostReport := sess.State == session.StatePostReport
 
-	systemMsg := fmt.Sprintf(`You are the "Guardian Assistant" for Trip Guardian.
+	// Prepare Context Strings
+	timeContext := req.ClientTime
+	if timeContext == "" {
+		timeContext = time.Now().Format("15:04 (Server Time)")
+	}
+	locContext := req.UserLocation
+	if locContext == "" {
+		locContext = "Unknown"
+	}
 
-CURRENT STATE:
+	// System Prompt with JSON Schema AND Context
+	systemMsg := fmt.Sprintf(`You are the "Trip Guardian & Tour Planner".
+Your goal is to be a helpful, fun, and protective travel companion.
+
+CONTEXT:
+- Current User Time: %s
+- User Location: %s
 - Known Variables: %s
 - Report Generated: %v
 
-GOAL: 
-- If Report Generated = false: Collect MANDATORY data.
-- If Report Generated = true: Chat naturally. Do NOT run agent again unless explicitly asked.
+CORE PHILOSOPHY (The "Safe-Guide" Approach):
+1. **BE A GUIDE**: Suggest itineraries, food, and venues when asked.
+2. **BE A GUARDIAN**: Every recommendation MUST include a contextual safety tip (e.g., "Great food, but watch for pickpockets in that crowd.").
 
-SAFETY RAILS (ALWAYS ACTIVE):
-1. OFF-LIMITS: Medical advice, Legal advice, Violence/Hate speech.
-   - Response: "I cannot help with that. I am only a travel assistant."
-2. PERSONA: Stay in character as a helpful Travel Guardian.
+SAFETY RAILS:
+1. OFF-LIMITS: Medical/Legal advice, Violence/Hate speech.
+2. PERSONA: Enthusiastic but **CONCISE**. Save tokens. Avoid flowery language.
 
-TIER 1 (MANDATORY - BLOCKER):
-- Destination (City/Location)
-- Start Date (When?)
-- Duration (How long?)
-- Arrival/Departure Times (Time?)
-
-TIER 2 (OPTIONAL - ASK ONCE):
-- Specific Venues, Budget, Interests, Mode
+TIER 1 (MANDATORY for Deep Reports):
+- Destination, StartDate, Duration.
+*NOTE: You may still chat and give Advice even if these are missing. Gently nudge the user to provide them eventually.*
 
 INSTRUCTIONS:
-1. Analyze conversation.
-2. If new info is found, output: UPDATE_STATE: Key=Value
-3. LOGIC:
-   [IF Report Generated = FALSE]
-   - If Tier 1 MISSING -> ACTION: ASK_QUESTION <Specific Question>
-   - If Tier 1 COMPLETE but Tier 2 unknown -> ACTION: ASK_QUESTION <Polite inquiry>
-   - If User says "skip" or Tier 2 present -> ACTION: RUN_AGENT SUMMARY: [Context]
+1. Analyze conversation using Time/Location context.
+2. EXTRACT new details into 'updates' object.
+3. **TOKEN EFFICIENCY**: If the user just states their location (e.g., "I'm in Paris"), update 'Destination' but respond with a BRIEF acknowledgment only (e.g., "Noted, Paris."). Do NOT generate a guide unless explicitly asked.
 
-   [IF Report Generated = TRUE]
-   - MODE: Conversational. Do NOT run agent automatically.
-   - If user changes preferences (e.g. "I hate museums"):
-     1. UPDATE_STATE: Interests=No Museums
-     2. ACTION: ASK_QUESTION "Got it. I've updated your preferences. Should I regenerate the itinerary?"
-   - If user explicitly asks ("Yes", "Run again", "Update"):
-     -> ACTION: RUN_AGENT SUMMARY: [Context]
-   - Otherwise (General chat, follow-ups):
-     -> ACTION: ASK_QUESTION <Natural Reply>
+Output a JSON object:
+{
+  "updates": { "Destination": "Paris", "StartDate": "Tomorrow" },
+  "action": "ASK_QUESTION" | "RUN_AGENT",
+  "content": "The text to speak to the user or the summary for the agent"
+}
 
-4. Format:
-UPDATE_STATE: Key=Value
-ACTION: ...`, string(varsJSON), isPostReport)
+LOGIC:
+- If user asks for recommendations -> { "action": "ASK_QUESTION", "content": "Plan + Safety Tip" }
+- If basic details provided & user wants a full safety audit -> { "action": "RUN_AGENT", "content": "I'm performing a comprehensive safety scan for your trip. Check the Insight Stream tab for details." }
+- If Report Generated = TRUE -> Conversational mode.
+  - Unless user explicitly asks to run again -> "RUN_AGENT"
+
+RESPONSE MUST BE VALID JSON ONLY.`, timeContext, locContext, string(varsJSON), isPostReport)
 
 	// Get or Generate Per-User LiteLLM Key
 	userID := c.GetHeader("X-User-ID")
 	var litellmApiKey string
 
-	if userID != "" {
+	if userID != "" && feedStore != nil {
 		// Try to get existing key from database
 		key, err := feedStore.GetUserLiteLLMKey(c.Request.Context(), userID)
 		if err != nil {
@@ -977,60 +997,73 @@ ACTION: ...`, string(varsJSON), isPostReport)
 	if litellmApiKey != "" {
 		fmt.Printf("GATEWAY: Using LiteLLM API Key\n")
 	}
-	decision, err := GenerateContentFunc(convertHistory(history), systemMsg, litellmApiKey)
+	decisionResponse, err := GenerateContentFunc(convertHistory(history), systemMsg, litellmApiKey)
+	fmt.Printf("GATEWAY RAW RESPONSE: %s\n", decisionResponse)
 
 	// Default fallback
-	action := "ACTION: ASK_QUESTION Sorry, I am having trouble thinking right now."
+	action := "ASK_QUESTION"
+	content := "Sorry, I am having trouble thinking right now."
+	updates := make(map[string]string)
 
 	if err == nil {
-		decision = strings.TrimSpace(decision)
-		lines := strings.Split(decision, "\n")
+		// Clean response (remove markdown blocks if any)
+		decisionResponse = strings.TrimSpace(decisionResponse)
+		if strings.HasPrefix(decisionResponse, "```json") {
+			decisionResponse = strings.TrimPrefix(decisionResponse, "```json")
+			decisionResponse = strings.TrimSuffix(decisionResponse, "```")
+		}
+		decisionResponse = strings.TrimSpace(decisionResponse)
 
-		// Parse State Updates
-		updates := make(map[string]string)
-		for _, line := range lines {
-			line = strings.TrimSpace(line)
-			if strings.HasPrefix(line, "UPDATE_STATE:") {
-				parts := strings.SplitN(line, ":", 2)
-				if len(parts) == 2 {
-					kv := strings.SplitN(strings.TrimSpace(parts[1]), "=", 2)
-					if len(kv) == 2 {
-						// Normalize key to Title Case to match strict prompt expectations
-						key := cases.Title(language.English).String(strings.ToLower(strings.TrimSpace(kv[0])))
-						updates[key] = strings.TrimSpace(kv[1])
-					}
-				}
-			} else if strings.Contains(line, "ACTION:") {
-				action = line // Capture the action line
-			}
+		// Parse JSON
+		var decisionObj struct {
+			Updates map[string]string `json:"updates"`
+			Action  string            `json:"action"`
+			Content string            `json:"content"`
 		}
 
-		// Apply updates to session
-		if len(updates) > 0 {
-			sess.UpdateVariables(updates)
-			fmt.Printf("GATEWAY UPDATED STATE: %v\n", updates)
-		}
+		if jsonErr := json.Unmarshal([]byte(decisionResponse), &decisionObj); jsonErr == nil {
+			action = decisionObj.Action
+			content = decisionObj.Content
+			updates = decisionObj.Updates
 
-		// Fallback: If no ACTION was found but we have valid text, treat it as a question/response
-		// Check against default fallback to ensure we actually captured something new
-		if action == "ACTION: ASK_QUESTION Sorry, I am having trouble thinking right now." && len(decision) > 0 {
-			// Filter out update lines to find the "talk" part
-			var speechParts []string
-			for _, line := range lines {
-				if !strings.HasPrefix(strings.TrimSpace(line), "UPDATE_STATE:") && strings.TrimSpace(line) != "" {
-					speechParts = append(speechParts, line)
+			// Normalize Action
+			if !strings.HasPrefix(action, "ACTION: ") { // Legacy check just in case
+				if action == "RUN_AGENT" {
+					action = "ACTION: RUN_AGENT"
+				} else {
+					action = "ACTION: ASK_QUESTION"
 				}
 			}
-			if len(speechParts) > 0 {
-				cleanSpeech := strings.Join(speechParts, "\n")
-				action = "ACTION: ASK_QUESTION " + cleanSpeech
+			// If the LLM just returns raw Action enum, map it to the string the code expects below
+			// Actually, let's just construct the full legacy action string for compatibility with Step 4
+			if decisionObj.Action == "RUN_AGENT" {
+				action = "ACTION: RUN_AGENT SUMMARY: " + decisionObj.Content
+			} else {
+				action = "ACTION: ASK_QUESTION " + decisionObj.Content
 			}
+
+			// Apply updates to session
+			if len(updates) > 0 {
+				normalizedUpdates := make(map[string]string)
+				for k, v := range updates {
+					key := cases.Title(language.English).String(strings.ToLower(strings.TrimSpace(k)))
+					normalizedUpdates[key] = strings.TrimSpace(v)
+				}
+				sess.UpdateVariables(normalizedUpdates)
+				fmt.Printf("GATEWAY UPDATED STATE: %v\n", normalizedUpdates)
+			}
+		} else {
+			fmt.Printf("GATEWAY PARSE ERROR: %v (Response: %s)\n", jsonErr, decisionResponse)
+			// Fallback: If JSON fails, treat entire text as explanation
+			content = decisionResponse
+			action = "ACTION: ASK_QUESTION " + content
 		}
 	} else {
 		// Log actual error for admin
 		fmt.Printf("GATEWAY ERROR: %v\n", err)
 		// Friendly message for user
-		action = "ACTION: ASK_QUESTION I'm currently experiencing high traffic or a temporary system issue. Please try again in a moment."
+		content = "I'm currently experiencing high traffic or a temporary system issue. Please try again in a moment."
+		action = "ACTION: ASK_QUESTION " + content
 	}
 	fmt.Println("GATEWAY DECISION:", action)
 
@@ -1080,13 +1113,14 @@ ACTION: ...`, string(varsJSON), isPostReport)
 		}
 
 		// Notify User
-		c.SSEvent("chunk", `{"node": "Guardian Assistant:", "text": "Great! I have everything I need. Running Trip Guardian now..."}`)
+		c.SSEvent("chunk", `{"node": "Guardian Assistant:", "text": "Great! I have everything I need. I'm performing a comprehensive safety scan for your trip. Check the Insight Stream tab for details."}`)
 		c.Writer.Flush()
 
 		// Prepare Accumulator
 		var fullOutput strings.Builder
 		var mu sync.Mutex
 		nodeAccumulators := make(map[string]string)
+		nodeImages := make(map[string]string) // Cache for Unsplash images
 		currentAccumulatingNode := ""
 		var finalDest string // Capture destination for final flush
 
@@ -1149,11 +1183,11 @@ ACTION: ...`, string(varsJSON), isPostReport)
 				}
 
 				if fullEventBytes, err := json.Marshal(fullEventObj); err == nil {
-					processAndSaveFeed(c.Request.Context(), sessionKey, string(fullEventBytes), dest)
+					processAndSaveFeed(c.Request.Context(), sessionKey, string(fullEventBytes), dest, nodeImages)
 				}
 			} else {
 				// Fallback for system events (like done/error) or chunks before any node is seen
-				processAndSaveFeed(c.Request.Context(), sessionKey, eventJSON, dest)
+				processAndSaveFeed(c.Request.Context(), sessionKey, eventJSON, dest, nodeImages)
 			}
 
 			// Stream to Client (Send ORIGINAL chunk)
@@ -1178,7 +1212,7 @@ ACTION: ...`, string(varsJSON), isPostReport)
 				}
 				if fullEventBytes, err := json.Marshal(fullEventObj); err == nil {
 					// Use the existing processAndSaveFeed logic which handles mapToCard, DB upsert, etc.
-					processAndSaveFeed(c.Request.Context(), sessionKey, string(fullEventBytes), finalDest)
+					processAndSaveFeed(c.Request.Context(), sessionKey, string(fullEventBytes), finalDest, nodeImages)
 				}
 			}
 		}

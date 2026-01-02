@@ -57,7 +57,7 @@ const SplitLayout: React.FC<SplitLayoutProps> = ({ left, right, className, colla
             )}
         >
             {/* Mobile Tab Navigation (Visible only on small screens) */}
-            <div className="md:hidden flex items-center border-b border-gray-200 bg-white shadow-sm shrink-0">
+            <div className="md:hidden flex items-center border-b border-gray-200 bg-white shadow-sm shrink-0 sticky top-0 z-50">
                 <button
                     onClick={() => setMobileTab('chat')}
                     className={cn(
