@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,12 +29,12 @@ func TestCard_Structure(t *testing.T) {
 }
 
 func TestNewPostgresStore_InvalidConnectionString(t *testing.T) {
-	_, err := NewPostgresStore("invalid-connection-string")
+	_, err := NewPostgresStore(context.Background(), "invalid-connection-string")
 	assert.Error(t, err)
 }
 
 func TestNewPostgresStore_EmptyConnectionString(t *testing.T) {
-	_, err := NewPostgresStore("")
+	_, err := NewPostgresStore(context.Background(), "")
 	assert.Error(t, err)
 }
 

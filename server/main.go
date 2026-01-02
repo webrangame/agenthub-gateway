@@ -73,11 +73,33 @@ func main() {
 		os.Exit(1)
 	}
 	var err error
-	feedStore, err = store.NewPostgresStore(connStr)
+	// Attempt connection with timeout to avoid blocking startup indefinitely
+	// We'll treat the store as optional for startup to allow debugging logs to flush
+	// Try initial connection
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	pgStore, err := store.NewPostgresStore(ctx, connStr)
+	cancel()
+
 	if err != nil {
-		fmt.Printf("WARNING: Failed to connect to DB, feed will fail: %v\n", err)
+		fmt.Printf("WARNING: Failed to connect to DB initially: %v. Retrying in background...\n", err)
+		// Retry in background
+		go func() {
+			for {
+				time.Sleep(10 * time.Second)
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				s, err := store.NewPostgresStore(ctx, connStr)
+				cancel()
+				if err == nil {
+					fmt.Println("INFO: Connected to Postgres Store (Background Recovery)")
+					feedStore = s
+					return
+				}
+				fmt.Printf("WARNING: Background DB retry failed: %v\n", err)
+			}
+		}()
 	} else {
 		fmt.Println("INFO: Connected to Postgres Store")
+		feedStore = pgStore
 	}
 
 	// Init Session Manager
@@ -112,6 +134,7 @@ func main() {
 		"http://127.0.0.1:3000",
 		"https://market.niyogen.com",
 		"https://travel.niyogen.com",
+		"https://guardian-client-x6n5sofwia-uc.a.run.app", // Cloud Run Frontend
 	}
 	config.AllowCredentials = true
 	config.AddAllowHeaders("Authorization", "X-Device-ID") // Added X-Device-ID
@@ -907,7 +930,7 @@ ACTION: ...`, string(varsJSON), isPostReport)
 
 	// Get LiteLLM API Key from header if provided (user-specific key from market.niyogen.com)
 	litellmApiKey := c.GetHeader("X-LiteLLM-API-Key")
-	
+
 	fmt.Printf("GATEWAY: Thinking... (History: %d msgs)\n", len(history))
 	if litellmApiKey != "" {
 		fmt.Printf("GATEWAY: Using user-provided LiteLLM API Key\n")

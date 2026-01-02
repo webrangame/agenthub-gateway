@@ -18,6 +18,7 @@ interface Message {
 interface ChatPanelProps {
     isCollapsed?: boolean;
     onToggleCollapse?: () => void;
+    userId?: string;
 }
 
 // Helper to strip raw JSON and internal artifacts from agent output
@@ -33,7 +34,7 @@ const cleanAgentOutput = (text: string) => {
     return cleaned;
 };
 
-const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleCollapse }) => {
+const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleCollapse, userId }) => {
     const [messages, setMessages] = useState<Message[]>([
         {
             id: '1',
@@ -81,12 +82,12 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
             const headers: Record<string, string> = {
                 'Content-Type': 'application/json',
                 'X-Device-ID': getDeviceId(),
-                'X-User-ID': typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : '',
+                'X-User-ID': userId || (typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : ''),
             };
             if (litellmApiKey) {
                 headers['X-LiteLLM-API-Key'] = litellmApiKey;
             }
-            
+
             const response = await fetch(API_ENDPOINTS.chat, {
                 method: 'POST',
                 headers,
@@ -232,7 +233,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
                 method: 'DELETE',
                 headers: {
                     'X-Device-ID': getDeviceId(),
-                    'X-User-ID': typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : '',
+                    'X-User-ID': userId || (typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : ''),
                 }
             });
             console.log('[ChatPanel] DELETE response status:', response.status);
