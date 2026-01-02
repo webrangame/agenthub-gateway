@@ -9,6 +9,14 @@ export type AuthUser = {
   email?: string;
   username?: string;
   name?: string;
+  litellmApiKey?: string; // LiteLLM Virtual Key from market.niyogen.com
+  litellmKeyInfo?: {
+    key?: string;
+    tpmLimit?: number;
+    rpmLimit?: number;
+    spent?: number;
+    keyName?: string;
+  };
   [key: string]: unknown;
 };
 
@@ -34,7 +42,34 @@ export const setUsername = (username?: string | null) => {
   else localStorage.removeItem('username');
 };
 
-export async function authMe(): Promise<{ ok: boolean; user?: AuthUser; error?: string }> {
+export const getLiteLLMApiKey = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('litellm_api_key');
+};
+
+export const getLiteLLMKeyInfo = (): { key?: string; tpmLimit?: number; rpmLimit?: number; spent?: number; keyName?: string } | null => {
+  if (typeof window === 'undefined') return null;
+  const info = localStorage.getItem('litellm_key_info');
+  if (!info) return null;
+  try {
+    return JSON.parse(info);
+  } catch {
+    return null;
+  }
+};
+
+export const getUserInfo = (): { id?: string; email?: string; username?: string; name?: string } | null => {
+  if (typeof window === 'undefined') return null;
+  const info = localStorage.getItem('user_info');
+  if (!info) return null;
+  try {
+    return JSON.parse(info);
+  } catch {
+    return null;
+  }
+};
+
+export async function authMe(): Promise<{ ok: boolean; user?: AuthUser; userId?: string; error?: string }> {
   try {
     const res = await fetch(`${AUTH_BASE}/api/auth/me`, {
       method: 'GET',
@@ -75,7 +110,27 @@ export async function authMe(): Promise<{ ok: boolean; user?: AuthUser; error?: 
       localStorage.setItem('userid', user.id);
       console.log('[authMe] Store User ID:', user.id);
     }
-    return { ok: true, user };
+    // Store LiteLLM Virtual Key if provided by market.niyogen.com
+    if (typeof window !== 'undefined' && user?.litellmApiKey) {
+      localStorage.setItem('litellm_api_key', user.litellmApiKey);
+      console.log('[authMe] Store LiteLLM API Key');
+    }
+    // Store LiteLLM key info (TPM, RPM, Spent) if provided
+    if (typeof window !== 'undefined' && user?.litellmKeyInfo) {
+      localStorage.setItem('litellm_key_info', JSON.stringify(user.litellmKeyInfo));
+      console.log('[authMe] Store LiteLLM Key Info:', user.litellmKeyInfo);
+    }
+    // Store full user object for display in UI
+    if (typeof window !== 'undefined' && user) {
+      localStorage.setItem('user_info', JSON.stringify({
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        name: user.name,
+      }));
+      console.log('[authMe] Store User Info:', { id: user.id, email: user.email, username: user.username, name: user.name });
+    }
+    return { ok: true, user, userId: user?.id };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Network error';
     console.error('[authMe] Network error:', msg, e);
@@ -119,7 +174,12 @@ export async function authLogout(): Promise<{ ok: boolean; error?: string }> {
     });
     // Even if backend fails, clear local UI state
     setUsername(null);
-    if (typeof window !== 'undefined') localStorage.removeItem('userid');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('userid');
+      localStorage.removeItem('litellm_api_key');
+      localStorage.removeItem('litellm_key_info');
+      localStorage.removeItem('user_info');
+    }
     if (!res.ok) return { ok: false, error: await parseError(res) };
     return { ok: true };
   } catch (e: unknown) {

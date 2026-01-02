@@ -3,11 +3,16 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import AlertWidget from './AlertWidget';
+import VideoCard from './VideoCard';
+import ArticleCard from './ArticleCard';
+import JsonViewer from './JsonViewer';
 import TemplateTwo from './TemplateTwo';
 import { API_ENDPOINTS, API_BASE_URL } from '../utils/api';
 import { getDeviceId } from '../utils/device';
 import UserMenuInline from './UserMenuInline';
 import { buildMockFeed } from '../mock/mockFeed';
+import { useAppSelector } from '../store/hooks';
+import { useGetFeedQuery } from '../store/api/apiSlice';
 
 interface FeedItem {
     id: string;
@@ -19,9 +24,29 @@ interface FeedItem {
 
 interface FeedPanelProps {
     onLogout?: () => void;
+    userId?: string;
 }
 
-const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout }) => {
+const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
+    // Get user ID from Redux store (preferred) or use prop as fallback
+    const user = useAppSelector((state) => state.user.user);
+    const effectiveUserId = user?.id?.toString() || userId || (typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : '');
+    
+    // Determine if we should use mock feed
+    const useMock = (() => {
+        if (typeof window === 'undefined') return process.env.NEXT_PUBLIC_USE_MOCK_FEED === 'true';
+        const param = new URLSearchParams(window.location.search).get('mockFeed');
+        if (param === '0') return false;
+        if (param === '1') return true;
+        return process.env.NEXT_PUBLIC_USE_MOCK_FEED === 'true';
+    })();
+
+    // RTK Query for feed (skip if using mock)
+    const { data: feedData, isLoading: feedLoading, error: feedError, refetch } = useGetFeedQuery(undefined, {
+        pollingInterval: useMock ? 0 : 3000, // Poll every 3 seconds if not using mock
+        skip: useMock, // Skip RTK Query if using mock
+    });
+    
     const [feed, setFeed] = useState<FeedItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [showLogs, setShowLogs] = useState(false); // Default: Hide Logs
@@ -179,6 +204,46 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout }) => {
     };
 
     useEffect(() => {
+        // Handle RTK Query feed data
+        if (useMock) {
+            setFeed(buildMockFeed(mockTick) as any);
+            setLoading(false);
+            setError(null);
+        } else if (feedData) {
+            console.log('Feed data received from RTK Query:', feedData);
+            if (Array.isArray(feedData)) {
+                setFeed(feedData);
+                setError(null);
+            } else {
+                console.warn('Feed data is not an array:', feedData);
+                setFeed([]);
+                setError('Invalid response format from server');
+            }
+            setLoading(false);
+        } else if (feedError) {
+            console.error('Feed API error:', feedError);
+            let errorMessage = 'Failed to fetch feed';
+            if ('status' in feedError) {
+                // RTK Query error structure
+                if ('data' in feedError && feedError.data) {
+                    const errorData = feedError.data as any;
+                    errorMessage = errorData?.message || errorData?.error || 'Failed to fetch feed';
+                } else if ('error' in feedError) {
+                    errorMessage = String(feedError.error);
+                }
+            }
+            setError(errorMessage);
+            setFeed([]);
+            setLoading(false);
+        } else {
+            setLoading(feedLoading);
+        }
+    }, [mockTick, feedData, feedLoading, feedError, useMock]);
+
+    // Poll mock feed every 3 seconds
+    useEffect(() => {
+        if (!useMock) return;
+        
         // Default behavior: use real API from production server
         // Override:
         // - ?mockFeed=0 forces real backend (default)
@@ -286,6 +351,31 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout }) => {
 
         // Poll as fallback (slower) in case SSE drops
         const interval = setInterval(() => {
+            setMockTick((t) => t + 1);
+        }, 3000);
+
+        return () => clearInterval(interval);
+    }, [useMock]);
+
+    // Listen for reset events from ChatPanel
+    useEffect(() => {
+        const handleFeedReset = () => {
+            console.log('[FeedPanel] Received feedReset event, refreshing immediately...');
+            if (!useMock) {
+                refetch();
+            }
+        };
+
+        if (typeof window !== 'undefined') {
+            window.addEventListener('feedReset', handleFeedReset);
+        }
+
+        return () => {
+            if (typeof window !== 'undefined') {
+                window.removeEventListener('feedReset', handleFeedReset);
+            }
+        };
+    }, [useMock, refetch]);
             if (useMock) setMockTick((t) => t + 1);
             fetchFeed();
         }, 15000);
@@ -321,8 +411,57 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout }) => {
                         {item.data?.summary || JSON.stringify(item.data)}
                         </div>
                     );
+                case 'map_coord':
+                    return (
+                        <div className="p-4 border border-blue-100 rounded-xl bg-white text-xs shadow-sm">
+                            <div className="flex items-center gap-2 font-bold text-blue-900 mb-2 uppercase tracking-wide text-[10px]">
+                                📍 Location Data
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-[11px] mb-3">
+                                <div className="bg-blue-50 p-2 rounded">
+                                    <div className="text-blue-400 text-[9px] uppercase font-bold">Latitude</div>
+                                    <div className="font-mono text-blue-900">{item.data.lat}</div>
+                                </div>
+                                <div className="bg-blue-50 p-2 rounded">
+                                    <div className="text-blue-400 text-[9px] uppercase font-bold">Longitude</div>
+                                    <div className="font-mono text-blue-900">{item.data.lng}</div>
+                                </div>
+                            </div>
+                            <JsonViewer data={item.data} label="Full Trace" />
+                        </div>
+                    );
                 break;
                 default:
+                    // Generic card for unknown types
+                    return (
+                        <div className="bg-white p-4 border border-blue-100 rounded-xl shadow-sm transition-all hover:shadow-md">
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="bg-blue-100 text-blue-800 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                    {item.card_type?.replace(/_/g, ' ') || 'SYSTEM EVENT'}
+                                </span>
+                                {item.timestamp && (
+                                    <span className="text-[10px] text-gray-400 font-medium">
+                                        {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Key-Value Pairs for simple data */}
+                            <div className="space-y-1 mb-3">
+                                {Object.entries(item.data).slice(0, 3).map(([key, value]) => {
+                                    if (typeof value === 'object' || String(value).length > 50) return null;
+                                    return (
+                                        <div key={key} className="flex justify-between text-[11px] py-1 border-b border-gray-50 last:border-0">
+                                            <span className="font-medium text-gray-600 capitalize">{key.replace(/_/g, ' ')}</span>
+                                            <span className="font-mono text-blue-600 truncate max-w-[150px]">{String(value)}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            <JsonViewer data={item.data} label="View Raw Payload" />
+                        </div>
+                    );
                 // All other cards use TemplateTwo
                 content = <TemplateTwo {...toTemplateTwoProps(item)} />;
                 break;
@@ -363,7 +502,7 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout }) => {
                     >
                         {showLogs ? 'Hide Logs' : 'Debug'}
                     </button>
-                    {onLogout && <UserMenuInline onLogout={onLogout} />}
+                    <UserMenuInline onLogout={onLogout || (() => { })} />
                 </div>
             </div>
 

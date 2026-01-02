@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Upload, Trash2, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
+import { Send, Trash2, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import DragDropZone from './DragDropZone';
 import { API_ENDPOINTS } from '../utils/api';
 import { getDeviceId } from '../utils/device';
+import { useAppSelector } from '../store/hooks';
+import { useSendChatMessageMutation, useDeleteFeedMutation } from '../store/api/apiSlice';
 
 interface Message {
     id: string;
@@ -18,6 +19,7 @@ interface Message {
 interface ChatPanelProps {
     isCollapsed?: boolean;
     onToggleCollapse?: () => void;
+    userId?: string;
 }
 
 // Helper to strip raw JSON and internal artifacts from agent output
@@ -33,7 +35,15 @@ const cleanAgentOutput = (text: string) => {
     return cleaned;
 };
 
-const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleCollapse }) => {
+const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleCollapse, userId }) => {
+    // Get user ID from Redux store (preferred) or use prop as fallback
+    const user = useAppSelector((state) => state.user.user);
+    const effectiveUserId = user?.id?.toString() || userId || (typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : '');
+    
+    // RTK Query hooks
+    const [sendChatMessage] = useSendChatMessageMutation();
+    const [deleteFeed] = useDeleteFeedMutation();
+    
     const [messages, setMessages] = useState<Message[]>([
         {
             id: '1',
@@ -77,19 +87,15 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
         setIsStreaming(true);
 
         try {
-            const response = await fetch(API_ENDPOINTS.chat, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Device-ID': getDeviceId(),
-                    'X-User-ID': typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : '',
-                },
-                body: JSON.stringify({ input: userMsg.content }),
-            });
-
-            if (!response.ok) {
-                throw new Error(response.statusText);
+            // Use RTK Query mutation for chat (returns Response object)
+            const result = await sendChatMessage({ input: userMsg.content }).unwrap();
+            
+            if (!result || !result.body) {
+                throw new Error('Invalid response from server');
             }
+
+            // result is a Response object from RTK Query
+            const response = result;
 
             // Create placeholder text for streaming message
             const assistantMsgId = Date.now().toString();
@@ -211,17 +217,27 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
         }
     };
 
-    const handleReset = async () => {
-        if (!confirm('Are you sure you want to reset the conversation? This will clear all history.')) return;
+    const handleReset = async (e?: React.MouseEvent) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // Removed confirm dialog to rule out popup blockers
+        console.log('[ChatPanel] Reset clicked (no confirm), attempting DELETE request...');
 
         try {
-            await fetch(API_ENDPOINTS.feed, {
-                method: 'DELETE',
-                headers: {
-                    'X-Device-ID': getDeviceId(),
-                    'X-User-ID': typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : '',
-                }
-            });
+            console.log(`[ChatPanel] DELETE feed`);
+            // Use RTK Query mutation for delete
+            await deleteFeed().unwrap();
+            console.log('[ChatPanel] DELETE feed successful');
+
+            // Trigger feed refresh (dispatch custom event for FeedPanel to listen to)
+            if (typeof window !== 'undefined') {
+                console.log('[ChatPanel] Dispatching feedReset event');
+                window.dispatchEvent(new CustomEvent('feedReset'));
+            }
+
             setMessages([{
                 id: Date.now().toString(),
                 role: 'assistant',
@@ -256,21 +272,19 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
                 </button>
 
                 {/* Vertical Text */}
-                <div className="flex-1 flex flex-col items-center gap-4 w-full">
-                    <div style={{ writingMode: 'vertical-rl' }} className="text-white font-bold tracking-wider uppercase text-sm rotate-180">
-                        Trip Guardian
-                    </div>
+                <div style={{ writingMode: 'vertical-rl' }} className="text-white font-bold tracking-wider uppercase text-sm rotate-180">
+                    Trip Guardian
+                </div>
 
-                    <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center mt-4">
-                        <MessageSquare className="w-5 h-5 text-white/80" />
-                    </div>
+                <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center mt-4">
+                    <MessageSquare className="w-5 h-5 text-white/80" />
+                </div>
 
-                    <div className="relative group cursor-help">
-                        <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse border-2 border-[#003580]" />
-                        <span className="absolute left-6 top-1/2 -translate-y-1/2 bg-black/80 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                            Online
-                        </span>
-                    </div>
+                <div className="relative group cursor-help">
+                    <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse border-2 border-[#003580]" />
+                    <span className="absolute left-6 top-1/2 -translate-y-1/2 bg-black/80 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                        Online
+                    </span>
                 </div>
             </div>
         );
@@ -282,13 +296,14 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
             <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#003580] z-10 sticky top-0">
                 <h2 className="font-bold text-white tracking-wider">Trip Guardian</h2>
                 <div className="flex items-center gap-2">
-                    <button
+                    <div
+                        role="button"
                         onClick={handleReset}
                         title="Reset Conversation"
-                        className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                        className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
                     >
                         <Trash2 className="w-4 h-4" />
-                    </button>
+                    </div>
                     <span className="text-xs px-2 py-1 bg-white/15 text-white rounded-full flex items-center gap-1 border border-white/20">
                         <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                         Online
@@ -309,10 +324,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
 
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                <div className="mb-6">
-                    <DragDropZone />
-                </div>
-
                 {messages.map((msg) => (
                     <div
                         key={msg.id}

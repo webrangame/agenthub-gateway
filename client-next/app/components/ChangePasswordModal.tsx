@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { authSetPassword } from '../utils/auth';
+import { useAuthSetPasswordMutation } from '../store/api/apiSlice';
 
 interface ChangePasswordModalProps {
     onClose: () => void;
@@ -15,8 +15,10 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ onClose, onSu
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
     const [success, setSuccess] = useState(false);
+    
+    // RTK Query mutation for password change
+    const [authSetPassword, { isLoading }] = useAuthSetPasswordMutation();
 
     useEffect(() => {
         // Prevent body scroll when modal is open
@@ -51,19 +53,21 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ onClose, onSu
             return;
         }
 
-        setIsLoading(true);
-
         const run = async () => {
-            const result = await authSetPassword(currentPassword, newPassword);
-            if (result.ok) {
-                setSuccess(true);
-                setTimeout(() => {
-                    onSuccess();
-                }, 1500);
-            } else {
-                setError(result.error || 'Failed to change password');
+            try {
+                const result = await authSetPassword({ currentPassword, newPassword }).unwrap();
+                if (result.ok) {
+                    setSuccess(true);
+                    setTimeout(() => {
+                        onSuccess();
+                    }, 1500);
+                } else {
+                    setError(result.error || 'Failed to change password');
+                }
+            } catch (err: any) {
+                const errorMessage = err?.data?.error || err?.error || 'Failed to change password';
+                setError(errorMessage);
             }
-            setIsLoading(false);
         };
         run();
     };

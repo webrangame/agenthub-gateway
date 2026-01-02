@@ -20,34 +20,10 @@ env:
 
 jobs:
   # ------------------------------------------------------------------
-  # CHANGES: Detect which files changed
-  # ------------------------------------------------------------------
-  changes:
-    runs-on: ubuntu-latest
-    outputs:
-      server: ${{ steps.filter.outputs.server }}
-      client: ${{ steps.filter.outputs.client }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            server:
-              - 'server/**'
-              - '.github/workflows/deploy.yml'
-              - 'aws/gateway-task-def.json'
-            client:
-              - 'client-next/**'
-              - '.github/workflows/deploy.yml'
-
-  # ------------------------------------------------------------------
-  # BACKEND VALIDATION (Runs on PRs & Push if server changes)
+  # BACKEND VALIDATION (Runs on ALL PRs & Pushes)
   # ------------------------------------------------------------------
   test:
     name: Run Backend Tests
-    needs: changes
-    if: ${{ needs.changes.outputs.server == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -60,8 +36,8 @@ jobs:
 
       - name: Setup Test Environment
         run: |
-          chmod +x installer_v0.3.3/linux/fastgraph
-          cp installer_v0.3.3/linux/fastgraph server/fastgraph
+          chmod +x installer_v0.4.1/linux/fastgraph
+          cp installer_v0.4.1/linux/fastgraph server/fastgraph
           chmod +x server/fastgraph
 
       - name: Run Tests
@@ -71,8 +47,6 @@ jobs:
 
   lint:
     name: Run Backend Linter
-    needs: changes
-    if: ${{ needs.changes.outputs.server == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -90,8 +64,6 @@ jobs:
 
   security:
     name: Security Scan
-    needs: changes
-    if: ${{ needs.changes.outputs.server == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -108,16 +80,15 @@ jobs:
           gosec ./...
 
   # ------------------------------------------------------------------
-  # BACKEND DEPLOY (Runs ONLY on Master Push & Success & Server changes)
+  # BACKEND DEPLOY (Runs ALWAYS on Master Push & Success)
   # ------------------------------------------------------------------
   deploy_backend:
     name: Deploy Backend (GCP)
     needs: 
-      - changes
       - test
       - lint
       - security
-    if: ${{ github.ref == 'refs/heads/master' && needs.changes.outputs.server == 'true' }}
+    if: ${{ github.ref == 'refs/heads/master' }}
     runs-on: ubuntu-latest
     environment: production
 
@@ -149,14 +120,21 @@ jobs:
           service: 'guardian-gateway'
           image: '${{ env.ARTIFACT_REGISTRY }}/guardian-gateway:${{ github.sha }}'
           region: '${{ env.GCP_REGION }}'
+          secrets: |
+            DATABASE_URL=DATABASE_URL:latest
+            OPENAI_API_KEY=OPENAI_API_KEY:latest
+            GOOGLE_MAPS_KEY=GOOGLE_MAPS_KEY:latest
+            LITELLM_API_KEY=LITELLM_API_KEY:latest
+            LITELLM_PROXY_URL=LITELLM_PROXY_URL:latest
+            LITELLM_MASTER_KEY=LITELLM_MASTER_KEY:latest
+          env_vars: |
+            UNSPLASH_ACCESS_KEY=${{ secrets.UNSPLASH_ACCESS_KEY }}
 
   # ------------------------------------------------------------------
-  # FRONTEND VALIDATION (Runs on PRs & Push if client changes)
+  # FRONTEND VALIDATION
   # ------------------------------------------------------------------
   test_client:
     name: Run Frontend Build Check
-    needs: changes
-    if: ${{ needs.changes.outputs.client == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -180,13 +158,11 @@ jobs:
           npm run build
 
   # ------------------------------------------------------------------
-  # FRONTEND DEPLOY (Runs ONLY on Master Push & Client changes)
+  # FRONTEND DEPLOY (Runs ALWAYS on Master Push)
   # ------------------------------------------------------------------
   deploy_frontend:
     name: Deploy Frontend (GCP)
-    needs: changes
-    # Frontend validation can be added here as separate jobs (test, lint) if needed
-    if: ${{ github.ref == 'refs/heads/master' && needs.changes.outputs.client == 'true' }}
+    if: ${{ github.ref == 'refs/heads/master' }}
     runs-on: ubuntu-latest
     environment: production
 
@@ -220,56 +196,55 @@ jobs:
           region: '${{ env.GCP_REGION }}'
 
   # ------------------------------------------------------------------
-  # AWS BACKEND (Legacy/Backup) - Mirrors Backend Logic
+  # AWS BACKEND (DISABLED - Using Google Cloud only)
   # ------------------------------------------------------------------
-  deploy_aws:
-    name: Deploy Backend (AWS)
-    needs: 
-      - changes
-      - test
-      - lint
-      - security
-    if: ${{ github.ref == 'refs/heads/master' && needs.changes.outputs.server == 'true' }}
-    runs-on: ubuntu-latest
-    environment: production
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
-
-      - name: Build, tag, and push image to Amazon ECR
-        id: build-image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f server/Dockerfile .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
-
-      - name: Fill in the new image ID in the Amazon ECS task definition
-        id: task-def
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
-        with:
-          task-definition: ${{ env.ECS_TASK_DEFINITION }}
-          container-name: ${{ env.CONTAINER_NAME }}
-          image: ${{ steps.build-image.outputs.image }}
-
-      - name: Deploy Amazon ECS task definition
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-        with:
-          task-definition: ${{ steps.task-def.outputs.task-definition }}
-          service: ${{ env.ECS_SERVICE }}
-          cluster: ${{ env.ECS_CLUSTER }}
-          wait-for-service-stability: true
+  # deploy_aws:
+  #   name: Deploy Backend (AWS)
+  #   needs: 
+  #     - test
+  #     - lint
+  #     - security
+  #   if: ${{ github.ref == 'refs/heads/master' }}
+  #   runs-on: ubuntu-latest
+  #   environment: production
+  #
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #
+  #     - name: Configure AWS credentials
+  #       uses: aws-actions/configure-aws-credentials@v1
+  #       with:
+  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #         aws-region: ${{ env.AWS_REGION }}
+  #
+  #     - name: Login to Amazon ECR
+  #       id: login-ecr
+  #       uses: aws-actions/amazon-ecr-login@v1
+  #
+  #     - name: Build, tag, and push image to Amazon ECR
+  #       id: build-image
+  #       env:
+  #         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+  #         IMAGE_TAG: ${{ github.sha }}
+  #       run: |
+  #         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f server/Dockerfile .
+  #         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+  #         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+  #
+  #     - name: Fill in the new image ID in the Amazon ECS task definition
+  #       id: task-def
+  #       uses: aws-actions/amazon-ecs-render-task-definition@v1
+  #       with:
+  #         task-definition: ${{ env.ECS_TASK_DEFINITION }}
+  #         container-name: ${{ env.CONTAINER_NAME }}
+  #         image: ${{ steps.build-image.outputs.image }}
+  #
+  #     - name: Deploy Amazon ECS task definition
+  #       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+  #       with:
+  #         task-definition: ${{ steps.task-def.outputs.task-definition }}
+  #         service: ${{ env.ECS_SERVICE }}
+  #         cluster: ${{ env.ECS_CLUSTER }}
+  #         wait-for-service-stability: true

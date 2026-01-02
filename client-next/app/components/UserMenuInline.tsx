@@ -2,18 +2,30 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getUsername, authLogout } from '../utils/auth';
+import { useAppSelector, useAppDispatch } from '../store/hooks';
+import { useAuthLogoutMutation } from '../store/api/apiSlice';
+import { clearUser } from '../store/slices/userSlice';
 import ChangePasswordModal from './ChangePasswordModal';
+import LiteLLMKeyModal from './LiteLLMKeyModal';
+import UserInfoModal from './UserInfoModal';
 
 interface UserMenuInlineProps {
-    onLogout: () => void;
+    onLogout?: () => void;
 }
 
 const UserMenuInline: React.FC<UserMenuInlineProps> = ({ onLogout }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [showChangePassword, setShowChangePassword] = useState(false);
+    const [showLiteLLMKey, setShowLiteLLMKey] = useState(false);
+    const [showUserInfo, setShowUserInfo] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
-    const username = getUsername();
+    
+    // Get user from Redux store
+    const user = useAppSelector((state) => state.user.user);
+    const dispatch = useAppDispatch();
+    
+    // RTK Query mutation for logout
+    const [authLogoutMutation] = useAuthLogoutMutation();
 
     // Close menu when clicking outside
     useEffect(() => {
@@ -33,8 +45,32 @@ const UserMenuInline: React.FC<UserMenuInlineProps> = ({ onLogout }) => {
     }, [isOpen]);
 
     const handleLogout = async () => {
-        await authLogout();
-        onLogout();
+        try {
+            await authLogoutMutation().unwrap();
+            dispatch(clearUser());
+            // Clear localStorage
+            if (typeof window !== 'undefined') {
+                localStorage.removeItem('userid');
+                localStorage.removeItem('litellm_api_key');
+                localStorage.removeItem('litellm_key_info');
+                localStorage.removeItem('user_info');
+                localStorage.removeItem('username');
+            }
+        } catch (error) {
+            console.error('Logout error:', error);
+            // Clear user state even if API call fails
+            dispatch(clearUser());
+            if (typeof window !== 'undefined') {
+                localStorage.removeItem('userid');
+                localStorage.removeItem('litellm_api_key');
+                localStorage.removeItem('litellm_key_info');
+                localStorage.removeItem('user_info');
+                localStorage.removeItem('username');
+            }
+        }
+        if (onLogout) {
+            onLogout();
+        }
         setIsOpen(false);
     };
 
@@ -43,15 +79,25 @@ const UserMenuInline: React.FC<UserMenuInlineProps> = ({ onLogout }) => {
         setIsOpen(false);
     };
 
+    const handleShowLiteLLMKey = () => {
+        setShowLiteLLMKey(true);
+        setIsOpen(false);
+    };
+
     // Get user initials for avatar
     const getInitials = () => {
-        if (!username) return 'U';
-        return username
+        const name = user?.name || 'User';
+        return name
             .split(' ')
             .map(n => n[0])
             .join('')
             .toUpperCase()
             .slice(0, 2);
+    };
+    
+    const handleShowUserInfo = () => {
+        setShowUserInfo(true);
+        setIsOpen(false);
     };
 
     return (
@@ -60,10 +106,11 @@ const UserMenuInline: React.FC<UserMenuInlineProps> = ({ onLogout }) => {
                 {/* User Icon Button - Inline version */}
                 <button
                     onClick={() => setIsOpen(!isOpen)}
-                    className="w-8 h-8 rounded-full bg-[#003580] hover:bg-[#002a66] text-white shadow-md transition-all duration-200 flex items-center justify-center font-semibold text-xs focus:outline-none focus:ring-2 focus:ring-[#003580] focus:ring-offset-1"
-                    title={username || 'User'}
+                    className="w-10 h-10 rounded-full bg-[#003580] hover:bg-[#002a66] text-white shadow-lg transition-all duration-200 flex items-center justify-center font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-[#003580] focus:ring-offset-2 border-2 border-white"
+                    title={user?.name || user?.email || 'User'}
+                    aria-label="User menu"
                 >
-                    {username ? getInitials() : (
+                    {user ? getInitials() : (
                         <svg
                             className="w-4 h-4"
                             fill="none"
@@ -92,12 +139,68 @@ const UserMenuInline: React.FC<UserMenuInlineProps> = ({ onLogout }) => {
                         >
                             {/* User Info Header */}
                             <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-                                <p className="text-sm font-semibold text-gray-900">{username || 'User'}</p>
-                                <p className="text-xs text-gray-500 mt-0.5">Signed in</p>
+                                <p className="text-sm font-semibold text-gray-900">
+                                    {user?.name || user?.email || 'User'}
+                                </p>
+                                {user?.email && (
+                                    <p className="text-xs text-gray-600 mt-0.5 break-all">{user.email}</p>
+                                )}
+                                {user?.phoneNumber && (
+                                    <p className="text-xs text-gray-500 mt-0.5">{user.phoneNumber}</p>
+                                )}
+                                {!user && (
+                                    <p className="text-xs text-gray-500 mt-0.5">Signed in</p>
+                                )}
                             </div>
 
                             {/* Menu Items */}
                             <div className="py-1">
+                                <button
+                                    onClick={handleShowUserInfo}
+                                    className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center gap-3"
+                                >
+                                    <svg
+                                        className="w-4 h-4 text-gray-500"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                        />
+                                    </svg>
+                                    User Information
+                                </button>
+
+                                <button
+                                    onClick={handleShowLiteLLMKey}
+                                    className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center gap-3"
+                                >
+                                    <svg
+                                        className="w-4 h-4 text-gray-500"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                        />
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                        />
+                                    </svg>
+                                    LiteLLM API Key
+                                </button>
+
                                 <button
                                     onClick={handleChangePassword}
                                     className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center gap-3"
@@ -148,6 +251,20 @@ const UserMenuInline: React.FC<UserMenuInlineProps> = ({ onLogout }) => {
                 <ChangePasswordModal
                     onClose={() => setShowChangePassword(false)}
                     onSuccess={() => setShowChangePassword(false)}
+                />
+            )}
+
+            {/* LiteLLM Key Modal */}
+            {showLiteLLMKey && (
+                <LiteLLMKeyModal
+                    onClose={() => setShowLiteLLMKey(false)}
+                />
+            )}
+
+            {/* User Info Modal */}
+            {showUserInfo && (
+                <UserInfoModal
+                    onClose={() => setShowUserInfo(false)}
                 />
             )}
         </>
