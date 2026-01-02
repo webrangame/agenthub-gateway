@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // Backend proxy to fetch LiteLLM user info
 // This keeps the master key secure on the server side
-const LITELLM_API_BASE = process.env.LITELLM_API_URL || 'https://swzissb82u.us-east-1.awsapprunner.com';
+const LITELLM_API_BASE = process.env.LITELLM_API_URL || process.env.NEXT_PUBLIC_LITELLM_API_URL || 'https://swzissb82u.us-east-1.awsapprunner.com';
 const LITELLM_MASTER_KEY = process.env.LITELLM_MASTER_KEY || 'sk-dcb0c8a73a664a2307b8e2f12ef90a34819204105f32f51cc8c621ebf88c7642';
 
 export async function GET(request: NextRequest) {
