@@ -151,7 +151,7 @@ func GenerateContent(history []map[string]interface{}, systemPrompt string, user
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Authorization", "Bearer "+strings.TrimSpace(apiKey))
 
 	client := &http.Client{
 		Timeout: 30 * time.Second,
