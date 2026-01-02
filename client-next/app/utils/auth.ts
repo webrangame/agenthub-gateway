@@ -168,6 +168,7 @@ export async function authLogout(): Promise<{ ok: boolean; error?: string }> {
       localStorage.removeItem('userid');
       localStorage.removeItem('litellm_api_key');
       localStorage.removeItem('litellm_key_info');
+      localStorage.removeItem('user_info');
     }
     if (!res.ok) return { ok: false, error: await parseError(res) };
     return { ok: true };
