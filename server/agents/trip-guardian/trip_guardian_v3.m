@@ -236,17 +236,17 @@ SECTION 4: LOGISTICS & TIMING ADVICE
 ═══════════════════════════════════════════
 
 [From ${knowledgeCheck_output}:]
-[Provide any available logistics advice, timing warnings, or general tips]
-[If no specific logistics data available, provide general city-level advice]
+Summarize key logistics, timing, and transport advice into maximum 3-5 concise bullet points. Focus on critical warnings or tips.
 
-═══════════════════════════════════════════
+═══════
 
 CRITICAL RULES:
-- Use these exact section headers with the ═══ delimiters
+- Use these exact section headers with the shorter ═══════ dividers
 - Keep sections clearly separated
 - Do NOT mix content from different sections
 - If a section lacks specific data, provide concise, safe general guidance instead of 'No data available'
-- Do NOT use complex markdown tables (use simple bullet lists instead)"
+- Do NOT use complex markdown tables (use simple bullet lists instead)
+- CRITICAL: Ensure the total output is concise to avoid cutoff. Terminate the response cleanly if approaching limit."
     }
   }
 

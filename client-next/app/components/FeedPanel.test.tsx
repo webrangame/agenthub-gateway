@@ -1,36 +1,62 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { vi, describe, it, expect, beforeEach, afterEach, Mock } from 'vitest';
 import FeedPanel from './FeedPanel';
 
 // Mock the API module
-jest.mock('../utils/api', () => ({
+vi.mock('../utils/api', () => ({
     API_ENDPOINTS: {
         feed: '/api/feed',
     },
+    API_BASE_URL: 'http://localhost:8000'
 }));
 
 // Mock device ID
-jest.mock('../utils/device', () => ({
+vi.mock('../utils/device', () => ({
     getDeviceId: () => 'test-device-id',
+}));
+
+// Mock Redux Hooks
+const mockUseAppSelector = vi.fn();
+vi.mock('../store/hooks', () => ({
+    useAppSelector: (selector: any) => mockUseAppSelector(selector),
+}));
+
+// Mock RTK Query API
+const mockUseGetFeedQuery = vi.fn();
+vi.mock('../store/api/apiSlice', () => ({
+    useGetFeedQuery: (...args: any[]) => mockUseGetFeedQuery(...args),
 }));
 
 describe('FeedPanel', () => {
     beforeEach(() => {
-        jest.useFakeTimers();
-        global.fetch = jest.fn();
+        vi.useFakeTimers();
+        // Default mocks
+        mockUseAppSelector.mockReturnValue({ id: 'test-user', name: 'Test User' });
+        mockUseGetFeedQuery.mockReturnValue({
+            data: [],
+            isLoading: true,
+            error: null,
+            refetch: vi.fn(),
+        });
     });
 
     afterEach(() => {
-        jest.restoreAllMocks();
-        jest.useRealTimers();
+        vi.restoreAllMocks();
+        vi.useRealTimers();
     });
 
     it('renders loading state initially', () => {
-        (global.fetch as jest.Mock).mockImplementation(() => new Promise(() => { }));
+        mockUseGetFeedQuery.mockReturnValue({
+            data: undefined,
+            isLoading: true, // RTK Query isLoading
+            error: null,
+            refetch: vi.fn(),
+        });
 
         render(<FeedPanel />);
-
-        expect(screen.getByText(/Loading insights/i)).toBeInTheDocument();
+        // FeedPanel internal loading state defaults to true
+        expect(screen.getByText(/Syncing Stream/i)).toBeInTheDocument();
     });
 
     it('fetches and displays feed items', async () => {
@@ -49,9 +75,11 @@ describe('FeedPanel', () => {
             },
         ];
 
-        (global.fetch as jest.Mock).mockResolvedValueOnce({
-            ok: true,
-            json: async () => mockFeed,
+        mockUseGetFeedQuery.mockReturnValue({
+            data: mockFeed,
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
         });
 
         render(<FeedPanel />);
@@ -62,56 +90,42 @@ describe('FeedPanel', () => {
     });
 
     it('shows error state on fetch failure', async () => {
-        (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+        mockUseGetFeedQuery.mockReturnValue({
+            data: undefined,
+            isLoading: false,
+            error: { status: 500, data: { message: 'Failed to fetch feed' } },
+            refetch: vi.fn(),
+        });
 
         render(<FeedPanel />);
 
         await waitFor(() => {
-            expect(screen.getByText(/Failed to load feed/i)).toBeInTheDocument();
+            expect(screen.getByText(/Failed to fetch feed/i)).toBeInTheDocument();
         });
     });
 
     it('shows empty state when no items', async () => {
-        (global.fetch as jest.Mock).mockResolvedValueOnce({
-            ok: true,
-            json: async () => [],
+        mockUseGetFeedQuery.mockReturnValue({
+            data: [],
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
         });
 
         render(<FeedPanel />);
 
         await waitFor(() => {
-            expect(screen.getByText(/No insights yet/i)).toBeInTheDocument();
+            expect(screen.getByText(/Quiet... for now/i)).toBeInTheDocument();
         });
     });
 
-    it('auto-refreshes every 3 seconds', async () => {
-        const mockFeed = [];
-
-        (global.fetch as jest.Mock).mockResolvedValue({
-            ok: true,
-            json: async () => mockFeed,
-        });
-
+    // Note: Auto-refresh is handled by RTK Query's pollingInterval, verifying that passed param is correct
+    it('configures polling interval', async () => {
         render(<FeedPanel />);
 
-        // Initial fetch
-        await waitFor(() => {
-            expect(global.fetch).toHaveBeenCalledTimes(1);
-        });
-
-        // Advance timer by 3 seconds
-        jest.advanceTimersByTime(3000);
-
-        await waitFor(() => {
-            expect(global.fetch).toHaveBeenCalledTimes(2);
-        });
-
-        // Advance again
-        jest.advanceTimersByTime(3000);
-
-        await waitFor(() => {
-            expect(global.fetch).toHaveBeenCalledTimes(3);
-        });
+        expect(mockUseGetFeedQuery).toHaveBeenCalledWith(undefined, expect.objectContaining({
+            pollingInterval: 3000
+        }));
     });
 
     it('renders different card types correctly', async () => {
@@ -126,6 +140,7 @@ describe('FeedPanel', () => {
                     condition: 'Sunny',
                     temp: '25°C',
                     description: 'Clear skies',
+                    location: 'Test City'
                 },
             },
             {
@@ -141,9 +156,11 @@ describe('FeedPanel', () => {
             },
         ];
 
-        (global.fetch as jest.Mock).mockResolvedValueOnce({
-            ok: true,
-            json: async () => mockFeed,
+        mockUseGetFeedQuery.mockReturnValue({
+            data: mockFeed,
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
         });
 
         render(<FeedPanel />);
@@ -151,26 +168,6 @@ describe('FeedPanel', () => {
         await waitFor(() => {
             expect(screen.getByText(/Sunny/i)).toBeInTheDocument();
             expect(screen.getByText(/Safety warning/i)).toBeInTheDocument();
-        });
-    });
-
-    it('includes device ID in request headers', async () => {
-        (global.fetch as jest.Mock).mockResolvedValueOnce({
-            ok: true,
-            json: async () => [],
-        });
-
-        render(<FeedPanel />);
-
-        await waitFor(() => {
-            expect(global.fetch).toHaveBeenCalledWith(
-                expect.stringContaining('/api/feed'),
-                expect.objectContaining({
-                    headers: expect.objectContaining({
-                        'X-Device-ID': 'test-device-id',
-                    }),
-                })
-            );
         });
     });
 });

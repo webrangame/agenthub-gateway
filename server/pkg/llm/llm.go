@@ -138,6 +138,7 @@ func GenerateContent(history []map[string]interface{}, systemPrompt string, user
 		"model":       model,
 		"messages":    messages,
 		"temperature": 0.0,
+		"max_tokens":  8192,
 	}
 
 	jsonData, err := json.Marshal(requestBody)
@@ -151,7 +152,7 @@ func GenerateContent(history []map[string]interface{}, systemPrompt string, user
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Authorization", "Bearer "+strings.TrimSpace(apiKey))
 
 	client := &http.Client{
 		Timeout: 30 * time.Second,

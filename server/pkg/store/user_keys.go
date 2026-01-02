@@ -6,7 +6,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -80,7 +82,7 @@ func GenerateLiteLLMKey(proxyURL, masterKey, userID string, maxBudget float64) (
 		return "", "", fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Authorization", "Bearer "+masterKey)
+	req.Header.Set("Authorization", "Bearer "+strings.TrimSpace(masterKey))
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -91,7 +93,19 @@ func GenerateLiteLLMKey(proxyURL, masterKey, userID string, maxBudget float64) (
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", "", fmt.Errorf("LiteLLM API returned status %d", resp.StatusCode)
+		// Read response body for error details
+		bodyBytes, readErr := io.ReadAll(resp.Body)
+		if readErr != nil {
+			bodyBytes = []byte("(failed to read response body)")
+		}
+
+		fmt.Printf("❌ LiteLLM /key/generate failed:\n")
+		fmt.Printf("   Status: %d\n", resp.StatusCode)
+		fmt.Printf("   URL: %s\n", proxyURL+"/key/generate")
+		fmt.Printf("   Response: %s\n", string(bodyBytes))
+		fmt.Printf("   MasterKey length: %d chars\n", len(strings.TrimSpace(masterKey)))
+
+		return "", "", fmt.Errorf("LiteLLM API returned status %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	var result struct {

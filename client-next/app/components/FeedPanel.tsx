@@ -31,7 +31,7 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
     // Get user ID from Redux store (preferred) or use prop as fallback
     const user = useAppSelector((state) => state.user.user);
     const effectiveUserId = user?.id?.toString() || userId || (typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : '');
-    
+
     // Determine if we should use mock feed
     const useMock = (() => {
         if (typeof window === 'undefined') return process.env.NEXT_PUBLIC_USE_MOCK_FEED === 'true';
@@ -46,7 +46,7 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
         pollingInterval: useMock ? 0 : 3000, // Poll every 3 seconds if not using mock
         skip: useMock, // Skip RTK Query if using mock
     });
-    
+
     const [feed, setFeed] = useState<FeedItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [showLogs, setShowLogs] = useState(false); // Default: Hide Logs
@@ -62,7 +62,30 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
         } else if (feedData) {
             console.log('Feed data received from RTK Query:', feedData);
             if (Array.isArray(feedData)) {
-                setFeed(feedData);
+                // Filter and Sort
+                let processedFeed = [...feedData];
+
+                // 1. Filter Debug Nodes (unless showing logs)
+                if (!showLogs) {
+                    const hideNodes = ['extractDetails', 'extractCity', 'news_update', 'tips'];
+                    processedFeed = processedFeed.filter(item => {
+                        const isLog = item.card_type === 'log';
+                        const isDebugNode = item.data && hideNodes.includes(item.data.node);
+                        return !isLog && !isDebugNode;
+                    });
+                }
+
+                // 2. Sort: Warnings at the bottom
+                processedFeed.sort((a, b) => {
+                    const isWarningA = a.card_type === 'safe_alert' || (a.data && a.data.node === 'newsAlert');
+                    const isWarningB = b.card_type === 'safe_alert' || (b.data && b.data.node === 'newsAlert');
+
+                    if (isWarningA && !isWarningB) return 1;  // A is warning, put after B
+                    if (!isWarningA && isWarningB) return -1; // B is warning, put after A
+                    return 0; // Keep original order otherwise
+                });
+
+                setFeed(processedFeed);
                 setError(null);
             } else {
                 console.warn('Feed data is not an array:', feedData);
@@ -93,7 +116,7 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
     // Poll mock feed every 3 seconds
     useEffect(() => {
         if (!useMock) return;
-        
+
         const interval = setInterval(() => {
             setMockTick((t) => t + 1);
         }, 3000);
@@ -122,8 +145,17 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
     }, [useMock, refetch]);
 
     const renderCard = (item: FeedItem) => {
-        // Filter Logs if toggle is off
-        if (!showLogs && item.card_type === 'log') return null;
+        // Filter Logs and Debug cards if toggle is off
+        const debugNodes = ['extractDetails', 'extractCity', 'news_update', 'tips', 'newsAlert'];
+        if (!showLogs) {
+            if (item.card_type === 'log' || item.card_type === 'news_update') return null;
+            if (item.data && debugNodes.includes(item.data.node)) return null;
+        }
+
+        if (!item.data) {
+            console.warn('Feed item missing data:', item);
+            return null;
+        }
 
         const content = (() => {
             switch (item.card_type) {

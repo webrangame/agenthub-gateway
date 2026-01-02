@@ -1,0 +1,53 @@
+﻿
+[1m[46m RUN [49m[22m [36mv4.0.16 [39m[90mC:/Users/Antigravity/AiGuardian/client-next[39m
+
+ [31m❯[39m app/components/ChatPanel.test.tsx [2m([22m[2m8 tests[22m[2m | [22m[31m6 failed[39m[2m)[22m[32m 170[2mms[22m[39m
+[31m     [31m×[31m renders welcome message[39m[32m 87[2mms[22m[39m
+[31m     [31m×[31m sends message on button click[39m[32m 13[2mms[22m[39m
+[31m     [31m×[31m sends message on Enter key press[39m[32m 10[2mms[22m[39m
+[31m     [31m×[31m does not send on Shift+Enter[39m[32m 8[2mms[22m[39m
+     [32m✓[39m renders in collapsed mode[32m 24[2mms[22m[39m
+     [32m✓[39m calls onToggleCollapse when expand button is clicked[32m 11[2mms[22m[39m
+[31m     [31m×[31m clears conversation on reset[39m[32m 8[2mms[22m[39m
+[31m     [31m×[31m shows error message on fetch failure[39m[32m 7[2mms[22m[39m
+node.exe : 
+At C:\nvm4w\nodejs\npx.ps1:29 char:3
++   & $NODE_EXE $NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (    :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandEr    ror
+ 
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 6 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m app/components/ChatPanel.test.tsx[2m > [22mChatPanel[2m > [22mrenders welcome message
+[41m[1m FAIL [22m[49m app/components/ChatPanel.test.tsx[2m > [22mChatPanel[2m > [22msends message on button click
+[41m[1m FAIL [22m[49m app/components/ChatPanel.test.tsx[2m > [22mChatPanel[2m > [22msends message on Enter key press
+[41m[1m FAIL [22m[49m app/components/ChatPanel.test.tsx[2m > [22mChatPanel[2m > [22mdoes not send on Shift+Enter
+[41m[1m FAIL [22m[49m app/components/ChatPanel.test.tsx[2m > [22mChatPanel[2m > [22mclears conversation on reset
+[41m[1m FAIL [22m[49m app/components/ChatPanel.test.tsx[2m > [22mChatPanel[2m > [22mshows error message on fetch failure
+[31m[1mTypeError[22m: messagesEndRef.current?.scrollIntoView is not a function[39m
+[36m [2m❯[22m scrollToBottom app/components/ChatPanel.tsx:[2m61:33[22m[39m
+    [90m 59| [39m
+    [90m 60| [39m    [35mconst[39m scrollToBottom [33m=[39m () [33m=>[39m {
+    [90m 61| [39m        messagesEndRef[33m.[39mcurrent[33m?.[39m[34mscrollIntoView[39m({ behavior[33m:[39m [32m"smooth"[39m })[33m;[39m
+    [90m   | [39m                                [31m^[39m
+    [90m 62| [39m    }[33m;[39m
+    [90m 63| [39m
+[90m [2m❯[22m app/components/ChatPanel.tsx:[2m65:9[22m[39m
+[90m [2m❯[22m Object.react_stack_bottom_frame node_modules/react-dom/cjs/react-dom-client.development.js:[2m25989:20[22m[39m
+[90m [2m❯[22m runWithFiberInDEV node_modules/react-dom/cjs/react-dom-client.development.js:[2m874:13[22m[39m
+[90m [2m❯[22m commitHookEffectListMount node_modules/react-dom/cjs/react-dom-client.development.js:[2m13249:29[22m[39m
+[90m [2m❯[22m commitHookPassiveMountEffects node_modules/react-dom/cjs/react-dom-client.development.js:[2m13336:11[22m[39m
+[90m [2m❯[22m commitPassiveMountOnFiber node_modules/react-dom/cjs/react-dom-client.development.js:[2m15484:13[22m[39m
+[90m [2m❯[22m recursivelyTraversePassiveMountEffects node_modules/react-dom/cjs/react-dom-client.development.js:[2m15439:11[22m[39m
+[90m [2m❯[22m commitPassiveMountOnFiber node_modules/react-dom/cjs/react-dom-client.development.js:[2m15519:11[22m[39m
+[90m [2m❯[22m flushPassiveEffects node_modules/react-dom/cjs/react-dom-client.development.js:[2m18432:9[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m6 failed[39m[22m[2m | [22m[1m[32m2 passed[39m[22m[90m (8)[39m
+[2m   Start at [22m 17:11:08
+[2m   Duration [22m 2.64s[2m (transform 203ms, setup 0ms, import 1.05s, tests 170ms, environment 1.16s)[22m
+
