@@ -230,7 +230,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
             console.log(`[ChatPanel] DELETE feed`);
             // Use RTK Query mutation for delete
             await deleteFeed().unwrap();
-            console.log('[ChatPanel] DELETE response status:', response.status);
+            console.log('[ChatPanel] DELETE feed successful');
 
             // Trigger feed refresh (dispatch custom event for FeedPanel to listen to)
             if (typeof window !== 'undefined') {
