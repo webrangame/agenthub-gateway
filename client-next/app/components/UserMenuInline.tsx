@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getUsername, authLogout } from '../utils/auth';
+import { getUsername, getUserInfo, authLogout, authMe } from '../utils/auth';
 import ChangePasswordModal from './ChangePasswordModal';
 import LiteLLMKeyModal from './LiteLLMKeyModal';
 
