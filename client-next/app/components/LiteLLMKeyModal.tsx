@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getLiteLLMApiKey, getLiteLLMKeyInfo } from '../utils/auth';
-import { Copy, Check, X } from 'lucide-react';
+import { getLiteLLMApiKey, getLiteLLMKeyInfo, getUserInfo } from '../utils/auth';
+import { fetchLiteLLMUserInfo, convertLiteLLMKeysToKeyInfo, LiteLLMKeyInfo } from '../utils/litellm';
+import { Copy, Check, X, Loader2 } from 'lucide-react';
 
 interface LiteLLMKeyModalProps {
     onClose: () => void;
