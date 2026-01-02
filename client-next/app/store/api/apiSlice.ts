@@ -21,9 +21,11 @@ const getDeviceId = (): string => {
     } catch {
       deviceId = `device-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     }
-    localStorage.setItem(DEVICE_ID_KEY, deviceId);
+    if (deviceId) {
+      localStorage.setItem(DEVICE_ID_KEY, deviceId);
+    }
   }
-  return deviceId;
+  return deviceId || '';
 };
 
 // Base query with automatic X-User-ID header injection

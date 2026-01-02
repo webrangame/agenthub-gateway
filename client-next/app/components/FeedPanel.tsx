@@ -11,6 +11,8 @@ import { API_ENDPOINTS, API_BASE_URL } from '../utils/api';
 import { getDeviceId } from '../utils/device';
 import UserMenuInline from './UserMenuInline';
 import { buildMockFeed } from '../mock/mockFeed';
+import { useAppSelector } from '../store/hooks';
+import { useGetFeedQuery } from '../store/api/apiSlice';
 
 interface FeedItem {
     id: string;
@@ -70,9 +72,16 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
             setLoading(false);
         } else if (feedError) {
             console.error('Feed API error:', feedError);
-            const errorMessage = 'error' in feedError && typeof feedError.error === 'object' && 'data' in feedError.error
-                ? (feedError.error.data as any)?.message || (feedError.error.data as any)?.error || 'Failed to fetch feed'
-                : 'Failed to fetch feed';
+            let errorMessage = 'Failed to fetch feed';
+            if ('status' in feedError) {
+                // RTK Query error structure
+                if ('data' in feedError && feedError.data) {
+                    const errorData = feedError.data as any;
+                    errorMessage = errorData?.message || errorData?.error || 'Failed to fetch feed';
+                } else if ('error' in feedError) {
+                    errorMessage = String(feedError.error);
+                }
+            }
             setError(errorMessage);
             setFeed([]);
             setLoading(false);

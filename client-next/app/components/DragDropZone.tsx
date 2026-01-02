@@ -9,6 +9,9 @@ const DragDropZone: React.FC = () => {
     const [isDragging, setIsDragging] = useState(false);
     const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
     const fileInputRef = useRef<HTMLInputElement>(null);
+    
+    // RTK Query mutation for file upload
+    const [uploadFileMutation] = useUploadFileMutation();
 
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
