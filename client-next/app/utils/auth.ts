@@ -120,6 +120,16 @@ export async function authMe(): Promise<{ ok: boolean; user?: AuthUser; error?: 
       localStorage.setItem('litellm_key_info', JSON.stringify(user.litellmKeyInfo));
       console.log('[authMe] Store LiteLLM Key Info:', user.litellmKeyInfo);
     }
+    // Store full user object for display in UI
+    if (typeof window !== 'undefined' && user) {
+      localStorage.setItem('user_info', JSON.stringify({
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        name: user.name,
+      }));
+      console.log('[authMe] Store User Info:', { id: user.id, email: user.email, username: user.username, name: user.name });
+    }
     return { ok: true, user };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Network error';
