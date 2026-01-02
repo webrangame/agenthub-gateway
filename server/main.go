@@ -1023,17 +1023,8 @@ RESPONSE MUST BE VALID JSON ONLY.`, timeContext, locContext, string(varsJSON), i
 		}
 
 		if jsonErr := json.Unmarshal([]byte(decisionResponse), &decisionObj); jsonErr == nil {
-			action = decisionObj.Action
 			updates = decisionObj.Updates
 
-			// Normalize Action
-			if !strings.HasPrefix(action, "ACTION: ") { // Legacy check just in case
-				if action == "RUN_AGENT" {
-					action = "ACTION: RUN_AGENT"
-				} else {
-					action = "ACTION: ASK_QUESTION"
-				}
-			}
 			// If the LLM just returns raw Action enum, map it to the string the code expects below
 			// Actually, let's just construct the full legacy action string for compatibility with Step 4
 			if decisionObj.Action == "RUN_AGENT" {
