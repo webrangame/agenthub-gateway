@@ -7,6 +7,7 @@ import remarkGfm from 'remark-gfm';
 import { API_ENDPOINTS } from '../utils/api';
 import { getDeviceId } from '../utils/device';
 import { getLiteLLMApiKey } from '../utils/auth';
+import { useAppSelector } from '../store/hooks';
 
 interface Message {
     id: string;
@@ -35,6 +36,10 @@ const cleanAgentOutput = (text: string) => {
 };
 
 const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleCollapse, userId }) => {
+    // Get user ID from Redux store (preferred) or use prop as fallback
+    const user = useAppSelector((state) => state.user.user);
+    const effectiveUserId = user?.id?.toString() || userId || (typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : '');
+    
     const [messages, setMessages] = useState<Message[]>([
         {
             id: '1',
@@ -82,7 +87,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
             const headers: Record<string, string> = {
                 'Content-Type': 'application/json',
                 'X-Device-ID': getDeviceId(),
-                'X-User-ID': userId || (typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : ''),
+                'X-User-ID': effectiveUserId,
             };
             if (litellmApiKey) {
                 headers['X-LiteLLM-API-Key'] = litellmApiKey;
@@ -233,7 +238,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
                 method: 'DELETE',
                 headers: {
                     'X-Device-ID': getDeviceId(),
-                    'X-User-ID': userId || (typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : ''),
+                    'X-User-ID': effectiveUserId,
                 }
             });
             console.log('[ChatPanel] DELETE response status:', response.status);
