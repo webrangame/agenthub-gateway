@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -80,7 +81,7 @@ func GenerateLiteLLMKey(proxyURL, masterKey, userID string, maxBudget float64) (
 		return "", "", fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Authorization", "Bearer "+masterKey)
+	req.Header.Set("Authorization", "Bearer "+strings.TrimSpace(masterKey))
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{Timeout: 10 * time.Second}
