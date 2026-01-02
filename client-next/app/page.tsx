@@ -9,6 +9,7 @@ import { setUser, clearUser } from './store/slices/userSlice';
 
 export default function Home() {
   const [authenticated, setAuthenticated] = useState(false);
+  const [authCheckComplete, setAuthCheckComplete] = useState(false);
   const dispatch = useAppDispatch();
   
   // Use RTK Query to fetch user data
@@ -16,18 +17,44 @@ export default function Home() {
     undefined,
     {
       skip: process.env.NODE_ENV === 'development', // Skip in dev mode
+      // Add retry configuration
+      retry: 1,
+      // Add timeout handling
     }
   );
 
+  // Handle redirect from market.niyogen.com after login
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const redirectParam = params.get('redirect');
+      // If we have a redirect param, it means we came back from login
+      // Clear it from URL and trigger auth check
+      if (redirectParam) {
+        window.history.replaceState({}, '', window.location.pathname);
+        // Force refetch auth
+        setTimeout(() => {
+          window.location.reload();
+        }, 500);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    // Mark auth check as complete once we have a response (success or error)
+    if (!authLoading) {
+      setAuthCheckComplete(true);
+    }
+
     if (authData?.user) {
       dispatch(setUser(authData.user));
       setAuthenticated(true);
     } else if (authError) {
+      console.log('[Auth] Error fetching user:', authError);
       dispatch(clearUser());
       setAuthenticated(false);
     }
-  }, [authData, authError, dispatch]);
+  }, [authData, authError, authLoading, dispatch]);
 
   const handleLogin = () => {
     setAuthenticated(true);
@@ -69,7 +96,22 @@ export default function Home() {
     }, 100);
   };
 
-  if (authLoading || (process.env.NODE_ENV !== 'development' && !authData && !authError)) {
+  // Show loading only if we're still checking auth (with timeout)
+  const shouldShowLoading = authLoading || (process.env.NODE_ENV !== 'development' && !authCheckComplete && !authError);
+  
+  // Add timeout: if loading for more than 5 seconds, show login page
+  useEffect(() => {
+    if (shouldShowLoading) {
+      const timeout = setTimeout(() => {
+        console.warn('[Auth] Timeout waiting for auth response, showing login page');
+        setAuthCheckComplete(true);
+        setAuthenticated(false);
+      }, 5000);
+      return () => clearTimeout(timeout);
+    }
+  }, [shouldShowLoading]);
+
+  if (shouldShowLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#003580] via-[#004a9f] to-[#003580]">
         <div className="text-white">

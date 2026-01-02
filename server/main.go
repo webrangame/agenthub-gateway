@@ -8,6 +8,7 @@ import (
 	"guardian-gateway/pkg/llm"
 	"guardian-gateway/pkg/session"
 	"guardian-gateway/pkg/store" // New import
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -39,6 +40,43 @@ type FeedItem struct {
 
 var engine *runtime.Engine
 var feedStore *store.PostgresStore // New Global Store
+
+// Feed streaming subscribers (SSE)
+var feedSubMu sync.Mutex
+var feedSubscribers = map[string]map[chan struct{}]struct{}{}
+
+func subscribeFeed(ownerID string, ch chan struct{}) {
+	feedSubMu.Lock()
+	defer feedSubMu.Unlock()
+	if feedSubscribers[ownerID] == nil {
+		feedSubscribers[ownerID] = map[chan struct{}]struct{}{}
+	}
+	feedSubscribers[ownerID][ch] = struct{}{}
+}
+
+func unsubscribeFeed(ownerID string, ch chan struct{}) {
+	feedSubMu.Lock()
+	defer feedSubMu.Unlock()
+	if subs, ok := feedSubscribers[ownerID]; ok {
+		delete(subs, ch)
+		if len(subs) == 0 {
+			delete(feedSubscribers, ownerID)
+		}
+	}
+}
+
+func publishFeedUpdate(ownerID string) {
+	feedSubMu.Lock()
+	subs := feedSubscribers[ownerID]
+	feedSubMu.Unlock()
+	for ch := range subs {
+		// Non-blocking notify; drop if buffer full.
+		select {
+		case ch <- struct{}{}:
+		default:
+		}
+	}
+}
 
 // Atomic counter for unique IDs
 // var eventCounter int64 (Removed: Unused)
@@ -145,6 +183,9 @@ func main() {
 
 	// GET /api/feed
 	r.GET("/api/feed", GetFeedHandler)
+
+	// GET /api/feed/stream (SSE)
+	r.GET("/api/feed/stream", FeedStreamHandler)
 
 	// DELETE /api/feed
 	r.DELETE("/api/feed", ClearFeedHandler)
@@ -334,6 +375,9 @@ func processAndSaveFeed(ctx context.Context, deviceID string, eventJSON string, 
 
 		if err := feedStore.UpsertCard(ctx, deviceID, card); err != nil { // Use deviceID parameter
 			fmt.Printf("DB ERROR: %v\n", err)
+		} else {
+			// Notify SSE clients to refresh feed immediately
+			publishFeedUpdate(deviceID)
 		}
 	}
 }
@@ -347,7 +391,11 @@ func shouldSkipMessage(message, eventType, rawJSON, nodeName string) bool {
 	// Skip ALL raw JSON logs (internal debug info)
 	if eventType == "log" {
 		// EXCEPTION: Allow logs from CheckWeather (it emits output as log)
-		if nodeName == "CheckWeather" {
+		// Some events don't include nodeName reliably, so also allow if the payload contains CheckWeather markers.
+		if nodeName == "CheckWeather" ||
+			strings.Contains(message, "CheckWeather") ||
+			strings.Contains(message, "CheckWeather_output") ||
+			strings.Contains(rawJSON, "CheckWeather") {
 			return false
 		}
 		return true
@@ -412,15 +460,22 @@ func mapToCard(message string, destination string) (string, string, map[string]i
 		"summary": message,
 	}
 
+	// Heuristic: Some CheckWeather outputs arrive without the "CheckWeather:" prefix.
+	// Ensure we keep a stable title so processAndSaveFeed can infer a node and won't drop the card.
+	if strings.Contains(message, "CheckWeather") || strings.Contains(message, "CheckWeather_output") {
+		data["title"] = "CheckWeather"
+	}
+
 	// PREFIX DETECTION LOGIC
 	// We check for "NodeName: Content" pattern
 	prefixMap := map[string]string{
-		"NewsAlert:":        "NewsAlert",
-		"CheckWeather:":     "CheckWeather",
-		"KnowledgeCheck:":   "KnowledgeCheck",
-		"ReviewSummarizer:": "ReviewSummarizer",
-		"GeniusLoci:":       "GeniusLoci",
-		"GenerateReport:":   "GenerateReport",
+		"NewsAlert:":           "NewsAlert",
+		"CheckWeather:":        "CheckWeather",
+		"CheckWeather_output:": "CheckWeather",
+		"KnowledgeCheck:":      "KnowledgeCheck",
+		"ReviewSummarizer:":    "ReviewSummarizer",
+		"GeniusLoci:":          "GeniusLoci",
+		"GenerateReport:":      "GenerateReport",
 	}
 
 	for prefix, nodeTitle := range prefixMap {
@@ -446,6 +501,10 @@ func mapToCard(message string, destination string) (string, string, map[string]i
 		data["colorTheme"] = "red"
 	} else if title == "CheckWeather" || contains(message, "Weather") {
 		cardType = "weather"
+		// If we matched by content (contains "Weather"), ensure node inference is stable.
+		if title == "" {
+			data["title"] = "CheckWeather"
+		}
 		data["source"] = "Weather Agent"
 		data["category"] = "Weather"
 		data["colorTheme"] = "blue"
@@ -757,6 +816,65 @@ func GetFeedHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, feed)
 }
 
+// FeedStreamHandler godoc
+// @Summary      Feed Stream (SSE)
+// @Description  Streams feed update notifications (client should re-fetch /api/feed on events)
+// @Tags         feed
+// @Produce      text/event-stream
+// @Success      200  {string}  string  "SSE Stream"
+// @Router       /api/feed/stream [get]
+func FeedStreamHandler(c *gin.Context) {
+	// Identify User (Hybrid: Auth User > Device > IP)
+	ownerID := c.GetHeader("X-User-ID")
+	if ownerID == "" {
+		ownerID = c.GetHeader("X-Device-ID")
+	}
+	if ownerID == "" {
+		ownerID = c.ClientIP()
+	}
+
+	// SSE headers
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache")
+	c.Writer.Header().Set("Connection", "keep-alive")
+	c.Writer.Header().Set("X-Accel-Buffering", "no")
+	c.Status(http.StatusOK)
+
+	flusher, ok := c.Writer.(http.Flusher)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "streaming unsupported"})
+		return
+	}
+
+	ch := make(chan struct{}, 32)
+	subscribeFeed(ownerID, ch)
+	defer unsubscribeFeed(ownerID, ch)
+
+	writeEvent := func(w io.Writer, eventName string, data string) {
+		// SSE format: "event: <name>\ndata: <payload>\n\n"
+		fmt.Fprintf(w, "event: %s\n", eventName)
+		fmt.Fprintf(w, "data: %s\n\n", data)
+		flusher.Flush()
+	}
+
+	// Initial event so the client can fetch immediately.
+	writeEvent(c.Writer, "feed_updated", "{}")
+
+	heartbeat := time.NewTicker(25 * time.Second)
+	defer heartbeat.Stop()
+
+	for {
+		select {
+		case <-c.Request.Context().Done():
+			return
+		case <-ch:
+			writeEvent(c.Writer, "feed_updated", "{}")
+		case <-heartbeat.C:
+			writeEvent(c.Writer, "ping", "{}")
+		}
+	}
+}
+
 // ClearFeedHandler godoc
 // @Summary      Clear Feed
 // @Description  Clear the insight stream feed
@@ -790,6 +908,7 @@ func ClearFeedHandler(c *gin.Context) {
 	}
 
 	fmt.Printf("INFO: Feed cleared for %s\n", ownerID)
+	publishFeedUpdate(ownerID)
 	c.JSON(http.StatusOK, gin.H{"status": "cleared", "message": "Feed cleared"})
 }
 

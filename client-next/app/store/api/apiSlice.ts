@@ -33,18 +33,18 @@ const baseQuery = fetchBaseQuery({
   baseUrl: '/',
   prepareHeaders: (headers, { getState }) => {
     const state = getState() as RootState;
-    const userId = state.user.user?.id || (typeof window !== 'undefined' ? localStorage.getItem('userid') : null);
-
+    const userId = state.user.user?.id;
+    
     if (userId) {
       headers.set('X-User-ID', userId.toString());
     }
-
+    
     // Get device ID
     const deviceId = getDeviceId();
     if (deviceId) {
       headers.set('X-Device-ID', deviceId);
     }
-
+    
     // Get LiteLLM API key from localStorage
     if (typeof window !== 'undefined') {
       const litellmApiKey = localStorage.getItem('litellm_api_key');
@@ -52,7 +52,7 @@ const baseQuery = fetchBaseQuery({
         headers.set('X-LiteLLM-API-Key', litellmApiKey);
       }
     }
-
+    
     return headers;
   },
   credentials: 'include',
@@ -67,22 +67,42 @@ export const apiSlice = createApi({
     getAuthMe: builder.query<{ user: User }, void>({
       queryFn: async () => {
         try {
+          // Add timeout to prevent hanging
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
           const response = await fetch(`${AUTH_BASE}/api/auth/me`, {
             method: 'GET',
             credentials: 'include',
+            signal: controller.signal,
             headers: {
               'Accept': 'application/json',
               'Content-Type': 'application/json',
             },
           });
 
+          clearTimeout(timeoutId);
+
           if (!response.ok) {
+            // 401 means not authenticated, which is expected for logged out users
+            if (response.status === 401) {
+              return { error: { status: response.status, data: 'Not authenticated' } };
+            }
             return { error: { status: response.status, data: 'Failed to fetch user' } };
           }
 
           const data = await response.json();
           return { data };
-        } catch (error) {
+        } catch (error: any) {
+          // Handle abort/timeout
+          if (error.name === 'AbortError') {
+            return { error: { status: 'TIMEOUT', error: 'Request timed out' } };
+          }
+          // Handle CORS errors
+          if (error.message?.includes('CORS') || error.message?.includes('Failed to fetch')) {
+            console.error('[Auth] CORS or network error:', error);
+            return { error: { status: 'CORS_ERROR', error: 'CORS or network error. Please check if market.niyogen.com allows travel.niyogen.com origin.' } };
+          }
           return { error: { status: 'FETCH_ERROR', error: String(error) } };
         }
       },
@@ -163,7 +183,7 @@ export const apiSlice = createApi({
         }
       },
     }),
-
+    
     // Chat endpoint - streaming response (custom queryFn for streaming)
     sendChatMessage: builder.mutation<Response, { input: string }>({
       queryFn: async ({ input }, { getState }) => {
@@ -204,7 +224,7 @@ export const apiSlice = createApi({
       },
       invalidatesTags: ['Chat', 'Feed'],
     }),
-
+    
     // Feed endpoint - GET
     getFeed: builder.query<any[], void>({
       query: () => ({
