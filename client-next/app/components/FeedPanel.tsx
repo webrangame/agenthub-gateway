@@ -2,17 +2,16 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import WeatherCard from './WeatherCard';
 import AlertWidget from './AlertWidget';
-import VideoCard from './VideoCard';
-import ArticleCard from './ArticleCard';
 import JsonViewer from './JsonViewer';
-import { API_ENDPOINTS, API_BASE_URL } from '../utils/api';
+import TemplateTwo from './TemplateTwo';
+import { API_BASE_URL } from '../utils/api';
 import { getDeviceId } from '../utils/device';
 import UserMenuInline from './UserMenuInline';
 import { buildMockFeed } from '../mock/mockFeed';
 import { useAppSelector } from '../store/hooks';
 import { useGetFeedQuery } from '../store/api/apiSlice';
+import type { RootState } from '../store/store';
 
 interface FeedItem {
     id: string;
@@ -29,7 +28,7 @@ interface FeedPanelProps {
 
 const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
     // Get user ID from Redux store (preferred) or use prop as fallback
-    const user = useAppSelector((state) => state.user.user);
+    const user = useAppSelector((state: RootState) => state.user.user);
     const effectiveUserId = user?.id?.toString() || userId || (typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : '');
 
     // Determine if we should use mock feed
@@ -52,6 +51,156 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
     const [showLogs, setShowLogs] = useState(false); // Default: Hide Logs
     const [mockTick, setMockTick] = useState(0);
     const [error, setError] = useState<string | null>(null);
+
+    const asStringArray = (value: unknown): string[] => {
+        if (!value) return [];
+        if (Array.isArray(value)) return value.map((v) => String(v)).filter(Boolean);
+        if (typeof value === 'string') return [value].filter(Boolean);
+        return [String(value)].filter(Boolean);
+    };
+
+    const asNumber = (value: unknown): number | null => {
+        if (typeof value === 'number' && Number.isFinite(value)) return value;
+        if (typeof value === 'string') {
+            const n = Number(value);
+            if (Number.isFinite(n)) return n;
+        }
+        return null;
+    };
+
+    const toTemplateTwoProps = (item: FeedItem) => {
+        const d = item.data || {};
+
+        const title =
+            d.title ||
+            d.label ||
+            d.source_node ||
+            d.sourceNode ||
+            item.card_type ||
+            'Update';
+
+        const description = d.description ?? d.summary ?? d.message ?? '';
+
+        const videoUrl = d.video_url || d.videoUrl;
+        const imageUrl = d.imageUrl;
+
+        const descriptionMedia =
+            videoUrl
+                ? { type: 'video' as const, url: String(videoUrl) }
+                : imageUrl
+                    ? { type: 'image' as const, url: String(imageUrl) }
+                    : undefined;
+
+        // Sidebar: gallery + videos
+        // Supports both single fields (imageUrl/videoUrl) and potential array fields (images/videos/imageUrls/videoUrls).
+        const images = Array.from(
+            new Set(
+                [
+                    ...asStringArray(d.images),
+                    ...asStringArray(d.imageUrls),
+                    ...asStringArray(d.imageUrl),
+                ].filter(Boolean)
+            )
+        );
+
+        const videos = Array.from(
+            new Set(
+                [
+                    ...asStringArray(d.videos),
+                    ...asStringArray(d.videoUrls),
+                    ...asStringArray(d.videoUrl),
+                    ...asStringArray(d.video_url),
+                ].filter(Boolean)
+            )
+        );
+
+        // Weather sidebar
+        const weatherLocation =
+            item.card_type === 'weather' ? (d.location || 'Destination') : undefined;
+        const weatherData =
+            item.card_type === 'weather'
+                ? {
+                    temp: String(d.temp ?? '--°C'),
+                    condition: String(d.condition ?? '—'),
+                    description: d.description
+                        ? String(d.description)
+                        : d.summary
+                            ? String(d.summary)
+                            : undefined,
+                }
+                : undefined;
+
+        // Map embed + coordinates text
+        const lat = asNumber(d.lat);
+        const lng = asNumber(d.lng);
+        const hasCoords = lat !== null && lng !== null;
+        const mapLocation = hasCoords
+            ? { lat: lat as number, lng: lng as number, label: String(d.label || title) }
+            : undefined;
+
+        const sections = [
+            {
+                title: String(title),
+                description: String(description),
+                media: descriptionMedia,
+            },
+            ...(hasCoords
+                ? [
+                    {
+                        title: 'Coordinates',
+                        description: `${lat}, ${lng}`,
+                    },
+                ]
+                : []),
+        ];
+
+        // Sidebar: links
+        // Supports:
+        // - data.url (primary)
+        // - data.links (array of {label,url} or strings)
+        // - Unsplash attribution links (imageUserLink) + direct image link (imageUrl)
+        const rawLinks: Array<{ label: string; url: string }> = [];
+
+        if (d.url) rawLinks.push({ label: 'Open link', url: String(d.url) });
+
+        // Optional: accept links array from backend
+        if (Array.isArray(d.links)) {
+            for (const link of d.links) {
+                if (!link) continue;
+                if (typeof link === 'string') {
+                    rawLinks.push({ label: 'Open link', url: link });
+                    continue;
+                }
+                if (typeof link === 'object') {
+                    const label = (link as any).label ?? (link as any).title ?? 'Open link';
+                    const url = (link as any).url ?? (link as any).href;
+                    if (url) rawLinks.push({ label: String(label), url: String(url) });
+                }
+            }
+        }
+
+        if (d.imageUserLink) {
+            rawLinks.push({
+                label: d.imageUser ? `Photo by ${String(d.imageUser)}` : 'Photo credit',
+                url: String(d.imageUserLink),
+            });
+        }
+        if (d.imageUrl) rawLinks.push({ label: 'Open image', url: String(d.imageUrl) });
+
+        const links = Array.from(
+            new Map(rawLinks.filter((l) => l?.url).map((l) => [l.url, l])).values()
+        );
+
+        return {
+            sections,
+            images,
+            videos,
+            links,
+            weatherLocation,
+            weatherData,
+            mapLocation,
+        };
+    };
 
     useEffect(() => {
         // Handle RTK Query feed data
@@ -144,6 +293,43 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
         };
     }, [useMock, refetch]);
 
+    // SSE: refresh feed immediately when backend saves a new card (streaming feel)
+    useEffect(() => {
+        if (useMock || typeof window === 'undefined') return;
+
+        let es: EventSource | null = null;
+        let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+        const scheduleRefetch = () => {
+            if (debounceTimer) clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                refetch();
+            }, 200);
+        };
+
+        const userIdForStream = effectiveUserId || localStorage.getItem('userid') || '';
+        const deviceId = getDeviceId();
+        const qs = new URLSearchParams({ userId: userIdForStream, deviceId }).toString();
+
+        try {
+            es = new EventSource(`/api/proxy/feed/stream?${qs}`);
+            es.addEventListener('feed_updated', scheduleRefetch as any);
+            es.addEventListener('ping', () => { /* keep-alive */ });
+            es.onerror = (e) => {
+                console.warn('Feed SSE error (fallback to polling):', e);
+                try { es?.close(); } catch { /* noop */ }
+                es = null;
+            };
+        } catch (e) {
+            console.warn('Failed to initialize feed SSE:', e);
+        }
+
+        return () => {
+            if (debounceTimer) clearTimeout(debounceTimer);
+            try { es?.close(); } catch { /* noop */ }
+        };
+    }, [useMock, effectiveUserId, refetch]);
+
     const renderCard = (item: FeedItem) => {
         // Filter Logs and Debug cards if toggle is off
         const debugNodes = ['extractDetails', 'extractCity', 'news_update', 'tips', 'newsAlert'];
@@ -157,111 +343,52 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
             return null;
         }
 
-        const content = (() => {
-            switch (item.card_type) {
-                case 'weather':
-                    return <WeatherCard
-                        location={item.data.location}
-                        temp={item.data.temp}
-                        condition={item.data.condition}
-                        description={item.data.description}
-                    />;
-                case 'safe_alert':
-                    return <AlertWidget
-                        message={item.data.message}
-                        level={item.data.level}
-                    />;
-                case 'cultural_tip':
-                    const videoUrl = item.data.video_url || item.data.videoUrl;
-                    if (videoUrl) {
-                        return <VideoCard
-                            title={item.data.title}
-                            videoUrl={videoUrl}
-                            summary={item.data.summary}
-                        />;
-                    }
-                    return <ArticleCard
-                        title={item.data.title}
-                        summary={item.data.summary}
-                        source={item.data.source || 'Cultural Tip'}
-                        category={item.data.category as any || 'Culture'}
-                        colorTheme={item.data.colorTheme as any || 'purple'}
-                        imageUrl={item.data.imageUrl}
-                        imageUser={item.data.imageUser}
-                        imageUserLink={item.data.imageUserLink}
-                        timestamp={item.timestamp}
-                    />;
-                case 'article':
-                    return <ArticleCard
-                        title={item.data.title}
-                        summary={item.data.summary}
-                        source={item.data.source}
-                        imageUrl={item.data.imageUrl}
-                        imageUser={item.data.imageUser}
-                        imageUserLink={item.data.imageUserLink}
-                        videoUrl={item.data.videoUrl}
-                        url={item.data.url}
-                        category={item.data.category}
-                        colorTheme={item.data.colorTheme}
-                    />;
-                case 'log':
-                    return (
-                        <div className="p-3 border border-[#9DBEF8] rounded bg-[#EEF5FF] text-[10px] font-mono text-[#003580]/70 mb-2 shadow-sm">
-                            <span className="font-bold text-[#003580]">LOG:</span> {item.data.summary || JSON.stringify(item.data)}
-                        </div>
-                    );
-                case 'map_coord':
-                    return (
-                        <div className="p-4 border border-blue-100 rounded-xl bg-white text-xs shadow-sm">
-                            <div className="flex items-center gap-2 font-bold text-blue-900 mb-2 uppercase tracking-wide text-[10px]">
-                                📍 Location Data
-                            </div>
-                            <div className="grid grid-cols-2 gap-2 text-[11px] mb-3">
-                                <div className="bg-blue-50 p-2 rounded">
-                                    <div className="text-blue-400 text-[9px] uppercase font-bold">Latitude</div>
-                                    <div className="font-mono text-blue-900">{item.data.lat}</div>
-                                </div>
-                                <div className="bg-blue-50 p-2 rounded">
-                                    <div className="text-blue-400 text-[9px] uppercase font-bold">Longitude</div>
-                                    <div className="font-mono text-blue-900">{item.data.lng}</div>
-                                </div>
-                            </div>
-                            <JsonViewer data={item.data} label="Full Trace" />
-                        </div>
-                    );
-                default:
-                    // Generic card for unknown types
-                    return (
-                        <div className="bg-white p-4 border border-blue-100 rounded-xl shadow-sm transition-all hover:shadow-md">
-                            <div className="flex items-center justify-between mb-3">
-                                <span className="bg-blue-100 text-blue-800 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                                    {item.card_type?.replace(/_/g, ' ') || 'SYSTEM EVENT'}
-                                </span>
-                                {item.timestamp && (
-                                    <span className="text-[10px] text-gray-400 font-medium">
-                                        {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </span>
-                                )}
-                            </div>
+        let content: React.ReactNode = null;
 
-                            {/* Key-Value Pairs for simple data */}
-                            <div className="space-y-1 mb-3">
-                                {Object.entries(item.data).slice(0, 3).map(([key, value]) => {
-                                    if (typeof value === 'object' || String(value).length > 50) return null;
-                                    return (
-                                        <div key={key} className="flex justify-between text-[11px] py-1 border-b border-gray-50 last:border-0">
-                                            <span className="font-medium text-gray-600 capitalize">{key.replace(/_/g, ' ')}</span>
-                                            <span className="font-mono text-blue-600 truncate max-w-[150px]">{String(value)}</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-
-                            <JsonViewer data={item.data} label="View Raw Payload" />
+        switch (item.card_type) {
+            case 'safe_alert':
+                // Still show safe alerts, but NOT inside TemplateTwo
+                content = (
+                    <AlertWidget
+                        message={item.data?.message}
+                        level={item.data?.level}
+                    />
+                );
+                break;
+            case 'log':
+                // Logs are excluded from TemplateTwo; show only in Debug mode
+                content = (
+                    <div className="p-3 border border-[#9DBEF8] rounded bg-[#EEF5FF] text-[10px] font-mono text-[#003580]/70 mb-2 shadow-sm">
+                        <span className="font-bold text-[#003580]">LOG:</span>{' '}
+                        {item.data?.summary || JSON.stringify(item.data)}
+                    </div>
+                );
+                break;
+            case 'map_coord':
+                content = (
+                    <div className="p-4 border border-blue-100 rounded-xl bg-white text-xs shadow-sm">
+                        <div className="flex items-center gap-2 font-bold text-blue-900 mb-2 uppercase tracking-wide text-[10px]">
+                            📍 Location Data
                         </div>
-                    );
-            }
-        })();
+                        <div className="grid grid-cols-2 gap-2 text-[11px] mb-3">
+                            <div className="bg-blue-50 p-2 rounded">
+                                <div className="text-blue-400 text-[9px] uppercase font-bold">Latitude</div>
+                                <div className="font-mono text-blue-900">{item.data.lat}</div>
+                            </div>
+                            <div className="bg-blue-50 p-2 rounded">
+                                <div className="text-blue-400 text-[9px] uppercase font-bold">Longitude</div>
+                                <div className="font-mono text-blue-900">{item.data.lng}</div>
+                            </div>
+                        </div>
+                        <JsonViewer data={item.data} label="Full Trace" />
+                    </div>
+                );
+                break;
+            default:
+                // All other cards use TemplateTwo
+                content = <TemplateTwo {...toTemplateTwoProps(item)} />;
+                break;
+        }
 
         if (!content) return null;
 
