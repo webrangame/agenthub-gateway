@@ -22,9 +22,10 @@ interface FeedItem {
 
 interface FeedPanelProps {
     onLogout?: () => void;
+    userId?: string;
 }
 
-const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout }) => {
+const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
     const [feed, setFeed] = useState<FeedItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [showLogs, setShowLogs] = useState(false); // Default: Hide Logs
@@ -60,7 +61,7 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout }) => {
                         'Accept': 'application/json',
                         'Content-Type': 'application/json',
                         'X-Device-ID': getDeviceId(),
-                        'X-User-ID': typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : '',
+                        'X-User-ID': userId || (typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : ''),
                     },
                     cache: 'no-store',
                     // Add credentials for same-origin requests
@@ -134,7 +135,7 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout }) => {
                 window.removeEventListener('feedReset', handleFeedReset);
             }
         };
-    }, [mockTick]);
+    }, [mockTick, userId]);
 
     const renderCard = (item: FeedItem) => {
         // Filter Logs if toggle is off
@@ -281,7 +282,7 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout }) => {
                     >
                         {showLogs ? 'Hide Logs' : 'Debug'}
                     </button>
-                    <UserMenuInline onLogout={onLogout || (() => {})} />
+                    <UserMenuInline onLogout={onLogout || (() => { })} />
                 </div>
             </div>
 
