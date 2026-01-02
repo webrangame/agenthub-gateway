@@ -3,16 +3,15 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import AlertWidget from './AlertWidget';
-import VideoCard from './VideoCard';
-import ArticleCard from './ArticleCard';
 import JsonViewer from './JsonViewer';
 import TemplateTwo from './TemplateTwo';
-import { API_ENDPOINTS, API_BASE_URL } from '../utils/api';
+import { API_BASE_URL } from '../utils/api';
 import { getDeviceId } from '../utils/device';
 import UserMenuInline from './UserMenuInline';
 import { buildMockFeed } from '../mock/mockFeed';
 import { useAppSelector } from '../store/hooks';
 import { useGetFeedQuery } from '../store/api/apiSlice';
+import type { RootState } from '../store/store';
 
 interface FeedItem {
     id: string;
@@ -29,7 +28,7 @@ interface FeedPanelProps {
 
 const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
     // Get user ID from Redux store (preferred) or use prop as fallback
-    const user = useAppSelector((state) => state.user.user);
+    const user = useAppSelector((state: RootState) => state.user.user);
     const effectiveUserId = user?.id?.toString() || userId || (typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : '');
     
     // Determine if we should use mock feed
@@ -243,113 +242,7 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
     // Poll mock feed every 3 seconds
     useEffect(() => {
         if (!useMock) return;
-        
-        // Default behavior: use real API from production server
-        // Override:
-        // - ?mockFeed=0 forces real backend (default)
-        // - ?mockFeed=1 forces mock
-        const useMock = (() => {
-            if (typeof window === 'undefined') return process.env.NEXT_PUBLIC_USE_MOCK_FEED === 'true';
-            const param = new URLSearchParams(window.location.search).get('mockFeed');
-            if (param === '0') return false;
-            if (param === '1') return true;
-            // Default to real API (not mock) for production server
-            return process.env.NEXT_PUBLIC_USE_MOCK_FEED === 'true';
-        })();
 
-        const fetchFeed = async () => {
-            try {
-                if (useMock) {
-                    setFeed(buildMockFeed(mockTick) as any);
-                    setLoading(false);
-                    return;
-                }
-
-                console.log('Fetching feed from:', API_ENDPOINTS.feed);
-                const res = await fetch(API_ENDPOINTS.feed, {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json',
-                        'X-Device-ID': getDeviceId(),
-                        'X-User-ID': typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : '',
-                    },
-                    cache: 'no-store',
-                    // Add credentials for same-origin requests
-                    credentials: 'omit',
-                });
-
-                if (res.ok) {
-                    const data = await res.json();
-                    console.log('Feed data received:', data);
-                    // Ensure data is an array
-                    if (Array.isArray(data)) {
-                        setFeed(data);
-                        setError(null); // Clear any previous errors
-                    } else {
-                        console.warn('Feed data is not an array:', data);
-                        setFeed([]);
-                        setError('Invalid response format from server');
-                    }
-                } else {
-                    const errorData = await res.json().catch(async () => {
-                        const text = await res.text().catch(() => 'Unknown error');
-                        return { error: text };
-                    });
-                    console.error('Feed API error:', res.status, errorData);
-
-                    // Set user-friendly error message
-                    if (errorData.message) {
-                        setError(errorData.message);
-                    } else if (errorData.error) {
-                        setError(errorData.error);
-                    } else {
-                        setError(`Failed to fetch feed (${res.status})`);
-                    }
-                    setFeed([]);
-                }
-            } catch (err: any) {
-                console.error("Failed to fetch feed:", err);
-                // Check if it's a network/CORS error
-                if (err?.message?.includes('Failed to fetch') || err?.name === 'TypeError') {
-                    setError('Cannot connect to backend server. Please check the server status.');
-                } else {
-                    setError('Failed to fetch feed. Please try again.');
-                }
-                setFeed([]);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchFeed();
-
-        // SSE: refresh feed immediately when backend saves a new card (streaming feel)
-        let es: EventSource | null = null;
-        let debounceTimer: any = null;
-
-        const scheduleFetch = () => {
-            if (debounceTimer) clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => {
-                fetchFeed();
-            }, 200);
-        };
-
-        if (!useMock && typeof window !== 'undefined') {
-            const userId = localStorage.getItem('userid') || '';
-            const deviceId = getDeviceId();
-            const qs = new URLSearchParams({ userId, deviceId }).toString();
-            es = new EventSource(`/api/proxy/feed/stream?${qs}`);
-            es.addEventListener('feed_updated', scheduleFetch as any);
-            es.addEventListener('ping', () => { /* keep-alive */ });
-            es.onerror = (e) => {
-                console.warn('Feed SSE error (fallback to polling):', e);
-                try { es?.close(); } catch { /* noop */ }
-                es = null;
-            };
-        }
-
-        // Poll as fallback (slower) in case SSE drops
         const interval = setInterval(() => {
             setMockTick((t) => t + 1);
         }, 3000);
@@ -376,16 +269,43 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
             }
         };
     }, [useMock, refetch]);
-            if (useMock) setMockTick((t) => t + 1);
-            fetchFeed();
-        }, 15000);
+
+    // SSE: refresh feed immediately when backend saves a new card (streaming feel)
+    useEffect(() => {
+        if (useMock || typeof window === 'undefined') return;
+
+        let es: EventSource | null = null;
+        let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+        const scheduleRefetch = () => {
+            if (debounceTimer) clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                refetch();
+            }, 200);
+        };
+
+        const userIdForStream = effectiveUserId || localStorage.getItem('userid') || '';
+        const deviceId = getDeviceId();
+        const qs = new URLSearchParams({ userId: userIdForStream, deviceId }).toString();
+
+        try {
+            es = new EventSource(`/api/proxy/feed/stream?${qs}`);
+            es.addEventListener('feed_updated', scheduleRefetch as any);
+            es.addEventListener('ping', () => { /* keep-alive */ });
+            es.onerror = (e) => {
+                console.warn('Feed SSE error (fallback to polling):', e);
+                try { es?.close(); } catch { /* noop */ }
+                es = null;
+            };
+        } catch (e) {
+            console.warn('Failed to initialize feed SSE:', e);
+        }
 
         return () => {
-            clearInterval(interval);
             if (debounceTimer) clearTimeout(debounceTimer);
             try { es?.close(); } catch { /* noop */ }
         };
-    }, [mockTick]);
+    }, [useMock, effectiveUserId, refetch]);
 
     const renderCard = (item: FeedItem) => {
         // Filter Logs if toggle is off
@@ -393,8 +313,8 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
 
         let content: React.ReactNode = null;
 
-            switch (item.card_type) {
-                case 'safe_alert':
+        switch (item.card_type) {
+            case 'safe_alert':
                 // Still show safe alerts, but NOT inside TemplateTwo
                 content = (
                     <AlertWidget
@@ -403,69 +323,40 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
                     />
                 );
                 break;
-                case 'log':
+            case 'log':
                 // Logs are excluded from TemplateTwo; show only in Debug mode
                 content = (
-                        <div className="p-3 border border-[#9DBEF8] rounded bg-[#EEF5FF] text-[10px] font-mono text-[#003580]/70 mb-2 shadow-sm">
+                    <div className="p-3 border border-[#9DBEF8] rounded bg-[#EEF5FF] text-[10px] font-mono text-[#003580]/70 mb-2 shadow-sm">
                         <span className="font-bold text-[#003580]">LOG:</span>{' '}
                         {item.data?.summary || JSON.stringify(item.data)}
-                        </div>
-                    );
-                case 'map_coord':
-                    return (
-                        <div className="p-4 border border-blue-100 rounded-xl bg-white text-xs shadow-sm">
-                            <div className="flex items-center gap-2 font-bold text-blue-900 mb-2 uppercase tracking-wide text-[10px]">
-                                📍 Location Data
-                            </div>
-                            <div className="grid grid-cols-2 gap-2 text-[11px] mb-3">
-                                <div className="bg-blue-50 p-2 rounded">
-                                    <div className="text-blue-400 text-[9px] uppercase font-bold">Latitude</div>
-                                    <div className="font-mono text-blue-900">{item.data.lat}</div>
-                                </div>
-                                <div className="bg-blue-50 p-2 rounded">
-                                    <div className="text-blue-400 text-[9px] uppercase font-bold">Longitude</div>
-                                    <div className="font-mono text-blue-900">{item.data.lng}</div>
-                                </div>
-                            </div>
-                            <JsonViewer data={item.data} label="Full Trace" />
-                        </div>
-                    );
+                    </div>
+                );
                 break;
-                default:
-                    // Generic card for unknown types
-                    return (
-                        <div className="bg-white p-4 border border-blue-100 rounded-xl shadow-sm transition-all hover:shadow-md">
-                            <div className="flex items-center justify-between mb-3">
-                                <span className="bg-blue-100 text-blue-800 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                                    {item.card_type?.replace(/_/g, ' ') || 'SYSTEM EVENT'}
-                                </span>
-                                {item.timestamp && (
-                                    <span className="text-[10px] text-gray-400 font-medium">
-                                        {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </span>
-                                )}
-                            </div>
-
-                            {/* Key-Value Pairs for simple data */}
-                            <div className="space-y-1 mb-3">
-                                {Object.entries(item.data).slice(0, 3).map(([key, value]) => {
-                                    if (typeof value === 'object' || String(value).length > 50) return null;
-                                    return (
-                                        <div key={key} className="flex justify-between text-[11px] py-1 border-b border-gray-50 last:border-0">
-                                            <span className="font-medium text-gray-600 capitalize">{key.replace(/_/g, ' ')}</span>
-                                            <span className="font-mono text-blue-600 truncate max-w-[150px]">{String(value)}</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-
-                            <JsonViewer data={item.data} label="View Raw Payload" />
+            case 'map_coord':
+                content = (
+                    <div className="p-4 border border-blue-100 rounded-xl bg-white text-xs shadow-sm">
+                        <div className="flex items-center gap-2 font-bold text-blue-900 mb-2 uppercase tracking-wide text-[10px]">
+                            📍 Location Data
                         </div>
-                    );
+                        <div className="grid grid-cols-2 gap-2 text-[11px] mb-3">
+                            <div className="bg-blue-50 p-2 rounded">
+                                <div className="text-blue-400 text-[9px] uppercase font-bold">Latitude</div>
+                                <div className="font-mono text-blue-900">{item.data.lat}</div>
+                            </div>
+                            <div className="bg-blue-50 p-2 rounded">
+                                <div className="text-blue-400 text-[9px] uppercase font-bold">Longitude</div>
+                                <div className="font-mono text-blue-900">{item.data.lng}</div>
+                            </div>
+                        </div>
+                        <JsonViewer data={item.data} label="Full Trace" />
+                    </div>
+                );
+                break;
+            default:
                 // All other cards use TemplateTwo
                 content = <TemplateTwo {...toTemplateTwoProps(item)} />;
                 break;
-            }
+        }
 
         if (!content) return null;
 
