@@ -26,6 +26,10 @@ interface FeedPanelProps {
 }
 
 const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
+    // Get user ID from Redux store (preferred) or use prop as fallback
+    const user = useAppSelector((state) => state.user.user);
+    const effectiveUserId = user?.id?.toString() || userId || (typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : '');
+    
     const [feed, setFeed] = useState<FeedItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [showLogs, setShowLogs] = useState(false); // Default: Hide Logs
@@ -61,7 +65,7 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
                         'Accept': 'application/json',
                         'Content-Type': 'application/json',
                         'X-Device-ID': getDeviceId(),
-                        'X-User-ID': userId || (typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : ''),
+                        'X-User-ID': effectiveUserId,
                     },
                     cache: 'no-store',
                     // Add credentials for same-origin requests
