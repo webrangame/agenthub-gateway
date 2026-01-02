@@ -12,10 +12,10 @@ export default function Home() {
   const dispatch = useAppDispatch();
   
   // Use RTK Query to fetch user data
-  const { data: authData, isLoading: authLoading, error: authError, refetch } = useGetAuthMeQuery(
+  const { data: authData, isLoading: authLoading, error: authError } = useGetAuthMeQuery(
     undefined,
     {
-      skip: process.env.NODE_ENV === 'development' || !authenticated, // Skip in dev mode or if not authenticated
+      skip: process.env.NODE_ENV === 'development', // Skip in dev mode
     }
   );
 
@@ -62,7 +62,6 @@ export default function Home() {
     // Set authenticated to false
     setAuthenticated(false);
     // Force page reload to clear all state and redirect to login
-    // Use setTimeout to ensure state updates are processed
     setTimeout(() => {
       if (typeof window !== 'undefined') {
         window.location.href = '/';
