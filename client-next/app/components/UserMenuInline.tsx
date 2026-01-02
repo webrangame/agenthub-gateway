@@ -2,9 +2,12 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getUsername, getUserInfo, authLogout, authMe } from '../utils/auth';
+import { useAppSelector, useAppDispatch } from '../store/hooks';
+import { useAuthLogoutMutation } from '../store/api/apiSlice';
+import { clearUser } from '../store/slices/userSlice';
 import ChangePasswordModal from './ChangePasswordModal';
 import LiteLLMKeyModal from './LiteLLMKeyModal';
+import UserInfoModal from './UserInfoModal';
 
 interface UserMenuInlineProps {
     onLogout?: () => void;
@@ -14,40 +17,15 @@ const UserMenuInline: React.FC<UserMenuInlineProps> = ({ onLogout }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [showChangePassword, setShowChangePassword] = useState(false);
     const [showLiteLLMKey, setShowLiteLLMKey] = useState(false);
-    const [userInfo, setUserInfo] = useState<{ id?: string; email?: string; username?: string; name?: string } | null>(null);
+    const [showUserInfo, setShowUserInfo] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
-    const username = getUsername();
-
-    // Fetch and update user info when component mounts or menu opens
-    useEffect(() => {
-        const loadUserInfo = async () => {
-            // First try to get from localStorage
-            const cachedInfo = getUserInfo();
-            if (cachedInfo) {
-                setUserInfo(cachedInfo);
-            }
-            
-            // Then fetch fresh data from API
-            try {
-                const res = await authMe();
-                if (res.ok && res.user) {
-                    const freshInfo = {
-                        id: res.user.id,
-                        email: res.user.email,
-                        username: res.user.username,
-                        name: res.user.name,
-                    };
-                    setUserInfo(freshInfo);
-                }
-            } catch (error) {
-                console.error('[UserMenuInline] Failed to fetch user info:', error);
-            }
-        };
-
-        if (isOpen) {
-            loadUserInfo();
-        }
-    }, [isOpen]);
+    
+    // Get user from Redux store
+    const user = useAppSelector((state) => state.user.user);
+    const dispatch = useAppDispatch();
+    
+    // RTK Query mutation for logout
+    const [authLogoutMutation] = useAuthLogoutMutation();
 
     // Close menu when clicking outside
     useEffect(() => {
@@ -67,7 +45,29 @@ const UserMenuInline: React.FC<UserMenuInlineProps> = ({ onLogout }) => {
     }, [isOpen]);
 
     const handleLogout = async () => {
-        await authLogout();
+        try {
+            await authLogoutMutation().unwrap();
+            dispatch(clearUser());
+            // Clear localStorage
+            if (typeof window !== 'undefined') {
+                localStorage.removeItem('userid');
+                localStorage.removeItem('litellm_api_key');
+                localStorage.removeItem('litellm_key_info');
+                localStorage.removeItem('user_info');
+                localStorage.removeItem('username');
+            }
+        } catch (error) {
+            console.error('Logout error:', error);
+            // Clear user state even if API call fails
+            dispatch(clearUser());
+            if (typeof window !== 'undefined') {
+                localStorage.removeItem('userid');
+                localStorage.removeItem('litellm_api_key');
+                localStorage.removeItem('litellm_key_info');
+                localStorage.removeItem('user_info');
+                localStorage.removeItem('username');
+            }
+        }
         if (onLogout) {
             onLogout();
         }
@@ -86,13 +86,18 @@ const UserMenuInline: React.FC<UserMenuInlineProps> = ({ onLogout }) => {
 
     // Get user initials for avatar
     const getInitials = () => {
-        if (!username) return 'U';
-        return username
+        const name = user?.name || 'User';
+        return name
             .split(' ')
             .map(n => n[0])
             .join('')
             .toUpperCase()
             .slice(0, 2);
+    };
+    
+    const handleShowUserInfo = () => {
+        setShowUserInfo(true);
+        setIsOpen(false);
     };
 
     return (
@@ -102,10 +107,10 @@ const UserMenuInline: React.FC<UserMenuInlineProps> = ({ onLogout }) => {
                 <button
                     onClick={() => setIsOpen(!isOpen)}
                     className="w-10 h-10 rounded-full bg-[#003580] hover:bg-[#002a66] text-white shadow-lg transition-all duration-200 flex items-center justify-center font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-[#003580] focus:ring-offset-2 border-2 border-white"
-                    title={username || 'User'}
+                    title={user?.name || user?.email || 'User'}
                     aria-label="User menu"
                 >
-                    {username ? getInitials() : (
+                    {user ? getInitials() : (
                         <svg
                             className="w-4 h-4"
                             fill="none"
@@ -135,21 +140,41 @@ const UserMenuInline: React.FC<UserMenuInlineProps> = ({ onLogout }) => {
                             {/* User Info Header */}
                             <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
                                 <p className="text-sm font-semibold text-gray-900">
-                                    {userInfo?.name || userInfo?.username || username || 'User'}
+                                    {user?.name || user?.email || 'User'}
                                 </p>
-                                {userInfo?.email && (
-                                    <p className="text-xs text-gray-600 mt-0.5 break-all">{userInfo.email}</p>
+                                {user?.email && (
+                                    <p className="text-xs text-gray-600 mt-0.5 break-all">{user.email}</p>
                                 )}
-                                {userInfo?.username && userInfo?.username !== userInfo?.name && (
-                                    <p className="text-xs text-gray-500 mt-0.5">@{userInfo.username}</p>
+                                {user?.phoneNumber && (
+                                    <p className="text-xs text-gray-500 mt-0.5">{user.phoneNumber}</p>
                                 )}
-                                {!userInfo?.email && !userInfo?.username && (
+                                {!user && (
                                     <p className="text-xs text-gray-500 mt-0.5">Signed in</p>
                                 )}
                             </div>
 
                             {/* Menu Items */}
                             <div className="py-1">
+                                <button
+                                    onClick={handleShowUserInfo}
+                                    className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center gap-3"
+                                >
+                                    <svg
+                                        className="w-4 h-4 text-gray-500"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                        />
+                                    </svg>
+                                    User Information
+                                </button>
+
                                 <button
                                     onClick={handleShowLiteLLMKey}
                                     className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center gap-3"
@@ -233,6 +258,13 @@ const UserMenuInline: React.FC<UserMenuInlineProps> = ({ onLogout }) => {
             {showLiteLLMKey && (
                 <LiteLLMKeyModal
                     onClose={() => setShowLiteLLMKey(false)}
+                />
+            )}
+
+            {/* User Info Modal */}
+            {showUserInfo && (
+                <UserInfoModal
+                    onClose={() => setShowUserInfo(false)}
                 />
             )}
         </>

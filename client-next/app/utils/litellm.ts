@@ -27,6 +27,8 @@ export interface LiteLLMUserInfo {
 /**
  * Fetch LiteLLM user information via backend proxy
  * The backend will use the master key to fetch user info from LiteLLM API
+ * 
+ * @deprecated Use RTK Query useGetLiteLLMUserInfoQuery hook instead
  */
 export async function fetchLiteLLMUserInfo(userId: string): Promise<LiteLLMUserInfo | null> {
   try {

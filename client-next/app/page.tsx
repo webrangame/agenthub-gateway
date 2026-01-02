@@ -3,65 +3,57 @@
 import React, { useState, useEffect } from 'react';
 import CapabilityLayoutMapper from './CapabilityLayoutMapper';
 import LoginPage from './components/LoginPage';
-import { authMe, authLogout } from './utils/auth';
+import { useGetAuthMeQuery, useAuthLogoutMutation } from './store/api/apiSlice';
+import { useAppDispatch } from './store/hooks';
+import { setUser, clearUser } from './store/slices/userSlice';
 
 export default function Home() {
   const [authenticated, setAuthenticated] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [authChecking, setAuthChecking] = useState(true);
+  const dispatch = useAppDispatch();
+  
+  // Use RTK Query to fetch user data
+  const { data: authData, isLoading: authLoading, error: authError } = useGetAuthMeQuery(
+    undefined,
+    {
+      skip: process.env.NODE_ENV === 'development', // Skip in dev mode
+    }
+  );
 
   useEffect(() => {
-    let cancelled = false;
-
-    const checkSession = async () => {
-      setAuthChecking(true);
-
-      // Debug: Check if cookies are available (always enabled for troubleshooting)
-      if (typeof document !== 'undefined') {
-        console.log('[SSO Debug] Current domain:', window.location.hostname);
-        console.log('[SSO Debug] Cookies available:', document.cookie || 'No cookies found');
-        console.log('[SSO Debug] Calling authMe() to:', 'https://market.niyogen.com/api/auth/me');
-      }
-
-      // In development, skip the production auth check to avoid "Network Error" console noise.
-      // We rely on the "Local Dev Login" bypass button instead.
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[Dev] Skipping production SSO check. Use Local Dev Login.');
-        setAuthChecking(false);
-        return;
-      }
-
-      const res = await authMe();
-      if (cancelled) return;
-
-      console.log('[SSO Debug] Auth result:', res.ok ? '✅ Authenticated' : '❌ Not authenticated', res.error || '');
-
-      if (res.ok && res.userId) {
-        setUserId(res.userId);
-      }
-
-      setAuthenticated(res.ok);
-      setAuthChecking(false);
-    };
-
-    // Initial SSO check (runs on every page load, including after redirect from market)
-    checkSession();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (authData?.user) {
+      dispatch(setUser(authData.user));
+      setAuthenticated(true);
+    } else if (authError) {
+      dispatch(clearUser());
+      setAuthenticated(false);
+    }
+  }, [authData, authError, dispatch]);
 
   const handleLogin = () => {
     setAuthenticated(true);
   };
 
+  const [authLogoutMutation] = useAuthLogoutMutation();
+  
   const handleLogout = async () => {
-    await authLogout();
+    try {
+      await authLogoutMutation().unwrap();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+    dispatch(clearUser());
+    // Clear localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('userid');
+      localStorage.removeItem('litellm_api_key');
+      localStorage.removeItem('litellm_key_info');
+      localStorage.removeItem('user_info');
+      localStorage.removeItem('username');
+    }
     setAuthenticated(false);
   };
 
-  if (authChecking) {
+  if (authLoading || (process.env.NODE_ENV !== 'development' && !authData && !authError)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#003580] via-[#004a9f] to-[#003580]">
         <div className="text-white">
@@ -79,10 +71,11 @@ export default function Home() {
 
   // Hardcoded for now, this will eventually come from the Agent File or Backend
   const activeCapabilities = ['trip-guardian'];
+  const userId = authData?.user?.id?.toString();
 
   return (
     <div className="relative">
-      <CapabilityLayoutMapper capabilities={activeCapabilities} onLogout={handleLogout} userId={userId || undefined} />
+      <CapabilityLayoutMapper capabilities={activeCapabilities} onLogout={handleLogout} userId={userId} />
     </div>
   );
 }
