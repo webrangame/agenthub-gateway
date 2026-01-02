@@ -1,9 +1,10 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { vi, describe, it, expect, beforeEach, afterEach, Mock } from 'vitest';
 import ChatPanel from './ChatPanel';
 
 // Mock the API module
-jest.mock('../utils/api', () => ({
+vi.mock('../utils/api', () => ({
     API_ENDPOINTS: {
         chat: '/api/chat/stream',
         feed: '/api/feed',
@@ -11,8 +12,20 @@ jest.mock('../utils/api', () => ({
 }));
 
 // Mock device ID
-jest.mock('../utils/device', () => ({
+vi.mock('../utils/device', () => ({
     getDeviceId: () => 'test-device-id',
+}));
+
+// Mock Redux Hooks
+const mockUseAppSelector = vi.fn();
+vi.mock('../store/hooks', () => ({
+    useAppSelector: (selector: any) => mockUseAppSelector(selector),
+}));
+
+// Mock RTK Query Mutations
+const mockDeleteFeedMutation = vi.fn();
+vi.mock('../store/api/apiSlice', () => ({
+    useDeleteFeedMutation: () => [mockDeleteFeedMutation],
 }));
 
 describe('ChatPanel', () => {
@@ -20,11 +33,18 @@ describe('ChatPanel', () => {
         // Clear localStorage before each test
         localStorage.clear();
         // Mock fetch
-        global.fetch = jest.fn();
+        global.fetch = vi.fn();
+
+        // Mock scrollIntoView
+        window.HTMLElement.prototype.scrollIntoView = vi.fn();
+
+        // Default Redux Mocks
+        mockUseAppSelector.mockReturnValue({ id: 'test-user', name: 'Test' });
+        mockDeleteFeedMutation.mockReturnValue({ unwrap: () => Promise.resolve({}) });
     });
 
     afterEach(() => {
-        jest.restoreAllMocks();
+        vi.restoreAllMocks();
     });
 
     it('renders welcome message', () => {
@@ -37,12 +57,13 @@ describe('ChatPanel', () => {
             headers: { 'Content-Type': 'text/event-stream' },
         });
 
-        (global.fetch as jest.Mock).mockResolvedValueOnce(mockResponse);
+        (global.fetch as Mock).mockResolvedValueOnce(mockResponse);
 
         render(<ChatPanel />);
 
         const input = screen.getByPlaceholderText(/Type your plans/i);
-        const sendButton = screen.getByRole('button', { name: /send/i });
+        // Use exact name match for accessibility
+        const sendButton = screen.getByRole('button', { name: /Send Message/i });
 
         fireEvent.change(input, { target: { value: 'Test message' } });
         fireEvent.click(sendButton);
@@ -52,7 +73,13 @@ describe('ChatPanel', () => {
                 expect.stringContaining('/api/chat/stream'),
                 expect.objectContaining({
                     method: 'POST',
-                    body: JSON.stringify({ input: 'Test message' }),
+                    body: expect.stringContaining('"client_time":'),
+                })
+            );
+            expect(global.fetch).toHaveBeenCalledWith(
+                expect.stringContaining('/api/chat/stream'),
+                expect.objectContaining({
+                    body: expect.stringContaining('"user_location":"Unknown"'),
                 })
             );
         });
@@ -63,7 +90,7 @@ describe('ChatPanel', () => {
             headers: { 'Content-Type': 'text/event-stream' },
         });
 
-        (global.fetch as jest.Mock).mockResolvedValueOnce(mockResponse);
+        (global.fetch as Mock).mockResolvedValueOnce(mockResponse);
 
         render(<ChatPanel />);
 
@@ -96,7 +123,7 @@ describe('ChatPanel', () => {
     });
 
     it('calls onToggleCollapse when expand button is clicked', () => {
-        const mockToggle = jest.fn();
+        const mockToggle = vi.fn();
         render(<ChatPanel isCollapsed={true} onToggleCollapse={mockToggle} />);
 
         const expandButton = screen.getByTitle(/Expand Panel/i);
@@ -107,13 +134,13 @@ describe('ChatPanel', () => {
 
     it('clears conversation on reset', async () => {
         // Mock window.confirm
-        window.confirm = jest.fn(() => true);
+        window.confirm = vi.fn(() => true);
 
         const mockResponse = new Response('', { status: 200 });
-        (global.fetch as jest.Mock).mockResolvedValueOnce(mockResponse);
+        (global.fetch as Mock).mockResolvedValueOnce(mockResponse);
 
         // Spy on custom event dispatch
-        const dispatchEventSpy = jest.spyOn(window, 'dispatchEvent');
+        const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
 
         render(<ChatPanel />);
 
@@ -121,10 +148,8 @@ describe('ChatPanel', () => {
         fireEvent.click(resetButton);
 
         await waitFor(() => {
-            expect(global.fetch).toHaveBeenCalledWith(
-                expect.stringContaining('/api/feed'),
-                expect.objectContaining({ method: 'DELETE' })
-            );
+            // Verify mutation was called instead of direct fetch
+            expect(mockDeleteFeedMutation).toHaveBeenCalled();
         });
 
         // Verify feedReset event was dispatched
@@ -142,12 +167,12 @@ describe('ChatPanel', () => {
     });
 
     it('shows error message on fetch failure', async () => {
-        (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+        (global.fetch as Mock).mockRejectedValueOnce(new Error('Network error'));
 
         render(<ChatPanel />);
 
         const input = screen.getByPlaceholderText(/Type your plans/i);
-        const sendButton = screen.getByRole('button', { name: /send/i });
+        const sendButton = screen.getByRole('button', { name: /Send Message/i });
 
         fireEvent.change(input, { target: { value: 'Test message' } });
         fireEvent.click(sendButton);

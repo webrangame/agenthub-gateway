@@ -138,6 +138,7 @@ func GenerateContent(history []map[string]interface{}, systemPrompt string, user
 		"model":       model,
 		"messages":    messages,
 		"temperature": 0.0,
+		"max_tokens":  8192,
 	}
 
 	jsonData, err := json.Marshal(requestBody)
