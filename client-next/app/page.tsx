@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import CapabilityLayoutMapper from './CapabilityLayoutMapper';
 import LoginPage from './components/LoginPage';
-import { useGetAuthMeQuery, useAuthLogoutMutation } from './store/api/apiSlice';
+import { useGetAuthMeQuery, useAuthLogoutMutation, apiSlice } from './store/api/apiSlice';
 import { useAppDispatch } from './store/hooks';
 import { setUser, clearUser } from './store/slices/userSlice';
 
@@ -41,6 +41,9 @@ export default function Home() {
     } catch (error) {
       console.error('Logout error:', error);
     }
+    // Reset RTK Query cache
+    dispatch(apiSlice.util.resetApiState());
+    // Clear Redux state
     dispatch(clearUser());
     // Clear localStorage
     if (typeof window !== 'undefined') {
@@ -49,8 +52,21 @@ export default function Home() {
       localStorage.removeItem('litellm_key_info');
       localStorage.removeItem('user_info');
       localStorage.removeItem('username');
+      // Clear all cookies by setting them to expire
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
     }
+    // Set authenticated to false
     setAuthenticated(false);
+    // Force page reload to clear all state and redirect to login
+    setTimeout(() => {
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
+    }, 100);
   };
 
   if (authLoading || (process.env.NODE_ENV !== 'development' && !authData && !authError)) {
