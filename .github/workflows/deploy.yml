@@ -20,70 +20,10 @@ env:
 
 jobs:
   # ------------------------------------------------------------------
-  # CHANGES: Detect which files changed
-  # ------------------------------------------------------------------
-  changes:
-    runs-on: ubuntu-latest
-    outputs:
-      server: ${{ steps.filter.outputs.server }}
-      client: ${{ steps.filter.outputs.client }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Detect Changes
-        id: filter
-        run: |
-          echo "Detecting changes..."
-          
-          # Default to false
-          SERVER_CHANGED="false"
-          CLIENT_CHANGED="false"
-
-          # If this is a PR, diff against the base branch
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            BASE_REF="origin/${{ github.base_ref }}"
-            HEAD_REF="${{ github.event.pull_request.head.sha }}"
-            echo "PR Detected. Diffing $BASE_REF...$HEAD_REF"
-            CHANGED_FILES=$(git diff --name-only $BASE_REF $HEAD_REF || echo "")
-          else
-            # For push, diff against the previous commit
-            BEFORE="${{ github.event.before }}"
-            AFTER="${{ github.sha }}"
-            echo "Push Detected. Diffing $BEFORE...$AFTER"
-            # Handle force push or new branch case where 'before' might be empty or zero
-            if [ -z "$BEFORE" ] || [ "$BEFORE" == "0000000000000000000000000000000000000000" ]; then
-               CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD || echo "")
-            else
-               CHANGED_FILES=$(git diff --name-only $BEFORE $AFTER || echo "")
-            fi
-          fi
-
-          echo "Changed Files:"
-          echo "$CHANGED_FILES"
-
-          if echo "$CHANGED_FILES" | grep -qE "^server/|^\.github/workflows/deploy.yml|^aws/gateway-task-def.json"; then
-            SERVER_CHANGED="true"
-          fi
-
-          if echo "$CHANGED_FILES" | grep -qE "^client-next/|^\.github/workflows/deploy.yml"; then
-            CLIENT_CHANGED="true"
-          fi
-
-          echo "Server Changed: $SERVER_CHANGED"
-          echo "Client Changed: $CLIENT_CHANGED"
-
-          echo "server=$SERVER_CHANGED" >> $GITHUB_OUTPUT
-          echo "client=$CLIENT_CHANGED" >> $GITHUB_OUTPUT
-
-  # ------------------------------------------------------------------
-  # BACKEND VALIDATION (Runs on PRs & Push if server changes)
+  # BACKEND VALIDATION (Runs on ALL PRs & Pushes)
   # ------------------------------------------------------------------
   test:
     name: Run Backend Tests
-    needs: changes
-    if: ${{ needs.changes.outputs.server == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -107,8 +47,6 @@ jobs:
 
   lint:
     name: Run Backend Linter
-    needs: changes
-    if: ${{ needs.changes.outputs.server == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -126,8 +64,6 @@ jobs:
 
   security:
     name: Security Scan
-    needs: changes
-    if: ${{ needs.changes.outputs.server == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -144,16 +80,15 @@ jobs:
           gosec ./...
 
   # ------------------------------------------------------------------
-  # BACKEND DEPLOY (Runs ONLY on Master Push & Success & Server changes)
+  # BACKEND DEPLOY (Runs ALWAYS on Master Push & Success)
   # ------------------------------------------------------------------
   deploy_backend:
     name: Deploy Backend (GCP)
     needs: 
-      - changes
       - test
       - lint
       - security
-    if: ${{ github.ref == 'refs/heads/master' && needs.changes.outputs.server == 'true' }}
+    if: ${{ github.ref == 'refs/heads/master' }}
     runs-on: ubuntu-latest
     environment: production
 
@@ -185,14 +120,16 @@ jobs:
           service: 'guardian-gateway'
           image: '${{ env.ARTIFACT_REGISTRY }}/guardian-gateway:${{ github.sha }}'
           region: '${{ env.GCP_REGION }}'
+          secrets: |
+            DATABASE_URL=DATABASE_URL:latest
+            OPENAI_API_KEY=OPENAI_API_KEY:latest
+            GOOGLE_MAPS_KEY=GOOGLE_MAPS_KEY:latest
 
   # ------------------------------------------------------------------
-  # FRONTEND VALIDATION (Runs on PRs & Push if client changes)
+  # FRONTEND VALIDATION
   # ------------------------------------------------------------------
   test_client:
     name: Run Frontend Build Check
-    needs: changes
-    if: ${{ needs.changes.outputs.client == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -216,13 +153,11 @@ jobs:
           npm run build
 
   # ------------------------------------------------------------------
-  # FRONTEND DEPLOY (Runs ONLY on Master Push & Client changes)
+  # FRONTEND DEPLOY (Runs ALWAYS on Master Push)
   # ------------------------------------------------------------------
   deploy_frontend:
     name: Deploy Frontend (GCP)
-    needs: changes
-    # Frontend validation can be added here as separate jobs (test, lint) if needed
-    if: ${{ github.ref == 'refs/heads/master' && needs.changes.outputs.client == 'true' }}
+    if: ${{ github.ref == 'refs/heads/master' }}
     runs-on: ubuntu-latest
     environment: production
 
@@ -261,11 +196,10 @@ jobs:
   deploy_aws:
     name: Deploy Backend (AWS)
     needs: 
-      - changes
       - test
       - lint
       - security
-    if: ${{ github.ref == 'refs/heads/master' && needs.changes.outputs.server == 'true' }}
+    if: ${{ github.ref == 'refs/heads/master' }}
     runs-on: ubuntu-latest
     environment: production
 
