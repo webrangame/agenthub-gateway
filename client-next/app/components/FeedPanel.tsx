@@ -139,7 +139,7 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
                 window.removeEventListener('feedReset', handleFeedReset);
             }
         };
-    }, [mockTick, userId]);
+    }, [mockTick, effectiveUserId]);
 
     const renderCard = (item: FeedItem) => {
         // Filter Logs if toggle is off
