@@ -928,12 +928,54 @@ INSTRUCTIONS:
 UPDATE_STATE: Key=Value
 ACTION: ...`, string(varsJSON), isPostReport)
 
-	// Get LiteLLM API Key from header if provided (user-specific key from market.niyogen.com)
-	litellmApiKey := c.GetHeader("X-LiteLLM-API-Key")
+	// Get or Generate Per-User LiteLLM Key
+	userID := c.GetHeader("X-User-ID")
+	var litellmApiKey string
+
+	if userID != "" {
+		// Try to get existing key from database
+		key, err := feedStore.GetUserLiteLLMKey(c.Request.Context(), userID)
+		if err != nil {
+			fmt.Printf("⚠️ Error fetching user key: %v\n", err)
+		}
+
+		if key == "" {
+			// Generate new key for this user
+			fmt.Printf("🔑 Generating new LiteLLM key for user: %s\n", userID)
+			proxyURL := os.Getenv("LITELLM_PROXY_URL")
+			masterKey := os.Getenv("LITELLM_MASTER_KEY")
+
+			if proxyURL != "" && masterKey != "" {
+				newKey, keyName, err := store.GenerateLiteLLMKey(proxyURL, masterKey, userID, 10.00)
+				if err != nil {
+					fmt.Printf("❌ Failed to generate key: %v\n", err)
+				} else {
+					// Store the new key
+					if err := feedStore.StoreUserLiteLLMKey(c.Request.Context(), userID, newKey, keyName, 10.00); err != nil {
+						fmt.Printf("❌ Failed to store key: %v\n", err)
+					} else {
+						litellmApiKey = newKey
+						fmt.Printf("✅ Generated and stored key: %s\n", keyName)
+					}
+				}
+			}
+		} else {
+			litellmApiKey = key
+			fmt.Printf("✅ Using existing key for user: %s\n", userID)
+		}
+	}
+
+	// Fallback: Check if client sent their own key (for development/testing)
+	if litellmApiKey == "" {
+		litellmApiKey = c.GetHeader("X-LiteLLM-API-Key")
+		if litellmApiKey != "" {
+			fmt.Println("ℹ️ Using client-provided LiteLLM key")
+		}
+	}
 
 	fmt.Printf("GATEWAY: Thinking... (History: %d msgs)\n", len(history))
 	if litellmApiKey != "" {
-		fmt.Printf("GATEWAY: Using user-provided LiteLLM API Key\n")
+		fmt.Printf("GATEWAY: Using LiteLLM API Key\n")
 	}
 	decision, err := GenerateContentFunc(convertHistory(history), systemMsg, litellmApiKey)
 
