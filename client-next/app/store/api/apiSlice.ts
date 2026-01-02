@@ -136,17 +136,6 @@ export const apiSlice = createApi({
         }
       },
       invalidatesTags: ['User'],
-      // Clear all queries on logout
-      onQueryStarted: async (_, { dispatch, queryFulfilled }) => {
-        try {
-          await queryFulfilled;
-          // Reset all queries after successful logout
-          dispatch(apiSlice.util.resetApiState());
-        } catch {
-          // Even if logout fails, reset state
-          dispatch(apiSlice.util.resetApiState());
-        }
-      },
     }),
 
     // Auth set password

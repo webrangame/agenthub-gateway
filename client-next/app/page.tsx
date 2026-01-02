@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import CapabilityLayoutMapper from './CapabilityLayoutMapper';
 import LoginPage from './components/LoginPage';
-import { useGetAuthMeQuery, useAuthLogoutMutation } from './store/api/apiSlice';
+import { useGetAuthMeQuery, useAuthLogoutMutation, apiSlice } from './store/api/apiSlice';
 import { useAppDispatch } from './store/hooks';
 import { setUser, clearUser } from './store/slices/userSlice';
 
@@ -41,6 +41,8 @@ export default function Home() {
     } catch (error) {
       console.error('Logout error:', error);
     }
+    // Reset RTK Query cache
+    dispatch(apiSlice.util.resetApiState());
     // Clear Redux state
     dispatch(clearUser());
     // Clear localStorage
