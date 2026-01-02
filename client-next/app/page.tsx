@@ -17,9 +17,6 @@ export default function Home() {
     undefined,
     {
       skip: process.env.NODE_ENV === 'development', // Skip in dev mode
-      // Add retry configuration
-      retry: 1,
-      // Add timeout handling
     }
   );
 

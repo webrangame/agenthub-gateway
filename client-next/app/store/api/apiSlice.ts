@@ -96,12 +96,12 @@ export const apiSlice = createApi({
         } catch (error: any) {
           // Handle abort/timeout
           if (error.name === 'AbortError') {
-            return { error: { status: 'TIMEOUT', error: 'Request timed out' } };
+            return { error: { status: 'FETCH_ERROR', error: 'Request timed out' } };
           }
           // Handle CORS errors
           if (error.message?.includes('CORS') || error.message?.includes('Failed to fetch')) {
             console.error('[Auth] CORS or network error:', error);
-            return { error: { status: 'CORS_ERROR', error: 'CORS or network error. Please check if market.niyogen.com allows travel.niyogen.com origin.' } };
+            return { error: { status: 'FETCH_ERROR', error: 'CORS or network error. Please check if market.niyogen.com allows travel.niyogen.com origin.' } };
           }
           return { error: { status: 'FETCH_ERROR', error: String(error) } };
         }
