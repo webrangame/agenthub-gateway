@@ -1001,9 +1001,10 @@ RESPONSE MUST BE VALID JSON ONLY.`, timeContext, locContext, string(varsJSON), i
 	fmt.Printf("GATEWAY RAW RESPONSE: %s\n", decisionResponse)
 
 	// Default fallback
-	action := "ASK_QUESTION"
-	content := "Sorry, I am having trouble thinking right now."
-	updates := make(map[string]string)
+	// Default fallback variables
+	var action string
+	var content string // Used for fallback messages
+	var updates map[string]string
 
 	if err == nil {
 		// Clean response (remove markdown blocks if any)
@@ -1023,7 +1024,6 @@ RESPONSE MUST BE VALID JSON ONLY.`, timeContext, locContext, string(varsJSON), i
 
 		if jsonErr := json.Unmarshal([]byte(decisionResponse), &decisionObj); jsonErr == nil {
 			action = decisionObj.Action
-			content = decisionObj.Content
 			updates = decisionObj.Updates
 
 			// Normalize Action
