@@ -8,13 +8,20 @@ const API_BASE_URL = process.env.NODE_ENV === 'development'
   : (process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://3.80.195.233:8081');
 const PROXY_BASE = '/api/proxy';
 
-// Helper to get device ID
+// Helper to get device ID (using same logic as utils/device.ts)
 const getDeviceId = (): string => {
   if (typeof window === 'undefined') return '';
-  let deviceId = localStorage.getItem('deviceId');
+  const DEVICE_ID_KEY = 'ai_guardian_device_id';
+  let deviceId = localStorage.getItem(DEVICE_ID_KEY);
   if (!deviceId) {
-    deviceId = `device-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    localStorage.setItem('deviceId', deviceId);
+    // Use uuid if available, otherwise generate simple ID
+    try {
+      const { v4: uuidv4 } = require('uuid');
+      deviceId = uuidv4();
+    } catch {
+      deviceId = `device-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    }
+    localStorage.setItem(DEVICE_ID_KEY, deviceId);
   }
   return deviceId;
 };
