@@ -58,6 +58,17 @@ export const getLiteLLMKeyInfo = (): { key?: string; tpmLimit?: number; rpmLimit
   }
 };
 
+export const getUserInfo = (): { id?: string; email?: string; username?: string; name?: string } | null => {
+  if (typeof window === 'undefined') return null;
+  const info = localStorage.getItem('user_info');
+  if (!info) return null;
+  try {
+    return JSON.parse(info);
+  } catch {
+    return null;
+  }
+};
+
 export async function authMe(): Promise<{ ok: boolean; user?: AuthUser; error?: string }> {
   try {
     const res = await fetch(`${AUTH_BASE}/api/auth/me`, {
@@ -157,6 +168,7 @@ export async function authLogout(): Promise<{ ok: boolean; error?: string }> {
       localStorage.removeItem('userid');
       localStorage.removeItem('litellm_api_key');
       localStorage.removeItem('litellm_key_info');
+      localStorage.removeItem('user_info');
     }
     if (!res.ok) return { ok: false, error: await parseError(res) };
     return { ok: true };
