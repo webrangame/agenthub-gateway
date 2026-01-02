@@ -30,6 +30,21 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
     const user = useAppSelector((state) => state.user.user);
     const effectiveUserId = user?.id?.toString() || userId || (typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : '');
     
+    // Determine if we should use mock feed
+    const useMock = (() => {
+        if (typeof window === 'undefined') return process.env.NEXT_PUBLIC_USE_MOCK_FEED === 'true';
+        const param = new URLSearchParams(window.location.search).get('mockFeed');
+        if (param === '0') return false;
+        if (param === '1') return true;
+        return process.env.NEXT_PUBLIC_USE_MOCK_FEED === 'true';
+    })();
+
+    // RTK Query for feed (skip if using mock)
+    const { data: feedData, isLoading: feedLoading, error: feedError, refetch } = useGetFeedQuery(undefined, {
+        pollingInterval: useMock ? 0 : 3000, // Poll every 3 seconds if not using mock
+        skip: useMock, // Skip RTK Query if using mock
+    });
+    
     const [feed, setFeed] = useState<FeedItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [showLogs, setShowLogs] = useState(false); // Default: Hide Logs
@@ -37,96 +52,53 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        // Default behavior: use real API from production server
-        // Override:
-        // - ?mockFeed=0 forces real backend (default)
-        // - ?mockFeed=1 forces mock
-        const useMock = (() => {
-            if (typeof window === 'undefined') return process.env.NEXT_PUBLIC_USE_MOCK_FEED === 'true';
-            const param = new URLSearchParams(window.location.search).get('mockFeed');
-            if (param === '0') return false;
-            if (param === '1') return true;
-            // Default to real API (not mock) for production server
-            return process.env.NEXT_PUBLIC_USE_MOCK_FEED === 'true';
-        })();
-
-        const fetchFeed = async () => {
-            try {
-                if (useMock) {
-                    setFeed(buildMockFeed(mockTick) as any);
-                    setLoading(false);
-                    return;
-                }
-
-                console.log('Fetching feed from:', API_ENDPOINTS.feed);
-                const res = await fetch(API_ENDPOINTS.feed, {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json',
-                        'X-Device-ID': getDeviceId(),
-                        'X-User-ID': effectiveUserId,
-                    },
-                    cache: 'no-store',
-                    // Add credentials for same-origin requests
-                    credentials: 'omit',
-                });
-
-                if (res.ok) {
-                    const data = await res.json();
-                    console.log('Feed data received:', data);
-                    // Ensure data is an array
-                    if (Array.isArray(data)) {
-                        setFeed(data);
-                        setError(null); // Clear any previous errors
-                    } else {
-                        console.warn('Feed data is not an array:', data);
-                        setFeed([]);
-                        setError('Invalid response format from server');
-                    }
-                } else {
-                    const errorData = await res.json().catch(async () => {
-                        const text = await res.text().catch(() => 'Unknown error');
-                        return { error: text };
-                    });
-                    console.error('Feed API error:', res.status, errorData);
-
-                    // Set user-friendly error message
-                    if (errorData.message) {
-                        setError(errorData.message);
-                    } else if (errorData.error) {
-                        setError(errorData.error);
-                    } else {
-                        setError(`Failed to fetch feed (${res.status})`);
-                    }
-                    setFeed([]);
-                }
-            } catch (err: any) {
-                console.error("Failed to fetch feed:", err);
-                // Check if it's a network/CORS error
-                if (err?.message?.includes('Failed to fetch') || err?.name === 'TypeError') {
-                    setError('Cannot connect to backend server. Please check the server status.');
-                } else {
-                    setError('Failed to fetch feed. Please try again.');
-                }
+        // Handle RTK Query feed data
+        if (useMock) {
+            setFeed(buildMockFeed(mockTick) as any);
+            setLoading(false);
+            setError(null);
+        } else if (feedData) {
+            console.log('Feed data received from RTK Query:', feedData);
+            if (Array.isArray(feedData)) {
+                setFeed(feedData);
+                setError(null);
+            } else {
+                console.warn('Feed data is not an array:', feedData);
                 setFeed([]);
-            } finally {
-                setLoading(false);
+                setError('Invalid response format from server');
             }
-        };
+            setLoading(false);
+        } else if (feedError) {
+            console.error('Feed API error:', feedError);
+            const errorMessage = 'error' in feedError && typeof feedError.error === 'object' && 'data' in feedError.error
+                ? (feedError.error.data as any)?.message || (feedError.error.data as any)?.error || 'Failed to fetch feed'
+                : 'Failed to fetch feed';
+            setError(errorMessage);
+            setFeed([]);
+            setLoading(false);
+        } else {
+            setLoading(feedLoading);
+        }
+    }, [mockTick, feedData, feedLoading, feedError, useMock]);
 
-        fetchFeed();
-
-        // Poll every 3 seconds for real-time updates
+    // Poll mock feed every 3 seconds
+    useEffect(() => {
+        if (!useMock) return;
+        
         const interval = setInterval(() => {
-            if (useMock) setMockTick((t) => t + 1);
-            fetchFeed();
+            setMockTick((t) => t + 1);
         }, 3000);
 
-        // Listen for reset events from ChatPanel
+        return () => clearInterval(interval);
+    }, [useMock]);
+
+    // Listen for reset events from ChatPanel
+    useEffect(() => {
         const handleFeedReset = () => {
             console.log('[FeedPanel] Received feedReset event, refreshing immediately...');
-            fetchFeed();
+            if (!useMock) {
+                refetch();
+            }
         };
 
         if (typeof window !== 'undefined') {
@@ -134,12 +106,11 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
         }
 
         return () => {
-            clearInterval(interval);
             if (typeof window !== 'undefined') {
                 window.removeEventListener('feedReset', handleFeedReset);
             }
         };
-    }, [mockTick, effectiveUserId]);
+    }, [useMock, refetch]);
 
     const renderCard = (item: FeedItem) => {
         // Filter Logs if toggle is off

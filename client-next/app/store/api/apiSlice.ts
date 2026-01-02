@@ -59,7 +59,7 @@ const baseQuery = fetchBaseQuery({
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery,
-  tagTypes: ['User', 'Chat'],
+  tagTypes: ['User', 'Chat', 'Feed', 'LiteLLM'],
   endpoints: (builder) => ({
     // Auth endpoint - use fetch directly for CORS
     getAuthMe: builder.query<{ user: User }, void>({
@@ -86,31 +86,197 @@ export const apiSlice = createApi({
       },
       providesTags: ['User'],
     }),
-    
-    // Chat endpoint
-    sendChatMessage: builder.mutation<ReadableStream, { input: string }>({
-      query: (body) => ({
-        url: `${PROXY_BASE}/chat`,
-        method: 'POST',
-        body,
-        responseHandler: (response) => response.body as ReadableStream,
-      }),
-      invalidatesTags: ['Chat'],
+
+    // Auth login
+    authLogin: builder.mutation<{ user?: User; ok: boolean; error?: string }, { username: string; password: string }>({
+      queryFn: async ({ username, password }) => {
+        try {
+          const response = await fetch(`${AUTH_BASE}/api/auth/login`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: JSON.stringify({ username, password }),
+          });
+
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Login failed' }));
+            return { error: { status: response.status, data: error } };
+          }
+
+          const data = await response.json();
+          return { data: { ...data, ok: true } };
+        } catch (error) {
+          return { error: { status: 'FETCH_ERROR', error: String(error) } };
+        }
+      },
+      invalidatesTags: ['User'],
+    }),
+
+    // Auth logout
+    authLogout: builder.mutation<{ ok: boolean; error?: string }, void>({
+      queryFn: async () => {
+        try {
+          const response = await fetch(`${AUTH_BASE}/api/auth/logout`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Accept': 'application/json',
+            },
+          });
+
+          const data = response.ok ? await response.json().catch(() => ({})) : {};
+          return { data: { ok: response.ok, ...data } };
+        } catch (error) {
+          return { error: { status: 'FETCH_ERROR', error: String(error) } };
+        }
+      },
+      invalidatesTags: ['User'],
+    }),
+
+    // Auth set password
+    authSetPassword: builder.mutation<{ ok: boolean; error?: string }, { currentPassword: string; newPassword: string }>({
+      queryFn: async ({ currentPassword, newPassword }) => {
+        try {
+          const response = await fetch(`${AUTH_BASE}/api/auth/set-password`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: JSON.stringify({ currentPassword, newPassword }),
+          });
+
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Failed to set password' }));
+            return { error: { status: response.status, data: error } };
+          }
+
+          return { data: { ok: true } };
+        } catch (error) {
+          return { error: { status: 'FETCH_ERROR', error: String(error) } };
+        }
+      },
     }),
     
-    // Feed endpoint
+    // Chat endpoint - streaming response (custom queryFn for streaming)
+    sendChatMessage: builder.mutation<Response, { input: string }>({
+      queryFn: async ({ input }, { getState }) => {
+        try {
+          const state = getState() as RootState;
+          const userId = state.user.user?.id;
+          const deviceId = getDeviceId();
+          const litellmApiKey = typeof window !== 'undefined' ? localStorage.getItem('litellm_api_key') : null;
+
+          const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+            'X-Device-ID': deviceId,
+          };
+
+          if (userId) {
+            headers['X-User-ID'] = userId.toString();
+          }
+
+          if (litellmApiKey) {
+            headers['X-LiteLLM-API-Key'] = litellmApiKey;
+          }
+
+          const response = await fetch(`${PROXY_BASE}/chat`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ input }),
+          });
+
+          if (!response.ok) {
+            return { error: { status: response.status, data: 'Chat request failed' } };
+          }
+
+          // Return the Response object for streaming
+          return { data: response };
+        } catch (error) {
+          return { error: { status: 'FETCH_ERROR', error: String(error) } };
+        }
+      },
+      invalidatesTags: ['Chat', 'Feed'],
+    }),
+    
+    // Feed endpoint - GET
     getFeed: builder.query<any[], void>({
       query: () => ({
         url: `${PROXY_BASE}/feed`,
         method: 'GET',
       }),
-      providesTags: ['Chat'],
+      providesTags: ['Feed'],
+    }),
+
+    // Feed endpoint - DELETE
+    deleteFeed: builder.mutation<{ ok: boolean }, void>({
+      query: () => ({
+        url: `${PROXY_BASE}/feed`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Feed'],
+    }),
+
+    // Upload endpoint - custom queryFn for FormData
+    uploadFile: builder.mutation<{ success: boolean; message?: string }, FormData>({
+      queryFn: async (formData, { getState }) => {
+        try {
+          const state = getState() as RootState;
+          const userId = state.user.user?.id;
+          const deviceId = getDeviceId();
+
+          const headers: Record<string, string> = {
+            'X-Device-ID': deviceId,
+          };
+
+          if (userId) {
+            headers['X-User-ID'] = userId.toString();
+          }
+
+          // Don't set Content-Type for FormData - browser will set it with boundary
+          const response = await fetch(`${PROXY_BASE}/upload`, {
+            method: 'POST',
+            headers,
+            body: formData,
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
+            return { error: { status: response.status, data: errorData } };
+          }
+
+          const data = await response.json();
+          return { data };
+        } catch (error) {
+          return { error: { status: 'FETCH_ERROR', error: String(error) } };
+        }
+      },
+      invalidatesTags: ['Feed'],
+    }),
+
+    // LiteLLM user info
+    getLiteLLMUserInfo: builder.query<any, string>({
+      query: (userId) => ({
+        url: `/api/litellm/user-info?user_id=${encodeURIComponent(userId)}`,
+        method: 'GET',
+      }),
+      providesTags: ['LiteLLM'],
     }),
   }),
 });
 
 export const {
   useGetAuthMeQuery,
+  useAuthLoginMutation,
+  useAuthLogoutMutation,
+  useAuthSetPasswordMutation,
   useSendChatMessageMutation,
   useGetFeedQuery,
+  useDeleteFeedMutation,
+  useUploadFileMutation,
+  useGetLiteLLMUserInfoQuery,
 } = apiSlice;

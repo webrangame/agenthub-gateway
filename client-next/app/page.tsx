@@ -3,8 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import CapabilityLayoutMapper from './CapabilityLayoutMapper';
 import LoginPage from './components/LoginPage';
-import { authLogout } from './utils/auth';
-import { useGetAuthMeQuery } from './store/api/apiSlice';
+import { useGetAuthMeQuery, useAuthLogoutMutation } from './store/api/apiSlice';
 import { useAppDispatch } from './store/hooks';
 import { setUser, clearUser } from './store/slices/userSlice';
 
@@ -34,9 +33,23 @@ export default function Home() {
     setAuthenticated(true);
   };
 
+  const [authLogoutMutation] = useAuthLogoutMutation();
+  
   const handleLogout = async () => {
-    await authLogout();
+    try {
+      await authLogoutMutation().unwrap();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
     dispatch(clearUser());
+    // Clear localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('userid');
+      localStorage.removeItem('litellm_api_key');
+      localStorage.removeItem('litellm_key_info');
+      localStorage.removeItem('user_info');
+      localStorage.removeItem('username');
+    }
     setAuthenticated(false);
   };
 

@@ -3,8 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getLiteLLMApiKey, getLiteLLMKeyInfo, getUserInfo } from '../utils/auth';
-import { fetchLiteLLMUserInfo, convertLiteLLMKeysToKeyInfo, LiteLLMKeyInfo } from '../utils/litellm';
+import { getLiteLLMApiKey, getLiteLLMKeyInfo } from '../utils/auth';
+import { convertLiteLLMKeysToKeyInfo, LiteLLMKeyInfo } from '../utils/litellm';
+import { useAppSelector } from '../store/hooks';
+import { useGetLiteLLMUserInfoQuery } from '../store/api/apiSlice';
 import { Copy, Check, X, Loader2 } from 'lucide-react';
 
 interface LiteLLMKeyModalProps {
@@ -19,60 +21,58 @@ const LiteLLMKeyModal: React.FC<LiteLLMKeyModalProps> = ({ onClose }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    // Get user from Redux store
+    const user = useAppSelector((state) => state.user.user);
+    
+    // RTK Query to fetch LiteLLM user info
+    const { data: litellmUserInfo, isLoading: litellmLoading, error: litellmError } = useGetLiteLLMUserInfoQuery(
+        user?.id?.toString() || '',
+        { skip: !user?.id }
+    );
+
     useEffect(() => {
-        const loadKeys = async () => {
-            setLoading(true);
-            setError(null);
+        setLoading(litellmLoading);
+        
+        // First, try to get from localStorage (from market.niyogen.com)
+        const cachedKey = getLiteLLMApiKey();
+        const cachedInfo = getLiteLLMKeyInfo();
+        
+        if (cachedKey) {
+            setApiKey(cachedKey);
+            setKeyInfo(cachedInfo);
+        }
 
-            // First, try to get from localStorage (from market.niyogen.com)
-            const cachedKey = getLiteLLMApiKey();
-            const cachedInfo = getLiteLLMKeyInfo();
+        // Then, process LiteLLM API response
+        if (litellmUserInfo?.keys && litellmUserInfo.keys.length > 0) {
+            const convertedKeys = convertLiteLLMKeysToKeyInfo(litellmUserInfo);
+            setKeys(convertedKeys);
             
-            if (cachedKey) {
-                setApiKey(cachedKey);
-                setKeyInfo(cachedInfo);
-            }
-
-            // Then, try to fetch from LiteLLM API if we have a user ID
-            const userInfo = getUserInfo();
-            if (userInfo?.id) {
-                try {
-                    const litellmUserInfo = await fetchLiteLLMUserInfo(userInfo.id);
-                    if (litellmUserInfo?.keys && litellmUserInfo.keys.length > 0) {
-                        const convertedKeys = convertLiteLLMKeysToKeyInfo(litellmUserInfo);
-                        setKeys(convertedKeys);
-                        
-                        // If no cached key, use the first key from LiteLLM
-                        if (!cachedKey && convertedKeys.length > 0) {
-                            setApiKey(convertedKeys[0].key || null);
-                            setKeyInfo(convertedKeys[0]);
-                            
-                            // Store in localStorage for future use
-                            if (convertedKeys[0].key) {
-                                localStorage.setItem('litellm_api_key', convertedKeys[0].key);
-                            }
-                            if (convertedKeys[0]) {
-                                localStorage.setItem('litellm_key_info', JSON.stringify(convertedKeys[0]));
-                            }
-                        }
-                    }
-                } catch (err) {
-                    console.error('[LiteLLMKeyModal] Failed to fetch keys:', err);
-                    setError('Failed to fetch keys from LiteLLM API');
+            // If no cached key, use the first key from LiteLLM
+            if (!cachedKey && convertedKeys.length > 0) {
+                setApiKey(convertedKeys[0].key || null);
+                setKeyInfo(convertedKeys[0]);
+                
+                // Store in localStorage for future use
+                if (convertedKeys[0].key) {
+                    localStorage.setItem('litellm_api_key', convertedKeys[0].key);
+                }
+                if (convertedKeys[0]) {
+                    localStorage.setItem('litellm_key_info', JSON.stringify(convertedKeys[0]));
                 }
             }
-            
-            setLoading(false);
-        };
-
-        loadKeys();
+        }
+        
+        if (litellmError) {
+            console.error('[LiteLLMKeyModal] Failed to fetch keys:', litellmError);
+            setError('Failed to fetch keys from LiteLLM API');
+        }
         
         // Prevent body scroll when modal is open
         document.body.style.overflow = 'hidden';
         return () => {
             document.body.style.overflow = 'unset';
         };
-    }, []);
+    }, [litellmUserInfo, litellmLoading, litellmError]);
 
     const handleCopy = async () => {
         if (!apiKey) return;

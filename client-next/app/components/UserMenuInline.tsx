@@ -2,8 +2,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { authLogout } from '../utils/auth';
-import { useAppSelector } from '../store/hooks';
+import { useAppSelector, useAppDispatch } from '../store/hooks';
+import { useAuthLogoutMutation } from '../store/api/apiSlice';
+import { clearUser } from '../store/slices/userSlice';
 import ChangePasswordModal from './ChangePasswordModal';
 import LiteLLMKeyModal from './LiteLLMKeyModal';
 import UserInfoModal from './UserInfoModal';
@@ -21,6 +22,10 @@ const UserMenuInline: React.FC<UserMenuInlineProps> = ({ onLogout }) => {
     
     // Get user from Redux store
     const user = useAppSelector((state) => state.user.user);
+    const dispatch = useAppDispatch();
+    
+    // RTK Query mutation for logout
+    const [authLogoutMutation] = useAuthLogoutMutation();
 
     // Close menu when clicking outside
     useEffect(() => {
@@ -40,7 +45,29 @@ const UserMenuInline: React.FC<UserMenuInlineProps> = ({ onLogout }) => {
     }, [isOpen]);
 
     const handleLogout = async () => {
-        await authLogout();
+        try {
+            await authLogoutMutation().unwrap();
+            dispatch(clearUser());
+            // Clear localStorage
+            if (typeof window !== 'undefined') {
+                localStorage.removeItem('userid');
+                localStorage.removeItem('litellm_api_key');
+                localStorage.removeItem('litellm_key_info');
+                localStorage.removeItem('user_info');
+                localStorage.removeItem('username');
+            }
+        } catch (error) {
+            console.error('Logout error:', error);
+            // Clear user state even if API call fails
+            dispatch(clearUser());
+            if (typeof window !== 'undefined') {
+                localStorage.removeItem('userid');
+                localStorage.removeItem('litellm_api_key');
+                localStorage.removeItem('litellm_key_info');
+                localStorage.removeItem('user_info');
+                localStorage.removeItem('username');
+            }
+        }
         if (onLogout) {
             onLogout();
         }

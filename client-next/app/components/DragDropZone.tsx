@@ -3,7 +3,7 @@
 import React, { useRef, useState } from 'react';
 import { Upload, FileUp } from 'lucide-react';
 import { cn } from '../utils/cn';
-import { API_ENDPOINTS } from '../utils/api';
+import { useUploadFileMutation } from '../store/api/apiSlice';
 
 const DragDropZone: React.FC = () => {
     const [isDragging, setIsDragging] = useState(false);
@@ -41,29 +41,13 @@ const DragDropZone: React.FC = () => {
         formData.append('file', file);
 
         try {
-            const response = await fetch(API_ENDPOINTS.upload, {
-                method: 'POST',
-                body: formData,
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                console.log('Upload success:', data);
-                setUploadStatus('success');
-                // In real app, we would trigger a capability refresh here
-                setTimeout(() => setUploadStatus('idle'), 3000);
-            } else {
-                const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
-                console.error('Upload failed:', response.status, errorData);
-                setUploadStatus('error');
-                setTimeout(() => setUploadStatus('idle'), 3000);
-            }
+            const result = await uploadFileMutation(formData).unwrap();
+            console.log('Upload success:', result);
+            setUploadStatus('success');
+            // In real app, we would trigger a capability refresh here
+            setTimeout(() => setUploadStatus('idle'), 3000);
         } catch (error: any) {
             console.error('Upload failed:', error);
-            // Check if it's a network error
-            if (error?.message?.includes('Failed to fetch') || error?.name === 'TypeError') {
-                console.error('Network error: Make sure the backend server is running at', API_ENDPOINTS.upload);
-            }
             setUploadStatus('error');
             setTimeout(() => setUploadStatus('idle'), 3000);
         }

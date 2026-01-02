@@ -6,8 +6,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { API_ENDPOINTS } from '../utils/api';
 import { getDeviceId } from '../utils/device';
-import { getLiteLLMApiKey } from '../utils/auth';
 import { useAppSelector } from '../store/hooks';
+import { useSendChatMessageMutation, useDeleteFeedMutation } from '../store/api/apiSlice';
 
 interface Message {
     id: string;
@@ -39,6 +39,10 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
     // Get user ID from Redux store (preferred) or use prop as fallback
     const user = useAppSelector((state) => state.user.user);
     const effectiveUserId = user?.id?.toString() || userId || (typeof window !== 'undefined' ? localStorage.getItem('userid') || '' : '');
+    
+    // RTK Query hooks
+    const [sendChatMessage] = useSendChatMessageMutation();
+    const [deleteFeed] = useDeleteFeedMutation();
     
     const [messages, setMessages] = useState<Message[]>([
         {
@@ -83,25 +87,15 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
         setIsStreaming(true);
 
         try {
-            const litellmApiKey = getLiteLLMApiKey();
-            const headers: Record<string, string> = {
-                'Content-Type': 'application/json',
-                'X-Device-ID': getDeviceId(),
-                'X-User-ID': effectiveUserId,
-            };
-            if (litellmApiKey) {
-                headers['X-LiteLLM-API-Key'] = litellmApiKey;
+            // Use RTK Query mutation for chat (returns Response object)
+            const result = await sendChatMessage({ input: userMsg.content }).unwrap();
+            
+            if (!result || !result.body) {
+                throw new Error('Invalid response from server');
             }
 
-            const response = await fetch(API_ENDPOINTS.chat, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({ input: userMsg.content }),
-            });
-
-            if (!response.ok) {
-                throw new Error(response.statusText);
-            }
+            // result is a Response object from RTK Query
+            const response = result;
 
             // Create placeholder text for streaming message
             const assistantMsgId = Date.now().toString();
@@ -233,14 +227,9 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isCollapsed = false, onToggleColl
         console.log('[ChatPanel] Reset clicked (no confirm), attempting DELETE request...');
 
         try {
-            console.log(`[ChatPanel] DELETE ${API_ENDPOINTS.feed}`);
-            const response = await fetch(API_ENDPOINTS.feed, {
-                method: 'DELETE',
-                headers: {
-                    'X-Device-ID': getDeviceId(),
-                    'X-User-ID': effectiveUserId,
-                }
-            });
+            console.log(`[ChatPanel] DELETE feed`);
+            // Use RTK Query mutation for delete
+            await deleteFeed().unwrap();
             console.log('[ChatPanel] DELETE response status:', response.status);
 
             // Trigger feed refresh (dispatch custom event for FeedPanel to listen to)
