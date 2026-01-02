@@ -12,10 +12,10 @@ export default function Home() {
   const dispatch = useAppDispatch();
   
   // Use RTK Query to fetch user data
-  const { data: authData, isLoading: authLoading, error: authError } = useGetAuthMeQuery(
+  const { data: authData, isLoading: authLoading, error: authError, refetch } = useGetAuthMeQuery(
     undefined,
     {
-      skip: process.env.NODE_ENV === 'development', // Skip in dev mode
+      skip: process.env.NODE_ENV === 'development' || !authenticated, // Skip in dev mode or if not authenticated
     }
   );
 
@@ -41,6 +41,7 @@ export default function Home() {
     } catch (error) {
       console.error('Logout error:', error);
     }
+    // Clear Redux state
     dispatch(clearUser());
     // Clear localStorage
     if (typeof window !== 'undefined') {
@@ -49,8 +50,22 @@ export default function Home() {
       localStorage.removeItem('litellm_key_info');
       localStorage.removeItem('user_info');
       localStorage.removeItem('username');
+      // Clear all cookies by setting them to expire
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
     }
+    // Set authenticated to false
     setAuthenticated(false);
+    // Force page reload to clear all state and redirect to login
+    // Use setTimeout to ensure state updates are processed
+    setTimeout(() => {
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
+    }, 100);
   };
 
   if (authLoading || (process.env.NODE_ENV !== 'development' && !authData && !authError)) {
