@@ -58,6 +58,17 @@ export const getLiteLLMKeyInfo = (): { key?: string; tpmLimit?: number; rpmLimit
   }
 };
 
+export const getUserInfo = (): { id?: string; email?: string; username?: string; name?: string } | null => {
+  if (typeof window === 'undefined') return null;
+  const info = localStorage.getItem('user_info');
+  if (!info) return null;
+  try {
+    return JSON.parse(info);
+  } catch {
+    return null;
+  }
+};
+
 export async function authMe(): Promise<{ ok: boolean; user?: AuthUser; userId?: string; error?: string }> {
   try {
     const res = await fetch(`${AUTH_BASE}/api/auth/me`, {
@@ -109,6 +120,16 @@ export async function authMe(): Promise<{ ok: boolean; user?: AuthUser; userId?:
       localStorage.setItem('litellm_key_info', JSON.stringify(user.litellmKeyInfo));
       console.log('[authMe] Store LiteLLM Key Info:', user.litellmKeyInfo);
     }
+    // Store full user object for display in UI
+    if (typeof window !== 'undefined' && user) {
+      localStorage.setItem('user_info', JSON.stringify({
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        name: user.name,
+      }));
+      console.log('[authMe] Store User Info:', { id: user.id, email: user.email, username: user.username, name: user.name });
+    }
     return { ok: true, user, userId: user?.id };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Network error';
@@ -157,6 +178,7 @@ export async function authLogout(): Promise<{ ok: boolean; error?: string }> {
       localStorage.removeItem('userid');
       localStorage.removeItem('litellm_api_key');
       localStorage.removeItem('litellm_key_info');
+      localStorage.removeItem('user_info');
     }
     if (!res.ok) return { ok: false, error: await parseError(res) };
     return { ok: true };

@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getUsername, authLogout } from '../utils/auth';
+import { getUsername, getUserInfo, authLogout, authMe } from '../utils/auth';
 import ChangePasswordModal from './ChangePasswordModal';
 import LiteLLMKeyModal from './LiteLLMKeyModal';
 
@@ -14,8 +14,40 @@ const UserMenuInline: React.FC<UserMenuInlineProps> = ({ onLogout }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [showChangePassword, setShowChangePassword] = useState(false);
     const [showLiteLLMKey, setShowLiteLLMKey] = useState(false);
+    const [userInfo, setUserInfo] = useState<{ id?: string; email?: string; username?: string; name?: string } | null>(null);
     const menuRef = useRef<HTMLDivElement>(null);
     const username = getUsername();
+
+    // Fetch and update user info when component mounts or menu opens
+    useEffect(() => {
+        const loadUserInfo = async () => {
+            // First try to get from localStorage
+            const cachedInfo = getUserInfo();
+            if (cachedInfo) {
+                setUserInfo(cachedInfo);
+            }
+            
+            // Then fetch fresh data from API
+            try {
+                const res = await authMe();
+                if (res.ok && res.user) {
+                    const freshInfo = {
+                        id: res.user.id,
+                        email: res.user.email,
+                        username: res.user.username,
+                        name: res.user.name,
+                    };
+                    setUserInfo(freshInfo);
+                }
+            } catch (error) {
+                console.error('[UserMenuInline] Failed to fetch user info:', error);
+            }
+        };
+
+        if (isOpen) {
+            loadUserInfo();
+        }
+    }, [isOpen]);
 
     // Close menu when clicking outside
     useEffect(() => {
@@ -102,8 +134,18 @@ const UserMenuInline: React.FC<UserMenuInlineProps> = ({ onLogout }) => {
                         >
                             {/* User Info Header */}
                             <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-                                <p className="text-sm font-semibold text-gray-900">{username || 'User'}</p>
-                                <p className="text-xs text-gray-500 mt-0.5">Signed in</p>
+                                <p className="text-sm font-semibold text-gray-900">
+                                    {userInfo?.name || userInfo?.username || username || 'User'}
+                                </p>
+                                {userInfo?.email && (
+                                    <p className="text-xs text-gray-600 mt-0.5 break-all">{userInfo.email}</p>
+                                )}
+                                {userInfo?.username && userInfo?.username !== userInfo?.name && (
+                                    <p className="text-xs text-gray-500 mt-0.5">@{userInfo.username}</p>
+                                )}
+                                {!userInfo?.email && !userInfo?.username && (
+                                    <p className="text-xs text-gray-500 mt-0.5">Signed in</p>
+                                )}
                             </div>
 
                             {/* Menu Items */}
