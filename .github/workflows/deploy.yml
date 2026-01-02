@@ -126,7 +126,8 @@ jobs:
             GOOGLE_MAPS_KEY=GOOGLE_MAPS_KEY:latest
             LITELLM_API_KEY=LITELLM_API_KEY:latest
             LITELLM_PROXY_URL=LITELLM_PROXY_URL:latest
-            UNSPLASH_ACCESS_KEY=UNSPLASH_ACCESS_KEY:latest
+          env_vars: |
+            UNSPLASH_ACCESS_KEY=${{ secrets.UNSPLASH_ACCESS_KEY }}
 
   # ------------------------------------------------------------------
   # FRONTEND VALIDATION
