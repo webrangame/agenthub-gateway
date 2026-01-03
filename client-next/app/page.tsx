@@ -13,7 +13,7 @@ export default function Home() {
   const dispatch = useAppDispatch();
   
   // Use RTK Query to fetch user data
-  const { data: authData, isLoading: authLoading, error: authError } = useGetAuthMeQuery(
+  const { data: authData, isLoading: authLoading, error: authError, refetch: refetchAuth } = useGetAuthMeQuery(
     undefined,
     {
       skip: process.env.NODE_ENV === 'development', // Skip in dev mode
@@ -28,13 +28,15 @@ export default function Home() {
       // If we have a redirect param, it means we came back from login
       // Clear it from URL and force auth refetch
       if (redirectParam) {
-        console.log('[Auth] Redirect parameter detected, clearing URL and checking auth');
+        console.log('[Auth] Redirect parameter detected, clearing URL and refetching auth');
         window.history.replaceState({}, '', window.location.pathname);
-        // Don't reload - just let RTK Query refetch naturally
-        // The query should automatically run when skip becomes false
+        // Force refetch auth after a short delay to ensure cookies are available
+        setTimeout(() => {
+          refetchAuth();
+        }, 300);
       }
     }
-  }, []);
+  }, [refetchAuth]);
 
   useEffect(() => {
     // Mark auth check as complete once we have a response (success or error)
@@ -43,18 +45,33 @@ export default function Home() {
     }
 
     if (authData?.user) {
-      console.log('[Auth] User authenticated:', authData.user);
+      console.log('[Auth] ✅ User authenticated:', { id: authData.user.id, email: authData.user.email });
       dispatch(setUser(authData.user));
       setAuthenticated(true);
     } else if (authError) {
       // Log detailed error information
-      console.error('[Auth] Error fetching user:', {
+      const errorStatus = 'error' in authError ? authError.error : null;
+      const errorMessage = errorStatus && typeof errorStatus === 'object' && 'error' in errorStatus
+        ? String(errorStatus.error)
+        : errorStatus && typeof errorStatus === 'object' && 'data' in errorStatus
+          ? String(errorStatus.data)
+          : 'Unknown error';
+      
+      console.error('[Auth] ❌ Error fetching user:', {
         error: authError,
-        status: 'error' in authError ? authError.error : 'unknown',
-        message: 'error' in authError && typeof authError.error === 'object' && 'error' in authError.error
-          ? String(authError.error.error)
-          : 'Unknown error'
+        status: errorStatus,
+        message: errorMessage
       });
+      
+      // If it's a CORS or network error, provide helpful message
+      if (errorMessage?.includes('CORS') || errorMessage?.includes('Failed to fetch') || errorMessage?.includes('timed out')) {
+        console.error('[Auth] 🔍 Troubleshooting steps:');
+        console.error('[Auth] 1. Check browser console for CORS errors');
+        console.error('[Auth] 2. Verify market.niyogen.com allows travel.niyogen.com origin');
+        console.error('[Auth] 3. Check if cookies are set with Domain=.niyogen.com');
+        console.error('[Auth] 4. Verify /api/auth/me endpoint is accessible');
+      }
+      
       dispatch(clearUser());
       setAuthenticated(false);
     }
