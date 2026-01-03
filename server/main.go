@@ -1088,15 +1088,25 @@ RESPONSE MUST BE VALID JSON ONLY.`, timeContext, locContext, string(varsJSON), i
 				newKey, keyName, err := store.GenerateLiteLLMKey(proxyURL, masterKey, userID, 10.00)
 				if err != nil {
 					fmt.Printf("❌ Failed to generate key: %v\n", err)
+					fmt.Printf("   ProxyURL: %s\n", proxyURL)
+					fmt.Printf("   MasterKey length: %d\n", len(strings.TrimSpace(masterKey)))
+					fmt.Printf("   UserID: %s\n", userID)
+					// Don't fail completely - fallback to env var below
 				} else {
 					// Store the new key
 					if err := feedStore.StoreUserLiteLLMKey(c.Request.Context(), userID, newKey, keyName, 10.00); err != nil {
 						fmt.Printf("❌ Failed to store key: %v\n", err)
+						// Still use the key even if storage fails
+						litellmApiKey = newKey
+						fmt.Printf("⚠️ Using generated key but failed to store: %s\n", keyName)
 					} else {
 						litellmApiKey = newKey
 						fmt.Printf("✅ Generated and stored key: %s\n", keyName)
 					}
 				}
+			} else {
+				fmt.Printf("⚠️ Cannot generate key: proxyURL=%v, masterKey=%v\n", 
+					proxyURL != "", masterKey != "")
 			}
 		} else {
 			litellmApiKey = key
@@ -1114,10 +1124,41 @@ RESPONSE MUST BE VALID JSON ONLY.`, timeContext, locContext, string(varsJSON), i
 
 	fmt.Printf("GATEWAY: Thinking... (History: %d msgs)\n", len(history))
 	if litellmApiKey != "" {
-		fmt.Printf("GATEWAY: Using LiteLLM API Key\n")
+		fmt.Printf("GATEWAY: Using LiteLLM API Key (length: %d)\n", len(litellmApiKey))
+	} else {
+		fmt.Printf("⚠️ GATEWAY: No LiteLLM API Key available!\n")
+		fmt.Printf("   UserID: %s\n", userID)
+		fmt.Printf("   FeedStore: %v\n", feedStore != nil)
+		fmt.Printf("   LITELLM_PROXY_URL: %s\n", os.Getenv("LITELLM_PROXY_URL"))
+		fmt.Printf("   LITELLM_MASTER_KEY: %s (length: %d)\n", 
+			func() string { 
+				mk := os.Getenv("LITELLM_MASTER_KEY")
+				if mk != "" { return "SET" }
+				return "NOT SET"
+			}(),
+			len(os.Getenv("LITELLM_MASTER_KEY")))
+		fmt.Printf("   LITELLM_API_KEY (env): %s (length: %d)\n",
+			func() string {
+				ak := os.Getenv("LITELLM_API_KEY")
+				if ak != "" { return "SET" }
+				return "NOT SET"
+			}(),
+			len(os.Getenv("LITELLM_API_KEY")))
+		
+		// Fallback to environment variable if available
+		if envKey := os.Getenv("LITELLM_API_KEY"); envKey != "" {
+			litellmApiKey = envKey
+			fmt.Printf("✅ GATEWAY: Falling back to LITELLM_API_KEY from environment\n")
+		}
 	}
-	decisionResponse, err := GenerateContentFunc(convertHistory(history), systemMsg, litellmApiKey)
-	fmt.Printf("GATEWAY RAW RESPONSE: %s\n", decisionResponse)
+	
+	if litellmApiKey == "" {
+		err = fmt.Errorf("LITELLM_API_KEY not available: no user key, no client key, no env key")
+		fmt.Printf("❌ GATEWAY ERROR: %v\n", err)
+	} else {
+		decisionResponse, err = GenerateContentFunc(convertHistory(history), systemMsg, litellmApiKey)
+		fmt.Printf("GATEWAY RAW RESPONSE: %s\n", decisionResponse)
+	}
 
 	// Default fallback
 	// Default fallback variables
@@ -1169,8 +1210,35 @@ RESPONSE MUST BE VALID JSON ONLY.`, timeContext, locContext, string(varsJSON), i
 			action = "ACTION: ASK_QUESTION " + content
 		}
 	} else {
-		// Log actual error for admin
-		fmt.Printf("GATEWAY ERROR: %v\n", err)
+		// Log detailed error for admin debugging
+		fmt.Printf("❌ GATEWAY ERROR: %v\n", err)
+		fmt.Printf("   Error Type: %T\n", err)
+		if err != nil {
+			fmt.Printf("   Error Message: %s\n", err.Error())
+		}
+		fmt.Printf("   UserID: %s\n", userID)
+		fmt.Printf("   Has API Key: %v\n", litellmApiKey != "")
+		if litellmApiKey != "" {
+			fmt.Printf("   API Key Length: %d\n", len(litellmApiKey))
+		}
+		
+		// Check if it's a specific error type and provide more context
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "LITELLM_API_KEY not set") || strings.Contains(errMsg, "LITELLM_API_KEY not available") {
+			fmt.Printf("   🔍 ROOT CAUSE: No LiteLLM API key available\n")
+			fmt.Printf("      - User key generation may have failed\n")
+			fmt.Printf("      - Environment variable may not be set\n")
+			fmt.Printf("      - Check LITELLM_MASTER_KEY for key generation\n")
+		} else if strings.Contains(errMsg, "LITELLM_PROXY_URL not set") {
+			fmt.Printf("   🔍 ROOT CAUSE: LiteLLM proxy URL not configured\n")
+		} else if strings.Contains(errMsg, "rate limit") || strings.Contains(errMsg, "429") {
+			fmt.Printf("   🔍 ROOT CAUSE: Rate limiting from LiteLLM proxy\n")
+		} else if strings.Contains(errMsg, "401") || strings.Contains(errMsg, "403") {
+			fmt.Printf("   🔍 ROOT CAUSE: Authentication error - API key may be invalid\n")
+		} else if strings.Contains(errMsg, "timeout") || strings.Contains(errMsg, "connection") {
+			fmt.Printf("   🔍 ROOT CAUSE: Network/connectivity issue with LiteLLM proxy\n")
+		}
+		
 		// Friendly message for user
 		content = "I'm currently experiencing high traffic or a temporary system issue. Please try again in a moment."
 		action = "ACTION: ASK_QUESTION " + content
