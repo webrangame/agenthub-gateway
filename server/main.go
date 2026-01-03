@@ -1077,7 +1077,9 @@ RESPONSE MUST BE VALID JSON ONLY.`, timeContext, locContext, string(varsJSON), i
 		key, err := feedStore.GetUserLiteLLMKey(c.Request.Context(), userID)
 		if err != nil {
 			fmt.Printf("⚠️ Error fetching user key for %s: %v\n", userID, err)
+			fmt.Printf("   Will try key generation or fallback to env var\n")
 			// Continue to try generation or fallback
+			key = "" // Ensure key is empty on error
 		}
 
 		if key == "" || strings.TrimSpace(key) == "" {
@@ -1113,8 +1115,9 @@ RESPONSE MUST BE VALID JSON ONLY.`, timeContext, locContext, string(varsJSON), i
 					}
 				}
 			} else {
-				fmt.Printf("⚠️ Cannot generate key: proxyURL=%v, masterKey=%v\n", 
-					proxyURL != "", masterKey != "")
+				fmt.Printf("⚠️ Cannot generate key for user %s: proxyURL=%v, masterKey=%v\n", 
+					userID, proxyURL != "", masterKey != "")
+				fmt.Printf("   Will fallback to LITELLM_API_KEY env var\n")
 			}
 		} else {
 			litellmApiKey = key
