@@ -1122,6 +1122,14 @@ RESPONSE MUST BE VALID JSON ONLY.`, timeContext, locContext, string(varsJSON), i
 		}
 	}
 
+	// Final fallback: Use environment variable if nothing else is available
+	if litellmApiKey == "" {
+		if envKey := os.Getenv("LITELLM_API_KEY"); envKey != "" {
+			litellmApiKey = envKey
+			fmt.Printf("✅ GATEWAY: Using LITELLM_API_KEY from environment as fallback\n")
+		}
+	}
+
 	fmt.Printf("GATEWAY: Thinking... (History: %d msgs)\n", len(history))
 	if litellmApiKey != "" {
 		fmt.Printf("GATEWAY: Using LiteLLM API Key (length: %d)\n", len(litellmApiKey))
@@ -1144,29 +1152,29 @@ RESPONSE MUST BE VALID JSON ONLY.`, timeContext, locContext, string(varsJSON), i
 				return "NOT SET"
 			}(),
 			len(os.Getenv("LITELLM_API_KEY")))
-		
-		// Fallback to environment variable if available
-		if envKey := os.Getenv("LITELLM_API_KEY"); envKey != "" {
-			litellmApiKey = envKey
-			fmt.Printf("✅ GATEWAY: Falling back to LITELLM_API_KEY from environment\n")
-		}
 	}
 	
 	if litellmApiKey == "" {
 		err = fmt.Errorf("LITELLM_API_KEY not available: no user key, no client key, no env key")
 		fmt.Printf("❌ GATEWAY ERROR: %v\n", err)
+		content = "I'm currently experiencing a configuration issue. Please contact support if this persists."
+		action = "ACTION: ASK_QUESTION " + content
 	} else {
 		decisionResponse, err = GenerateContentFunc(convertHistory(history), systemMsg, litellmApiKey)
-		fmt.Printf("GATEWAY RAW RESPONSE: %s\n", decisionResponse)
+		if err != nil {
+			fmt.Printf("GATEWAY ERROR after LLM call: %v\n", err)
+		} else {
+			fmt.Printf("GATEWAY RAW RESPONSE: %s\n", decisionResponse)
+		}
 	}
 
-	// Default fallback
 	// Default fallback variables
 	var action string
 	var content string // Used for fallback messages
 	var updates map[string]string
 
-	if err == nil {
+	// Only process response if we successfully got one (err == nil means we have a response)
+	if err == nil && decisionResponse != "" {
 		// Clean response (remove markdown blocks if any)
 		decisionResponse = strings.TrimSpace(decisionResponse)
 		if strings.HasPrefix(decisionResponse, "```json") {

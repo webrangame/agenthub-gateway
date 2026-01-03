@@ -87,18 +87,23 @@ func GenerateContent(history []map[string]interface{}, systemPrompt string, user
 	// Use user-provided API key if available, otherwise fall back to environment variable
 	var apiKey string
 	if len(userApiKey) > 0 && userApiKey[0] != "" {
-		apiKey = userApiKey[0]
-	} else {
-		apiKey = os.Getenv("LITELLM_API_KEY")
+		apiKey = strings.TrimSpace(userApiKey[0])
 	}
 	if apiKey == "" {
+		apiKey = strings.TrimSpace(os.Getenv("LITELLM_API_KEY"))
+	}
+	if apiKey == "" {
+		fmt.Printf("❌ LLM: LITELLM_API_KEY not set - no user key provided and no env var\n")
 		return "", fmt.Errorf("LITELLM_API_KEY not set")
 	}
 
-	proxyURL := os.Getenv("LITELLM_PROXY_URL")
+	proxyURL := strings.TrimSpace(os.Getenv("LITELLM_PROXY_URL"))
 	if proxyURL == "" {
+		fmt.Printf("❌ LLM: LITELLM_PROXY_URL not set\n")
 		return "", fmt.Errorf("LITELLM_PROXY_URL not set")
 	}
+	
+	fmt.Printf("✅ LLM: Using API Key (length: %d), Proxy: %s\n", len(apiKey), proxyURL)
 
 	model := os.Getenv("LITELLM_MODEL")
 	if model == "" {
