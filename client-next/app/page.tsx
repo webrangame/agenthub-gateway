@@ -26,13 +26,12 @@ export default function Home() {
       const params = new URLSearchParams(window.location.search);
       const redirectParam = params.get('redirect');
       // If we have a redirect param, it means we came back from login
-      // Clear it from URL and trigger auth check
+      // Clear it from URL and force auth refetch
       if (redirectParam) {
+        console.log('[Auth] Redirect parameter detected, clearing URL and checking auth');
         window.history.replaceState({}, '', window.location.pathname);
-        // Force refetch auth
-        setTimeout(() => {
-          window.location.reload();
-        }, 500);
+        // Don't reload - just let RTK Query refetch naturally
+        // The query should automatically run when skip becomes false
       }
     }
   }, []);
@@ -44,10 +43,18 @@ export default function Home() {
     }
 
     if (authData?.user) {
+      console.log('[Auth] User authenticated:', authData.user);
       dispatch(setUser(authData.user));
       setAuthenticated(true);
     } else if (authError) {
-      console.log('[Auth] Error fetching user:', authError);
+      // Log detailed error information
+      console.error('[Auth] Error fetching user:', {
+        error: authError,
+        status: 'error' in authError ? authError.error : 'unknown',
+        message: 'error' in authError && typeof authError.error === 'object' && 'error' in authError.error
+          ? String(authError.error.error)
+          : 'Unknown error'
+      });
       dispatch(clearUser());
       setAuthenticated(false);
     }
@@ -99,14 +106,19 @@ export default function Home() {
   // Add timeout: if loading for more than 5 seconds, show login page
   useEffect(() => {
     if (shouldShowLoading) {
+      console.log('[Auth] Waiting for auth response...', { authLoading, authCheckComplete, hasError: !!authError });
       const timeout = setTimeout(() => {
-        console.warn('[Auth] Timeout waiting for auth response, showing login page');
+        console.warn('[Auth] Timeout waiting for auth response after 5 seconds, showing login page');
+        console.warn('[Auth] This might indicate:');
+        console.warn('[Auth] 1. CORS issue preventing the request from completing');
+        console.warn('[Auth] 2. Network connectivity issue');
+        console.warn('[Auth] 3. market.niyogen.com/api/auth/me endpoint is not responding');
         setAuthCheckComplete(true);
         setAuthenticated(false);
       }, 5000);
       return () => clearTimeout(timeout);
     }
-  }, [shouldShowLoading]);
+  }, [shouldShowLoading, authLoading, authCheckComplete, authError]);
 
   if (shouldShowLoading) {
     return (
