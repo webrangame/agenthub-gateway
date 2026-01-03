@@ -1174,7 +1174,7 @@ RESPONSE MUST BE VALID JSON ONLY.`, timeContext, locContext, string(varsJSON), i
 	var updates map[string]string
 
 	// Only process response if we successfully got one (err == nil means we have a response)
-	if err == nil && decisionResponse != "" {
+	if err == nil && decisionResponse != "" && action == "" {
 		// Clean response (remove markdown blocks if any)
 		decisionResponse = strings.TrimSpace(decisionResponse)
 		if strings.HasPrefix(decisionResponse, "```json") {
