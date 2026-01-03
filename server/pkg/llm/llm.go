@@ -160,7 +160,15 @@ func GenerateContent(history []map[string]interface{}, systemPrompt string, user
 	resp, err := client.Do(req)
 	if err != nil {
 		// Log detailed error for debugging
-		fmt.Printf("LLM HTTP Error: %v (URL: %s)\n", err, url)
+		fmt.Printf("❌ LLM HTTP Error: %v\n", err)
+		fmt.Printf("   URL: %s\n", url)
+		fmt.Printf("   API Key: %s (length: %d)\n", 
+			func() string {
+				if len(apiKey) > 10 { return apiKey[:10] + "..." }
+				return apiKey
+			}(),
+			len(apiKey))
+		fmt.Printf("   Error Type: %T\n", err)
 		// Map to user-friendly error
 		return "", mapToUserFriendlyError(err, 0)
 	}
@@ -170,10 +178,21 @@ func GenerateContent(history []map[string]interface{}, systemPrompt string, user
 
 	if resp.StatusCode != http.StatusOK {
 		// Log detailed error for debugging
-		fmt.Printf("LLM Proxy Error: Status=%d, Body=%s\n", resp.StatusCode, string(bodyBytes))
+		fmt.Printf("❌ LLM Proxy Error: Status=%d\n", resp.StatusCode)
+		fmt.Printf("   URL: %s\n", url)
+		fmt.Printf("   Response Body: %s\n", string(bodyBytes))
+		fmt.Printf("   API Key: %s (length: %d)\n",
+			func() string {
+				if len(apiKey) > 10 { return apiKey[:10] + "..." }
+				return apiKey
+			}(),
+			len(apiKey))
+		
 		// Try to parse error from LiteLLM
 		var errResp OpenAIResponse
 		if json.Unmarshal(bodyBytes, &errResp) == nil && errResp.Error != nil {
+			fmt.Printf("   LiteLLM Error Message: %s\n", errResp.Error.Message)
+			fmt.Printf("   LiteLLM Error Type: %s\n", errResp.Error.Type)
 			technicalErr := fmt.Errorf("litellm proxy error (%d): %s", resp.StatusCode, errResp.Error.Message)
 			return "", mapToUserFriendlyError(technicalErr, resp.StatusCode)
 		}
