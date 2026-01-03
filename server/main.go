@@ -1072,13 +1072,16 @@ RESPONSE MUST BE VALID JSON ONLY.`, timeContext, locContext, string(varsJSON), i
 	var litellmApiKey string
 
 	if userID != "" && feedStore != nil {
+		fmt.Printf("🔍 GATEWAY: Checking key for userID: %s\n", userID)
 		// Try to get existing key from database
 		key, err := feedStore.GetUserLiteLLMKey(c.Request.Context(), userID)
 		if err != nil {
-			fmt.Printf("⚠️ Error fetching user key: %v\n", err)
+			fmt.Printf("⚠️ Error fetching user key for %s: %v\n", userID, err)
+			// Continue to try generation or fallback
 		}
 
-		if key == "" {
+		if key == "" || strings.TrimSpace(key) == "" {
+			fmt.Printf("🔑 No existing key found for user: %s, attempting generation...\n", userID)
 			// Generate new key for this user
 			fmt.Printf("🔑 Generating new LiteLLM key for user: %s\n", userID)
 			proxyURL := os.Getenv("LITELLM_PROXY_URL")
@@ -1087,21 +1090,26 @@ RESPONSE MUST BE VALID JSON ONLY.`, timeContext, locContext, string(varsJSON), i
 			if proxyURL != "" && masterKey != "" {
 				newKey, keyName, err := store.GenerateLiteLLMKey(proxyURL, masterKey, userID, 10.00)
 				if err != nil {
-					fmt.Printf("❌ Failed to generate key: %v\n", err)
+					fmt.Printf("❌ Failed to generate key for user %s: %v\n", userID, err)
 					fmt.Printf("   ProxyURL: %s\n", proxyURL)
 					fmt.Printf("   MasterKey length: %d\n", len(strings.TrimSpace(masterKey)))
 					fmt.Printf("   UserID: %s\n", userID)
+					fmt.Printf("   ⚠️ Will fallback to LITELLM_API_KEY env var for this user\n")
 					// Don't fail completely - fallback to env var below
 				} else {
-					// Store the new key
-					if err := feedStore.StoreUserLiteLLMKey(c.Request.Context(), userID, newKey, keyName, 10.00); err != nil {
-						fmt.Printf("❌ Failed to store key: %v\n", err)
-						// Still use the key even if storage fails
-						litellmApiKey = newKey
-						fmt.Printf("⚠️ Using generated key but failed to store: %s\n", keyName)
+					if newKey == "" || strings.TrimSpace(newKey) == "" {
+						fmt.Printf("⚠️ Generated key is empty for user %s, will use fallback\n", userID)
 					} else {
-						litellmApiKey = newKey
-						fmt.Printf("✅ Generated and stored key: %s\n", keyName)
+						// Store the new key
+						if err := feedStore.StoreUserLiteLLMKey(c.Request.Context(), userID, newKey, keyName, 10.00); err != nil {
+							fmt.Printf("❌ Failed to store key for user %s: %v\n", userID, err)
+							// Still use the key even if storage fails
+							litellmApiKey = strings.TrimSpace(newKey)
+							fmt.Printf("⚠️ Using generated key but failed to store: %s\n", keyName)
+						} else {
+							litellmApiKey = strings.TrimSpace(newKey)
+							fmt.Printf("✅ Generated and stored key: %s for user: %s\n", keyName, userID)
+						}
 					}
 				}
 			} else {
@@ -1125,7 +1133,7 @@ RESPONSE MUST BE VALID JSON ONLY.`, timeContext, locContext, string(varsJSON), i
 	// Final fallback: Use environment variable if nothing else is available
 	if litellmApiKey == "" {
 		if envKey := os.Getenv("LITELLM_API_KEY"); envKey != "" {
-			litellmApiKey = envKey
+			litellmApiKey = strings.TrimSpace(envKey)
 			fmt.Printf("✅ GATEWAY: Using LITELLM_API_KEY from environment as fallback\n")
 		}
 	}

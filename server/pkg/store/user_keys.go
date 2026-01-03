@@ -27,15 +27,26 @@ func (s *PostgresStore) GetUserLiteLLMKey(ctx context.Context, userID string) (s
 	var key string
 	var lastUsedAt sql.NullTime
 
+	fmt.Printf("🔍 DB: Querying key for userID: %s\n", userID)
 	query := `SELECT litellm_key, last_used_at FROM user_litellm_keys WHERE user_id = $1`
 	err := s.DB.QueryRowContext(ctx, query, userID).Scan(&key, &lastUsedAt)
 
 	if err == sql.ErrNoRows {
+		fmt.Printf("ℹ️ DB: No key found for userID: %s (this is normal for new users)\n", userID)
 		return "", nil // Key not found
 	}
 	if err != nil {
+		fmt.Printf("❌ DB: Error querying key for userID %s: %v\n", userID, err)
 		return "", fmt.Errorf("failed to query user key: %w", err)
 	}
+
+	key = strings.TrimSpace(key)
+	if key == "" {
+		fmt.Printf("⚠️ DB: Key found for userID %s but it's empty\n", userID)
+		return "", nil // Treat empty key as not found
+	}
+
+	fmt.Printf("✅ DB: Found key for userID: %s (length: %d)\n", userID, len(key))
 
 	// Update last_used_at
 	_, _ = s.DB.ExecContext(ctx, `UPDATE user_litellm_keys SET last_used_at = NOW() WHERE user_id = $1`, userID)
