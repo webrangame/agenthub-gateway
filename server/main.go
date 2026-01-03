@@ -1168,11 +1168,22 @@ RESPONSE MUST BE VALID JSON ONLY.`, timeContext, locContext, string(varsJSON), i
 		content = "I'm currently experiencing a configuration issue. Please contact support if this persists."
 		action = "ACTION: ASK_QUESTION " + content
 	} else {
-		decisionResponse, err = GenerateContentFunc(convertHistory(history), systemMsg, litellmApiKey)
-		if err != nil {
-			fmt.Printf("GATEWAY ERROR after LLM call: %v\n", err)
+		// Validate key before using it
+		litellmApiKey = strings.TrimSpace(litellmApiKey)
+		if litellmApiKey == "" {
+			err = fmt.Errorf("LITELLM_API_KEY is empty after trimming")
+			fmt.Printf("❌ GATEWAY ERROR: API key is empty for user %s\n", userID)
 		} else {
-			fmt.Printf("GATEWAY RAW RESPONSE: %s\n", decisionResponse)
+			fmt.Printf("🚀 GATEWAY: Calling LLM with key (length: %d) for user: %s\n", len(litellmApiKey), userID)
+			decisionResponse, err = GenerateContentFunc(convertHistory(history), systemMsg, litellmApiKey)
+			if err != nil {
+				fmt.Printf("❌ GATEWAY ERROR after LLM call for user %s: %v\n", userID, err)
+				fmt.Printf("   Error type: %T\n", err)
+				fmt.Printf("   Error message: %s\n", err.Error())
+			} else {
+				fmt.Printf("✅ GATEWAY: Successfully got response for user %s\n", userID)
+				fmt.Printf("GATEWAY RAW RESPONSE: %s\n", decisionResponse)
+			}
 		}
 	}
 
