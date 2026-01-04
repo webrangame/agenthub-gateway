@@ -5,6 +5,7 @@ import LoginPage from './LoginPage';
 // Mock auth utilities
 jest.mock('../utils/auth', () => ({
     authLogin: jest.fn(),
+    setUsername: jest.fn(),
 }));
 
 describe('LoginPage', () => {

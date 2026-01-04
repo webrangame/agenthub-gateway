@@ -11,7 +11,7 @@ export default function Home() {
   const [authenticated, setAuthenticated] = useState(false);
   const [authCheckComplete, setAuthCheckComplete] = useState(false);
   const dispatch = useAppDispatch();
-  
+
   // Use RTK Query to fetch user data
   const { data: authData, isLoading: authLoading, error: authError, refetch: refetchAuth } = useGetAuthMeQuery(
     undefined,
@@ -50,19 +50,19 @@ export default function Home() {
       setAuthenticated(true);
     } else if (authError) {
       // Log detailed error information
-      const errorStatus = 'error' in authError ? authError.error : null;
+      const errorStatus = 'error' in (authError as any) ? (authError as any).error : null;
       const errorMessage = errorStatus && typeof errorStatus === 'object' && 'error' in errorStatus
-        ? String(errorStatus.error)
+        ? String((errorStatus as any).error)
         : errorStatus && typeof errorStatus === 'object' && 'data' in errorStatus
-          ? String(errorStatus.data)
+          ? String((errorStatus as any).data)
           : 'Unknown error';
-      
+
       console.error('[Auth] ❌ Error fetching user:', {
         error: authError,
         status: errorStatus,
         message: errorMessage
       });
-      
+
       // If it's a CORS or network error, provide helpful message
       if (errorMessage?.includes('CORS') || errorMessage?.includes('Failed to fetch') || errorMessage?.includes('timed out')) {
         console.error('[Auth] 🔍 Troubleshooting steps:');
@@ -71,7 +71,7 @@ export default function Home() {
         console.error('[Auth] 3. Check if cookies are set with Domain=.niyogen.com');
         console.error('[Auth] 4. Verify /api/auth/me endpoint is accessible');
       }
-      
+
       dispatch(clearUser());
       setAuthenticated(false);
     }
@@ -82,7 +82,7 @@ export default function Home() {
   };
 
   const [authLogoutMutation] = useAuthLogoutMutation();
-  
+
   const handleLogout = async () => {
     try {
       await authLogoutMutation().unwrap();
@@ -119,7 +119,7 @@ export default function Home() {
 
   // Show loading only if we're still checking auth (with timeout)
   const shouldShowLoading = authLoading || (process.env.NODE_ENV !== 'development' && !authCheckComplete && !authError);
-  
+
   // Add timeout: if loading for more than 5 seconds, show login page
   useEffect(() => {
     if (shouldShowLoading) {
