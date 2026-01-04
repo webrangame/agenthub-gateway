@@ -306,36 +306,32 @@ RESPONSE MUST BE VALID JSON ONLY.`, timeContext, locContext, string(varsJSON), i
 	userID := c.GetHeader("X-User-ID")
 	var litellmApiKey string
 
-	if userID != "" && s.Store != nil {
-		// Try to get existing key from database
-		key, err := s.Store.GetUserLiteLLMKey(c.Request.Context(), userID)
-		if err != nil {
-			fmt.Printf("⚠️ Error fetching user key: %v\n", err)
-		}
+	if userID != "" {
+		// Get proxy URL and master key from environment
+		proxyURL := os.Getenv("LITELLM_PROXY_URL")
+		masterKey := os.Getenv("LITELLM_MASTER_KEY")
 
-		if key == "" {
-			// Generate new key for this user
-			fmt.Printf("🔑 Generating new LiteLLM key for user: %s\n", userID)
-			proxyURL := os.Getenv("LITELLM_PROXY_URL")
-			masterKey := os.Getenv("LITELLM_MASTER_KEY")
+		if proxyURL != "" && masterKey != "" {
+			// Try to get existing key from LiteLLM
+			key, err := store.GetUserKeyFromLiteLLM(proxyURL, masterKey, userID)
+			if err != nil {
+				fmt.Printf("⚠️ Error fetching user key from LiteLLM: %v\n", err)
+			}
 
-			if proxyURL != "" && masterKey != "" {
+			if key == "" {
+				// Generate new key for this user
+				fmt.Printf("🔑 Generating new LiteLLM key for user: %s\n", userID)
 				newKey, keyName, err := store.GenerateLiteLLMKey(proxyURL, masterKey, userID, 10.00)
 				if err != nil {
 					fmt.Printf("❌ Failed to generate key: %v\n", err)
 				} else {
-					// Store the new key
-					if err := s.Store.StoreUserLiteLLMKey(c.Request.Context(), userID, newKey, keyName, 10.00); err != nil {
-						fmt.Printf("❌ Failed to store key: %v\n", err)
-					} else {
-						litellmApiKey = newKey
-						fmt.Printf("✅ Generated and stored key: %s\n", keyName)
-					}
+					litellmApiKey = newKey
+					fmt.Printf("✅ Generated key: %s\n", keyName)
 				}
+			} else {
+				litellmApiKey = key
+				fmt.Printf("✅ Using existing key for user: %s\n", userID)
 			}
-		} else {
-			litellmApiKey = key
-			fmt.Printf("✅ Using existing key for user: %s\n", userID)
 		}
 	}
 
