@@ -21,6 +21,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script src="https://market.niyogen.com/token-checker.js"></script>
+        <script dangerouslySetInnerHTML={{ __html: 'TokenChecker.init();' }} />
+      </head>
       <body className={`${inter.variable} antialiased`}>
         <StoreProvider>
           <GlobalError>

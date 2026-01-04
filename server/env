@@ -1,0 +1,43 @@
+# FastGraph Gateway Server Environment Variables
+# Copy this file to .env and fill in your values
+# For local development only - AWS Fargate uses Secrets Manager
+
+# Server Configuration
+PORT=8081
+GIN_MODE=release
+
+# Environment Variables for FastGraph-Go
+
+# OpenAI API Key (Required for LLM integration)
+# Get your key from: https://platform.openai.com/api-keys
+#OPENAI_API_KEY=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
+OPENAI_API_KEY=sk-sVlHTbaEQlBf-G1BnYmAcg
+# Optional: Default model to use
+DEFAULT_MODEL=gpt-4o-mini
+NODE_ENV=development
+
+# Optional: Enable debug logging
+DEBUG=false
+
+# Note: Never commit this file with real API keys!
+# Add .env to .gitignore to keep secrets safe
+GOOGLE_MAPS_KEY=AIzaSyAjzw979nv-czpIgo5zlgwQ3lS_QRw634w
+#GOOGLE_API_KEY=AIzaSyDDSkUUl7gmWbqxVaE9iVB2KQzLh9SpwV8
+UNSPLASH_ACCESS_KEY=jMglQrHsLeHo8mZoOUIlNv40rvrJv6eS0LyEU4sK9qo
+UNSPLASH_SECRET_KEY=2xdaZixl-NddGRf4ELXZ-EBDquQsPo9Cx8jKLNkhpQg
+UNSPLASH_APP_ID=844542
+# AWS Configuration (Optional - for S3 bucket access)
+#AWS_ACCESS_KEY_ID=your-aws-access-key-id
+#AWS_SECRET_ACCESS_KEY=your-aws-secret-access-key
+#AWS_REGION=us-east-1
+BUCKET_NAME=agent-marketplace-agents
+DATABASE_URL=postgresql://postgres:it371Ananda@agent-marketplace-db.cmt466aga8u0.us-east-1.rds.amazonaws.com:5432/tg_cards?sslmode=require
+LITELLM_PROXY_URL=https://swzissb82u.us-east-1.awsapprunner.com
+LITELLM_API_KEY=sk-sVlHTbaEQlBf-G1BnYmAcg
+LITELLM_MASTER_KEY=sk-dcb0c8a73a664a2307b8e2f12ef90a34819204105f32f51cc8c621ebf88c7642
+LITELLM_MODEL=gemini-2.0-flash
+
+
+FASTGRAPH_PROVIDER=openai
+FASTGRAPH_OPENAI_BASE_URL=https://swzissb82u.us-east-1.awsapprunner.com/v1
+FASTGRAPH_OPENAI_HEADERS={"Authorization":"Bearer sk-sVlHTbaEQlBf-G1BnYmAcg"}
