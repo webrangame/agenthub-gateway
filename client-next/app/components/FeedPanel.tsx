@@ -44,7 +44,7 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
         return process.env.NEXT_PUBLIC_USE_MOCK_FEED === 'true';
     })();
 
-    console.error('[FeedPanel] usage: effectiveUserId:', effectiveUserId, 'useMock:', useMock, 'NODE_ENV:', process.env.NODE_ENV);
+    console.log('[FeedPanel] usage: effectiveUserId:', effectiveUserId, 'useMock:', useMock, 'NODE_ENV:', process.env.NODE_ENV);
 
     // RTK Query for feed (skip if using mock)
     const { data: feedData, isLoading: feedLoading, error: feedError, refetch } = useGetFeedQuery(effectiveUserId || undefined, {
@@ -52,7 +52,7 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
         skip: useMock, // Skip RTK Query if using mock
     });
 
-    console.error('[FeedPanel] feedData:', JSON.stringify(feedData));
+    console.log('[FeedPanel] feedData:', JSON.stringify(feedData));
 
     const [feed, setFeed] = useState<FeedItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -251,7 +251,7 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
             }
             setLoading(false);
         } else if (feedError) {
-            console.error('Feed API error:', feedError);
+            console.warn('Feed API error:', feedError);
             let errorMessage = 'Failed to fetch feed';
             if ('status' in feedError) {
                 // RTK Query error structure
