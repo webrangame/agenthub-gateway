@@ -245,7 +245,7 @@ export const apiSlice = createApi({
 
     // Feed endpoint - GET
     getFeed: builder.query<any[], string | undefined>({
-      query: () => ({
+      query: (userId) => ({
         url: `${PROXY_BASE}/feed`,
         method: 'GET',
       }),

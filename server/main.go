@@ -6,6 +6,7 @@ import (
 	"guardian-gateway/pkg/api"
 	"guardian-gateway/pkg/fastgraph/runtime"
 	"guardian-gateway/pkg/llm"
+	"guardian-gateway/pkg/session"
 	"guardian-gateway/pkg/store"
 	"log"
 	"net/http"
@@ -67,6 +68,9 @@ func main() {
 	// Initialize FastGraph Engine
 	// Initialize FastGraph Engine
 	engine := runtime.New()
+
+	// Initialize Session Manager
+	session.Init()
 
 	// Initialize API Server
 	// Wrap llm.GenerateContent to match the expected signature

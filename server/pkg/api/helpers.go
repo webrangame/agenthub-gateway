@@ -52,7 +52,11 @@ func (s *Server) ProcessAndSaveFeed(ctx context.Context, ownerID string, eventJS
 	}
 
 	// Refine Card Type in-place
-	logic.RefineCardType(data["title"].(string), msg, &cardType, &priority, data, destination)
+	title, ok := data["title"].(string)
+	if !ok {
+		title = ""
+	}
+	logic.RefineCardType(title, msg, &cardType, &priority, data, destination)
 
 	// --- UNSPLASH CACHING LOGIC ---
 	// Logic: If this node already has an image cached, USE IT to prevent flicker/changing images
