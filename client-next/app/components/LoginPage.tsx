@@ -41,10 +41,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         }
         // Dispatch mock user to Redux state
         dispatch(setUser({
-            id: 'dev-user-123',
+            id: 123,
             email: 'dev@example.com',
-            username: 'Developer',
-            name: 'Developer'
+            name: 'Developer',
+            phoneNumber: null,
+            createdAt: new Date().toISOString(),
+            billingAddress: null
         }));
         onLogin();
     };
