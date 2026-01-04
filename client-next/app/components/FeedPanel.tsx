@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -34,6 +35,9 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
 
     // Determine if we should use mock feed
     const useMock = (() => {
+        // Run against real API (via mock) in test environment
+        if (process.env.NODE_ENV === 'test') return false;
+
         if (typeof window === 'undefined') return process.env.NEXT_PUBLIC_USE_MOCK_FEED === 'true';
         const param = new URLSearchParams(window.location.search).get('mockFeed');
         if (param === '0') return false;
@@ -41,11 +45,15 @@ const FeedPanel: React.FC<FeedPanelProps> = ({ onLogout, userId }) => {
         return process.env.NEXT_PUBLIC_USE_MOCK_FEED === 'true';
     })();
 
+    console.error('[FeedPanel] usage: effectiveUserId:', effectiveUserId, 'useMock:', useMock, 'NODE_ENV:', process.env.NODE_ENV);
+
     // RTK Query for feed (skip if using mock)
-    const { data: feedData, isLoading: feedLoading, error: feedError, refetch } = useGetFeedQuery(undefined, {
+    const { data: feedData, isLoading: feedLoading, error: feedError, refetch } = useGetFeedQuery(effectiveUserId || undefined, {
         pollingInterval: useMock ? 0 : 3000, // Poll every 3 seconds if not using mock
         skip: useMock, // Skip RTK Query if using mock
     });
+
+    console.error('[FeedPanel] feedData:', JSON.stringify(feedData));
 
     const [feed, setFeed] = useState<FeedItem[]>([]);
     const [loading, setLoading] = useState(true);

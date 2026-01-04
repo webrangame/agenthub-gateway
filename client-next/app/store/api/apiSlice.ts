@@ -8,15 +8,16 @@ const API_BASE_URL = process.env.NODE_ENV === 'development'
   : (process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://3.80.195.233:8081');
 const PROXY_BASE = '/api/proxy';
 
+import { v4 as uuidv4 } from 'uuid';
+
 // Helper to get device ID (using same logic as utils/device.ts)
 const getDeviceId = (): string => {
   if (typeof window === 'undefined') return '';
   const DEVICE_ID_KEY = 'ai_guardian_device_id';
   let deviceId = localStorage.getItem(DEVICE_ID_KEY);
   if (!deviceId) {
-    // Use uuid if available, otherwise generate simple ID
+    // Use uuid
     try {
-      const { v4: uuidv4 } = require('uuid');
       deviceId = uuidv4();
     } catch {
       deviceId = `device-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -28,18 +29,20 @@ const getDeviceId = (): string => {
   return deviceId || '';
 };
 
-// Base query with automatic X-User-ID header injection
-const baseQuery = fetchBaseQuery({
-  baseUrl: '/',
+// Custom base query with logging
+const baseQueryRaw = fetchBaseQuery({
+  baseUrl: (typeof window === 'undefined' || process.env.NODE_ENV === 'test') ? 'http://localhost' : '/',
   prepareHeaders: (headers, { getState }) => {
+    console.error('[apiSlice] prepareHeaders called');
     const state = getState() as RootState;
     const userId = state.user.user?.id || (typeof window !== 'undefined' ? localStorage.getItem('userid') : null);
 
-    if (userId) {
+
+
+    if (userId && !headers.has('X-User-ID')) {
       headers.set('X-User-ID', userId.toString());
     }
 
-    // Get device ID
     const deviceId = getDeviceId();
     if (deviceId) {
       headers.set('X-Device-ID', deviceId);
@@ -53,10 +56,22 @@ const baseQuery = fetchBaseQuery({
       }
     }
 
+    console.error('[apiSlice] Headers prepared:', Object.fromEntries(headers.entries()));
     return headers;
+  },
+  fetchFn: async (input, init) => {
+    // Defer to global fetch for testing mocking support
+    return fetch(input, init);
   },
   credentials: 'include',
 });
+
+const baseQuery: typeof baseQueryRaw = async (args, api, extraOptions) => {
+  console.error('[apiSlice] baseQuery executing for args:', args);
+  const result = await baseQueryRaw(args, api, extraOptions);
+  console.error('[apiSlice] baseQuery result:', result);
+  return result;
+};
 
 export const apiSlice = createApi({
   reducerPath: 'api',
@@ -165,11 +180,12 @@ export const apiSlice = createApi({
     }),
 
     // Chat endpoint - streaming response (custom queryFn for streaming)
-    sendChatMessage: builder.mutation<Response, { input: string }>({
-      queryFn: async ({ input }, { getState }) => {
+    sendChatMessage: builder.mutation<Response, { input: string; userId?: string }>({
+      queryFn: async ({ input, userId: propUserId }, { getState }) => {
         try {
           const state = getState() as RootState;
-          const userId = state.user.user?.id;
+          // Priority: Prop > Redux > LocalStorage
+          const userId = propUserId || state.user.user?.id;
           const deviceId = getDeviceId();
           const litellmApiKey = typeof window !== 'undefined' ? localStorage.getItem('litellm_api_key') : null;
 
@@ -206,11 +222,19 @@ export const apiSlice = createApi({
     }),
 
     // Feed endpoint - GET
-    getFeed: builder.query<any[], void>({
-      query: () => ({
-        url: `${PROXY_BASE}/feed`,
-        method: 'GET',
-      }),
+    getFeed: builder.query<any[], string | void>({
+      query: (userId) => {
+        console.log('[apiSlice] getFeed query called with userId:', userId);
+        const headers: Record<string, string> = {};
+        if (userId) {
+          headers['X-User-ID'] = userId;
+        }
+        return {
+          url: `${PROXY_BASE}/feed`,
+          method: 'GET',
+          headers,
+        };
+      },
       providesTags: ['Feed'],
     }),
 

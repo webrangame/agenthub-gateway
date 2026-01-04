@@ -9,13 +9,15 @@ import (
 	"strings"
 	"testing"
 
+	"guardian-gateway/pkg/api"
+	"guardian-gateway/pkg/fastgraph/runtime"
 	"guardian-gateway/pkg/session"
 
 	"github.com/gin-gonic/gin"
 )
 
 // Mock GenerateContent for testing
-func MockGenerateContent(history []map[string]interface{}, systemPrompt string, apiKey ...string) (string, error) {
+func MockGenerateContent(history []map[string]interface{}, systemPrompt string, apiKey string) (string, error) {
 	// Verify if systemPrompt contains injected context
 	if !strings.Contains(systemPrompt, "Current User Time:") {
 		return "", fmt.Errorf("System Prompt missing Time Context")
@@ -37,15 +39,16 @@ func TestChatStreamHandler_ContextInjection(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 
-	// Override LLM function
-	OriginalGenerate := GenerateContentFunc
-	GenerateContentFunc = MockGenerateContent
-	defer func() { GenerateContentFunc = OriginalGenerate }()
+	// Init Engine
+	mockEngine := runtime.New()
 
 	// Init Session
 	session.Init()
 
-	r.POST("/api/chat/stream", ChatStreamHandler)
+	// Init Server with Mock LLM
+	server := api.NewServer(mockEngine, nil, MockGenerateContent)
+
+	r.POST("/api/chat/stream", server.ChatStreamHandler)
 
 	// Prepare Request with Context
 	reqBody := map[string]string{
