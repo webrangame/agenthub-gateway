@@ -167,6 +167,7 @@ func (s *Server) ChatStreamHandler(c *gin.Context) {
 	}
 
 	// 1. Get Session Key (Use Hybrid Identity)
+	fmt.Println("DEBUG: ChatStreamHandler Started")
 	sessionKey := c.GetHeader("X-User-ID")
 	if sessionKey == "" {
 		sessionKey = c.GetHeader("X-Device-ID")
@@ -174,11 +175,13 @@ func (s *Server) ChatStreamHandler(c *gin.Context) {
 	if sessionKey == "" {
 		sessionKey = c.ClientIP()
 	}
-	sess := session.GlobalManager.GetOrCreate(sessionKey)
-
 	// 2. Append User Message
+	// 2. Append User Message
+	sess := session.GlobalManager.GetOrCreate(sessionKey)
 	sess.AppendMessage("user", req.Input)
 
+	// 3. Gateway Brain Logic (Gemini)
+	// Construct history context
 	// 3. Gateway Brain Logic (Gemini)
 	// Construct history context
 	history := sess.GetHistory()
