@@ -80,10 +80,10 @@ func GenerateLiteLLMKey(proxyURL, masterKey, userID string, maxBudget float64) (
 	return result.Key, keyName, nil
 }
 
-// GetUserKeyFromLiteLLM retrieves an existing key for a user from LiteLLM using /key/list
+// GetUserKeyFromLiteLLM retrieves an existing key for a user from LiteLLM using /user/info
 func GetUserKeyFromLiteLLM(proxyURL, masterKey, userID string) (string, error) {
-	// Construct URL with query parameters
-	url := fmt.Sprintf("%s/key/list?user_id=%s&sort_by=created_at&sort_order=desc&limit=1",
+	// Construct URL - use /user/info endpoint (same as frontend)
+	url := fmt.Sprintf("%s/user/info?user_id=%s",
 		strings.TrimSpace(proxyURL), userID)
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -97,7 +97,7 @@ func GetUserKeyFromLiteLLM(proxyURL, masterKey, userID string) (string, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("failed to call LiteLLM /key/list: %w", err)
+		return "", fmt.Errorf("failed to call LiteLLM /user/info: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -106,7 +106,7 @@ func GetUserKeyFromLiteLLM(proxyURL, masterKey, userID string) (string, error) {
 		if readErr != nil {
 			bodyBytes = []byte("(failed to read response body)")
 		}
-		fmt.Printf("❌ LiteLLM /key/list failed:\n")
+		fmt.Printf("❌ LiteLLM /user/info failed:\n")
 		fmt.Printf("   Status: %d\n", resp.StatusCode)
 		fmt.Printf("   URL: %s\n", url)
 		fmt.Printf("   Response: %s\n", string(bodyBytes))
@@ -114,7 +114,8 @@ func GetUserKeyFromLiteLLM(proxyURL, masterKey, userID string) (string, error) {
 	}
 
 	var result struct {
-		Keys []struct {
+		UserID string `json:"user_id"`
+		Keys   []struct {
 			Key     string `json:"key"`
 			KeyName string `json:"key_name"`
 			UserID  string `json:"user_id"`
@@ -132,12 +133,12 @@ func GetUserKeyFromLiteLLM(proxyURL, masterKey, userID string) (string, error) {
 
 	// If no keys found, return empty string (not an error)
 	if len(result.Keys) == 0 {
-		fmt.Printf("ℹ️ No key found for userID: %s via /key/list\n", userID)
+		fmt.Printf("ℹ️ No key found for userID: %s via /user/info\n", userID)
 		return "", nil
 	}
 
-	// Return the first (most recent) key
+	// Return the first key (most recent is first in LiteLLM response)
 	key := result.Keys[0].Key
-	fmt.Printf("✅ Found key for userID: %s via /key/list (key_name: %s)\n", userID, result.Keys[0].KeyName)
+	fmt.Printf("✅ Found key for userID: %s via /user/info (key_name: %s)\n", userID, result.Keys[0].KeyName)
 	return key, nil
 }
