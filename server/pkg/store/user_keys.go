@@ -116,9 +116,14 @@ func GetUserKeyFromLiteLLM(proxyURL, masterKey, userID string) (string, error) {
 	var result struct {
 		UserID string `json:"user_id"`
 		Keys   []struct {
-			Key     string `json:"key"`
-			KeyName string `json:"key_name"`
-			UserID  string `json:"user_id"`
+			Key       string  `json:"key"`
+			KeyName   string  `json:"key_name"`
+			UserID    string  `json:"user_id"`
+			Expires   *string `json:"expires"` // Optional expiry date
+			MaxBudget float64 `json:"max_budget"`
+			Spend     float64 `json:"spend"`
+			IsActive  *bool   `json:"is_active"` // Optional active status
+			KeyAlias  string  `json:"key_alias"`
 		} `json:"keys"`
 	}
 
@@ -137,8 +142,34 @@ func GetUserKeyFromLiteLLM(proxyURL, masterKey, userID string) (string, error) {
 		return "", nil
 	}
 
-	// Return the first key (most recent is first in LiteLLM response)
-	key := result.Keys[0].Key
-	fmt.Printf("✅ Found key for userID: %s via /user/info (key_name: %s)\n", userID, result.Keys[0].KeyName)
-	return key, nil
+	// Filter for active keys only
+	var activeKey string
+	var activeKeyName string
+	for _, k := range result.Keys {
+		// Check if key is active (if is_active field exists, it must be true)
+		if k.IsActive != nil && !*k.IsActive {
+			fmt.Printf("⏭️ Skipping inactive key: %s\n", k.KeyName)
+			continue
+		}
+
+		// Check if key is not over budget
+		if k.MaxBudget > 0 && k.Spend >= k.MaxBudget {
+			fmt.Printf("⏭️ Skipping over-budget key: %s (spend: %.2f, budget: %.2f)\n",
+				k.KeyName, k.Spend, k.MaxBudget)
+			continue
+		}
+
+		// If we get here, this is a valid active key
+		activeKey = k.Key
+		activeKeyName = k.KeyName
+		break
+	}
+
+	if activeKey == "" {
+		fmt.Printf("⚠️ Keys found for userID: %s but none are active/within budget\n", userID)
+		return "", nil // No active key found, will trigger key generation
+	}
+
+	fmt.Printf("✅ Found active key for userID: %s via /user/info (key_name: %s)\n", userID, activeKeyName)
+	return activeKey, nil
 }
