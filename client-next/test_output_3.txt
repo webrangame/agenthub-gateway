@@ -1,0 +1,1390 @@
+﻿
+[1m[46m RUN [49m[22m [36mv4.0.16 [39m[90mC:/Users/Antigravity/AiGuardian/client-next[39m
+
+[90mstdout[2m | app/components/UserPropagation.test.tsx[2m > [22m[2mUser Identity Propagation[2m > [22m[2mDebug[2m > [22m[2mloads apiSlice
+[22m[39mTest Store Created with Middleware
+
+node.exe : [90mstderr[2m | 
+app/components/UserPropagation.test.tsx[2m > 
+[22m[2mUser Identity Propagation[2m > 
+[22m[2mDebug[2m > [22m[2mloads apiSlice
+At C:\nvm4w\nodejs\npx.ps1:29 char:3
++   & $NODE_EXE $NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( 
+   [90mstderr[2m...mloads apiSlice:String)  
+   [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandEr 
+   ror
+ 
+[22m[39mapiSlice Loaded. Endpoints: [
+  [32m'getAuthMe'[39m,
+  [32m'authLogin'[39m,
+  [32m'authLogout'[39m,
+  [32m'authSetPassword'[39m,
+  [32m'sendChatMessage'[39m,
+  [32m'getFeed'[39m,
+  [32m'deleteFeed'[39m,
+  [32m'uploadFile'[39m,
+  [32m'getLiteLLMUserInfo'[39m
+]
+Middleware: [36m[Function: middleware][39m
+Store created successfully. State: {"api":{"qu
+eries":{},"mutations":{},"provided":{"tags":{}
+,"keys":{}},"subscriptions":{},"config":{"onli
+ne":true,"focused":true,"middlewareRegistered"
+:false,"refetchOnFocus":false,"refetchOnReconn
+ect":false,"refetchOnMountOrArgChange":false,"
+keepUnusedDataFor":60,"reducerPath":"api","inv
+alidationBehavior":"delayed"}},"user":{"user":
+null,"isLoading":false,"error":null}}
+
+[90mstdout[2m | app/components/UserPropagation.test.tsx[2m > [22m[2mUser Identity Propagation[2m > [22m[2mFeedPanel[2m > [22m[2mdirectly triggers fetch via store
+[22m[39mTest Store Created with Middleware
+Dispatching: api/executeQuery/pending
+Dispatching: api/config/middlewareRegistered
+[apiSlice] getFeed query called with userId: direct-user
+Dispatching: api/subscriptions/internal_getRTKQSubscriptions
+
+[90mstderr[2m | 
+app/components/UserPropagation.test.tsx[2m > 
+[22m[2mUser Identity Propagation[2m > 
+[22m[2mFeedPanel[2m > [22m[2mdirectly 
+triggers fetch via store
+[22m[39m[apiSlice] baseQuery executing for 
+args: {
+  url: [32m'/api/proxy/feed'[39m,
+  method: [32m'GET'[39m,
+  headers: { [32m'X-User-ID'[39m: 
+[32m'direct-user'[39m }
+}
+[apiSlice] prepareHeaders called
+[apiSlice] Headers prepared: {
+  [32m'x-device-id'[39m: [32m'7af88cec-709a
+-4a5c-8daf-ad9efc69ef52'[39m,
+  [32m'x-user-id'[39m: 
+[32m'direct-user'[39m
+}
+Fetch called: Request {
+  method: [32m'GET'[39m,
+  url: 
+[32m'http://localhost/api/proxy/feed'[39m,
+  headers: Headers {
+    [32m'X-User-ID'[39m: 
+[32m'direct-user'[39m,
+    [32m'X-Device-ID'[39m: [32m'7af88cec-70
+9a-4a5c-8daf-ad9efc69ef52'[39m,
+    accept: [32m'application/json'[39m
+  },
+  destination: [32m''[39m,
+  referrer: [32m'about:client'[39m,
+  referrerPolicy: [32m''[39m,
+  mode: [32m'cors'[39m,
+  credentials: [32m'include'[39m,
+  cache: [32m'default'[39m,
+  redirect: [32m'follow'[39m,
+  integrity: [32m''[39m,
+  keepalive: [33mfalse[39m,
+  isReloadNavigation: [33mfalse[39m,
+  isHistoryNavigation: [33mfalse[39m,
+  signal: AbortSignal { aborted: 
+[33mfalse[39m }
+}
+Fetch headers: [90mundefined[39m
+
+[90mstderr[2m | 
+app/components/UserPropagation.test.tsx[2m > 
+[22m[2mUser Identity Propagation[2m > 
+[22m[2mFeedPanel[2m > [22m[2mdirectly 
+triggers fetch via store
+[22m[39m[apiSlice] baseQuery result: {
+  data: [],
+  meta: {
+    request: Request {
+      method: [32m'GET'[39m,
+      url: 
+[32m'http://localhost/api/proxy/feed'[39m,
+      headers: Headers {
+        [32m'X-User-ID'[39m: 
+[32m'direct-user'[39m,
+        [32m'X-Device-ID'[39m: [32m'7af88ce
+c-709a-4a5c-8daf-ad9efc69ef52'[39m,
+        accept: [32m'application/json'[39m
+      },
+      destination: [32m''[39m,
+      referrer: [32m'about:client'[39m,
+      referrerPolicy: [32m''[39m,
+      mode: [32m'cors'[39m,
+      credentials: [32m'include'[39m,
+      cache: [32m'default'[39m,
+      redirect: [32m'follow'[39m,
+      integrity: [32m''[39m,
+      keepalive: [33mfalse[39m,
+      isReloadNavigation: [33mfalse[39m,
+      isHistoryNavigation: [33mfalse[39m,
+      signal: AbortSignal { aborted: 
+[33mfalse[39m }
+    },
+    response: Response {
+      status: [33m200[39m,
+      statusText: [32m''[39m,
+      headers: Headers { 
+[32m'Content-Type'[39m: 
+[32m'application/json'[39m },
+      body: ReadableStream { locked: 
+[33mtrue[39m, state: [32m'closed'[39m, 
+supportsBYOB: [33mtrue[39m },
+      bodyUsed: [33mtrue[39m,
+      ok: [33mtrue[39m,
+      redirected: [33mfalse[39m,
+      type: [32m'default'[39m,
+      url: [32m''[39m
+    }
+  }
+}
+
+[90mstdout[2m | app/components/UserPropagation.test.tsx[2m > [22m[2mUser Identity Propagation[2m > [22m[2mFeedPanel[2m > [22m[2mdirectly triggers fetch via store
+[22m[39mDispatching: api/executeQuery/fulfilled
+
+[90mstdout[2m | app/components/UserPropagation.test.tsx[2m > [22m[2mUser Identity Propagation[2m > [22m[2mFeedPanel[2m > [22m[2mprioritizes userId prop over localStorage
+[22m[39mTest Store Created with Middleware
+Dispatching: api/subscriptions/internal_getRTKQSubscriptions
+Dispatching: api/config/middlewareRegistered
+Dispatching: api/executeQuery/pending
+[apiSlice] getFeed query called with userId: prop-user
+
+[90mstderr[2m | 
+app/components/UserPropagation.test.tsx[2m > 
+[22m[2mUser Identity Propagation[2m > 
+[22m[2mFeedPanel[2m > [22m[2mprioritizes 
+userId prop over localStorage
+[22m[39m[FeedPanel] usage: effectiveUserId: 
+prop-user useMock: [33mfalse[39m NODE_ENV: 
+test
+[FeedPanel] feedData: [90mundefined[39m
+[apiSlice] baseQuery executing for args: {
+  url: [32m'/api/proxy/feed'[39m,
+  method: [32m'GET'[39m,
+  headers: { [32m'X-User-ID'[39m: 
+[32m'prop-user'[39m }
+}
+[apiSlice] prepareHeaders called
+[apiSlice] Headers prepared: {
+  [32m'x-device-id'[39m: [32m'c3f81223-9b2f
+-4884-803f-94def76ff62b'[39m,
+  [32m'x-user-id'[39m: 
+[32m'stored-user'[39m
+}
+[FeedPanel] usage: effectiveUserId: prop-user 
+useMock: [33mfalse[39m NODE_ENV: test
+[FeedPanel] feedData: [90mundefined[39m
+Fetch called: Request {
+  method: [32m'GET'[39m,
+  url: 
+[32m'http://localhost/api/proxy/feed'[39m,
+  headers: Headers {
+    [32m'X-User-ID'[39m: 
+[32m'stored-user'[39m,
+    [32m'X-Device-ID'[39m: [32m'c3f81223-9b
+2f-4884-803f-94def76ff62b'[39m,
+    accept: [32m'application/json'[39m
+  },
+  destination: [32m''[39m,
+  referrer: [32m'about:client'[39m,
+  referrerPolicy: [32m''[39m,
+  mode: [32m'cors'[39m,
+  credentials: [32m'include'[39m,
+  cache: [32m'default'[39m,
+  redirect: [32m'follow'[39m,
+  integrity: [32m''[39m,
+  keepalive: [33mfalse[39m,
+  isReloadNavigation: [33mfalse[39m,
+  isHistoryNavigation: [33mfalse[39m,
+  signal: AbortSignal { aborted: 
+[33mfalse[39m }
+}
+Fetch headers: [90mundefined[39m
+
+[90mstderr[2m | 
+app/components/UserPropagation.test.tsx[2m > 
+[22m[2mUser Identity Propagation[2m > 
+[22m[2mFeedPanel[2m > [22m[2mprioritizes 
+userId prop over localStorage
+[22m[39m[apiSlice] baseQuery result: {
+  data: [],
+  meta: {
+    request: Request {
+      method: [32m'GET'[39m,
+      url: 
+[32m'http://localhost/api/proxy/feed'[39m,
+      headers: Headers {
+        [32m'X-User-ID'[39m: 
+[32m'stored-user'[39m,
+        [32m'X-Device-ID'[39m: [32m'c3f8122
+3-9b2f-4884-803f-94def76ff62b'[39m,
+        accept: [32m'application/json'[39m
+      },
+      destination: [32m''[39m,
+      referrer: [32m'about:client'[39m,
+      referrerPolicy: [32m''[39m,
+      mode: [32m'cors'[39m,
+      credentials: [32m'include'[39m,
+      cache: [32m'default'[39m,
+      redirect: [32m'follow'[39m,
+      integrity: [32m''[39m,
+      keepalive: [33mfalse[39m,
+      isReloadNavigation: [33mfalse[39m,
+      isHistoryNavigation: [33mfalse[39m,
+      signal: AbortSignal { aborted: 
+[33mfalse[39m }
+    },
+    response: Response {
+      status: [33m200[39m,
+      statusText: [32m''[39m,
+      headers: Headers { 
+[32m'Content-Type'[39m: 
+[32m'application/json'[39m },
+      body: ReadableStream { locked: 
+[33mtrue[39m, state: [32m'closed'[39m, 
+supportsBYOB: [33mtrue[39m },
+      bodyUsed: [33mtrue[39m,
+      ok: [33mtrue[39m,
+      redirected: [33mfalse[39m,
+      type: [32m'default'[39m,
+      url: [32m''[39m
+    }
+  }
+}
+
+[90mstdout[2m | app/components/UserPropagation.test.tsx[2m > [22m[2mUser Identity Propagation[2m > [22m[2mFeedPanel[2m > [22m[2mprioritizes userId prop over localStorage
+[22m[39mDispatching: api/executeQuery/fulfilled
+
+[90mstdout[2m | app/components/UserPropagation.test.tsx[2m > [22m[2mUser Identity Propagation[2m > [22m[2mFeedPanel[2m > [22m[2mprioritizes userId prop over localStorage
+[22m[39mFeed data received from RTK Query: []
+
+[90mstderr[2m | 
+app/components/UserPropagation.test.tsx[2m > 
+[22m[2mUser Identity Propagation[2m > 
+[22m[2mFeedPanel[2m > [22m[2mprioritizes 
+userId prop over localStorage
+[22m[39m[FeedPanel] usage: effectiveUserId: 
+prop-user useMock: [33mfalse[39m NODE_ENV: 
+test
+[FeedPanel] feedData: []
+
+[90mstderr[2m | 
+app/components/UserPropagation.test.tsx[2m > 
+[22m[2mUser Identity Propagation[2m > 
+[22m[2mFeedPanel[2m > [22m[2mprioritizes 
+userId prop over localStorage
+[22m[39m[FeedPanel] usage: effectiveUserId: 
+prop-user useMock: [33mfalse[39m NODE_ENV: 
+test
+[FeedPanel] feedData: []
+
+[90mstdout[2m | app/components/UserPropagation.test.tsx[2m > [22m[2mUser Identity Propagation[2m > [22m[2mFeedPanel[2m > [22m[2mprioritizes userId prop over localStorage
+[22m[39mDispatching: api/subscriptions/unsubscribeQueryResult
+
+[90mstdout[2m | app/components/UserPropagation.test.tsx[2m > [22m[2mUser Identity Propagation[2m > [22m[2mFeedPanel[2m > [22m[2mfalls back to localStorage if prop is missing
+[22m[39mTest Store Created with Middleware
+Dispatching: api/subscriptions/internal_getRTKQSubscriptions
+Dispatching: api/config/middlewareRegistered
+Dispatching: api/executeQuery/pending
+[apiSlice] getFeed query called with userId: stored-user
+
+[90mstderr[2m | 
+app/components/UserPropagation.test.tsx[2m > 
+[22m[2mUser Identity Propagation[2m > 
+[22m[2mFeedPanel[2m > [22m[2mfalls back 
+to localStorage if prop is missing
+[22m[39m[FeedPanel] usage: effectiveUserId: 
+stored-user useMock: [33mfalse[39m 
+NODE_ENV: test
+[FeedPanel] feedData: [90mundefined[39m
+[apiSlice] baseQuery executing for args: {
+  url: [32m'/api/proxy/feed'[39m,
+  method: [32m'GET'[39m,
+  headers: { [32m'X-User-ID'[39m: 
+[32m'stored-user'[39m }
+}
+[apiSlice] prepareHeaders called
+[apiSlice] Headers prepared: {
+  [32m'x-device-id'[39m: [32m'840f0d62-893e
+-40f3-ba9b-167abdb65bb2'[39m,
+  [32m'x-user-id'[39m: 
+[32m'stored-user'[39m
+}
+[FeedPanel] usage: effectiveUserId: 
+stored-user useMock: [33mfalse[39m 
+NODE_ENV: test
+[FeedPanel] feedData: [90mundefined[39m
+Fetch called: Request {
+  method: [32m'GET'[39m,
+  url: 
+[32m'http://localhost/api/proxy/feed'[39m,
+  headers: Headers {
+    [32m'X-User-ID'[39m: 
+[32m'stored-user'[39m,
+    [32m'X-Device-ID'[39m: [32m'840f0d62-89
+3e-40f3-ba9b-167abdb65bb2'[39m,
+    accept: [32m'application/json'[39m
+  },
+  destination: [32m''[39m,
+  referrer: [32m'about:client'[39m,
+  referrerPolicy: [32m''[39m,
+  mode: [32m'cors'[39m,
+  credentials: [32m'include'[39m,
+  cache: [32m'default'[39m,
+  redirect: [32m'follow'[39m,
+  integrity: [32m''[39m,
+  keepalive: [33mfalse[39m,
+  isReloadNavigation: [33mfalse[39m,
+  isHistoryNavigation: [33mfalse[39m,
+  signal: AbortSignal { aborted: 
+[33mfalse[39m }
+}
+Fetch headers: [90mundefined[39m
+
+[90mstderr[2m | 
+app/components/UserPropagation.test.tsx[2m > 
+[22m[2mUser Identity Propagation[2m > 
+[22m[2mFeedPanel[2m > [22m[2mfalls back 
+to localStorage if prop is missing
+[22m[39m[apiSlice] baseQuery result: {
+  data: [],
+  meta: {
+    request: Request {
+      method: [32m'GET'[39m,
+      url: 
+[32m'http://localhost/api/proxy/feed'[39m,
+      headers: Headers {
+        [32m'X-User-ID'[39m: 
+[32m'stored-user'[39m,
+        [32m'X-Device-ID'[39m: [32m'840f0d6
+2-893e-40f3-ba9b-167abdb65bb2'[39m,
+        accept: [32m'application/json'[39m
+      },
+      destination: [32m''[39m,
+      referrer: [32m'about:client'[39m,
+      referrerPolicy: [32m''[39m,
+      mode: [32m'cors'[39m,
+      credentials: [32m'include'[39m,
+      cache: [32m'default'[39m,
+      redirect: [32m'follow'[39m,
+      integrity: [32m''[39m,
+      keepalive: [33mfalse[39m,
+      isReloadNavigation: [33mfalse[39m,
+      isHistoryNavigation: [33mfalse[39m,
+      signal: AbortSignal { aborted: 
+[33mfalse[39m }
+    },
+    response: Response {
+      status: [33m200[39m,
+      statusText: [32m''[39m,
+      headers: Headers { 
+[32m'Content-Type'[39m: 
+[32m'application/json'[39m },
+      body: ReadableStream { locked: 
+[33mtrue[39m, state: [32m'closed'[39m, 
+supportsBYOB: [33mtrue[39m },
+      bodyUsed: [33mtrue[39m,
+      ok: [33mtrue[39m,
+      redirected: [33mfalse[39m,
+      type: [32m'default'[39m,
+      url: [32m''[39m
+    }
+  }
+}
+
+[90mstdout[2m | app/components/UserPropagation.test.tsx[2m > [22m[2mUser Identity Propagation[2m > [22m[2mFeedPanel[2m > [22m[2mfalls back to localStorage if prop is missing
+[22m[39mDispatching: api/executeQuery/fulfilled
+
+[90mstdout[2m | app/components/UserPropagation.test.tsx[2m > [22m[2mUser Identity Propagation[2m > [22m[2mFeedPanel[2m > [22m[2mfalls back to localStorage if prop is missing
+[22m[39mFeed data received from RTK Query: []
+
+[90mstderr[2m | 
+app/components/UserPropagation.test.tsx[2m > 
+[22m[2mUser Identity Propagation[2m > 
+[22m[2mFeedPanel[2m > [22m[2mfalls back 
+to localStorage if prop is missing
+[22m[39m[FeedPanel] usage: effectiveUserId: 
+stored-user useMock: [33mfalse[39m 
+NODE_ENV: test
+[FeedPanel] feedData: []
+
+[90mstderr[2m | 
+app/components/UserPropagation.test.tsx[2m > 
+[22m[2mUser Identity Propagation[2m > 
+[22m[2mFeedPanel[2m > [22m[2mfalls back 
+to localStorage if prop is missing
+[22m[39m[FeedPanel] usage: effectiveUserId: 
+stored-user useMock: [33mfalse[39m 
+NODE_ENV: test
+[FeedPanel] feedData: []
+
+[90mstdout[2m | app/components/UserPropagation.test.tsx[2m > [22m[2mUser Identity Propagation[2m > [22m[2mFeedPanel[2m > [22m[2mfalls back to localStorage if prop is missing
+[22m[39mDispatching: api/subscriptions/unsubscribeQueryResult
+
+[90mstdout[2m | app/components/UserPropagation.test.tsx[2m > [22m[2mUser Identity Propagation[2m > [22m[2mFeedPanel[2m > [22m[2muses empty string if neither are present
+[22m[39mTest Store Created with Middleware
+Dispatching: api/subscriptions/internal_getRTKQSubscriptions
+Dispatching: api/config/middlewareRegistered
+Dispatching: api/executeQuery/pending
+[apiSlice] getFeed query called with userId: [90mundefined[39m
+
+[90mstderr[2m | 
+app/components/UserPropagation.test.tsx[2m > 
+[22m[2mUser Identity Propagation[2m > 
+[22m[2mFeedPanel[2m > [22m[2muses empty 
+string if neither are present
+[22m[39m[FeedPanel] usage: effectiveUserId: 
+ useMock: [33mfalse[39m NODE_ENV: test
+[FeedPanel] feedData: [90mundefined[39m
+[apiSlice] baseQuery executing for args: { 
+url: [32m'/api/proxy/feed'[39m, method: 
+[32m'GET'[39m, headers: {} }
+[apiSlice] prepareHeaders called
+[apiSlice] Headers prepared: { 
+[32m'x-device-id'[39m: [32m'daa5a378-e197-4
+238-9403-1a26470b076e'[39m }
+[FeedPanel] usage: effectiveUserId:  useMock: 
+[33mfalse[39m NODE_ENV: test
+[FeedPanel] feedData: [90mundefined[39m
+Fetch called: Request {
+  method: [32m'GET'[39m,
+  url: 
+[32m'http://localhost/api/proxy/feed'[39m,
+  headers: Headers {
+    [32m'X-Device-ID'[39m: [32m'daa5a378-e1
+97-4238-9403-1a26470b076e'[39m,
+    accept: [32m'application/json'[39m
+  },
+  destination: [32m''[39m,
+  referrer: [32m'about:client'[39m,
+  referrerPolicy: [32m''[39m,
+  mode: [32m'cors'[39m,
+  credentials: [32m'include'[39m,
+  cache: [32m'default'[39m,
+  redirect: [32m'follow'[39m,
+  integrity: [32m''[39m,
+  keepalive: [33mfalse[39m,
+  isReloadNavigation: [33mfalse[39m,
+  isHistoryNavigation: [33mfalse[39m,
+  signal: AbortSignal { aborted: 
+[33mfalse[39m }
+}
+Fetch headers: [90mundefined[39m
+
+[90mstderr[2m | 
+app/components/UserPropagation.test.tsx[2m > 
+[22m[2mUser Identity Propagation[2m > 
+[22m[2mFeedPanel[2m > [22m[2muses empty 
+string if neither are present
+[22m[39m[apiSlice] baseQuery result: {
+  data: [],
+  meta: {
+    request: Request {
+      method: [32m'GET'[39m,
+      url: 
+[32m'http://localhost/api/proxy/feed'[39m,
+      headers: Headers {
+        [32m'X-Device-ID'[39m: [32m'daa5a37
+8-e197-4238-9403-1a26470b076e'[39m,
+        accept: [32m'application/json'[39m
+      },
+      destination: [32m''[39m,
+      referrer: [32m'about:client'[39m,
+      referrerPolicy: [32m''[39m,
+      mode: [32m'cors'[39m,
+      credentials: [32m'include'[39m,
+      cache: [32m'default'[39m,
+      redirect: [32m'follow'[39m,
+      integrity: [32m''[39m,
+      keepalive: [33mfalse[39m,
+      isReloadNavigation: [33mfalse[39m,
+      isHistoryNavigation: [33mfalse[39m,
+      signal: AbortSignal { aborted: 
+[33mfalse[39m }
+    },
+    response: Response {
+      status: [33m200[39m,
+      statusText: [32m''[39m,
+      headers: Headers { 
+[32m'Content-Type'[39m: 
+[32m'application/json'[39m },
+      body: ReadableStream { locked: 
+[33mtrue[39m, state: [32m'closed'[39m, 
+supportsBYOB: [33mtrue[39m },
+      bodyUsed: [33mtrue[39m,
+      ok: [33mtrue[39m,
+      redirected: [33mfalse[39m,
+      type: [32m'default'[39m,
+      url: [32m''[39m
+    }
+  }
+}
+
+[90mstdout[2m | app/components/UserPropagation.test.tsx[2m > [22m[2mUser Identity Propagation[2m > [22m[2mFeedPanel[2m > [22m[2muses empty string if neither are present
+[22m[39mDispatching: api/executeQuery/fulfilled
+
+[90mstdout[2m | app/components/UserPropagation.test.tsx[2m > [22m[2mUser Identity Propagation[2m > [22m[2mFeedPanel[2m > [22m[2muses empty string if neither are present
+[22m[39mFeed data received from RTK Query: []
+
+[90mstderr[2m | 
+app/components/UserPropagation.test.tsx[2m > 
+[22m[2mUser Identity Propagation[2m > 
+[22m[2mFeedPanel[2m > [22m[2muses empty 
+string if neither are present
+[22m[39m[FeedPanel] usage: effectiveUserId: 
+ useMock: [33mfalse[39m NODE_ENV: test
+[FeedPanel] feedData: []
+
+[90mstderr[2m | 
+app/components/UserPropagation.test.tsx[2m > 
+[22m[2mUser Identity Propagation[2m > 
+[22m[2mFeedPanel[2m > [22m[2muses empty 
+string if neither are present
+[22m[39m[FeedPanel] usage: effectiveUserId: 
+ useMock: [33mfalse[39m NODE_ENV: test
+[FeedPanel] feedData: []
+
+[90mstdout[2m | app/components/UserPropagation.test.tsx[2m > [22m[2mUser Identity Propagation[2m > [22m[2mFeedPanel[2m > [22m[2muses empty string if neither are present
+[22m[39mDispatching: api/subscriptions/unsubscribeQueryResult
+
+[90mstdout[2m | app/components/UserPropagation.test.tsx[2m > [22m[2mUser Identity Propagation[2m > [22m[2mChatPanel[2m > [22m[2muses userId prop in headers
+[22m[39mTest Store Created with Middleware
+
+ [31m❯[39m app/components/UserPropagation.test.tsx [2m([22m[2m6 tests[22m[2m | [22m[31m5 failed[39m[2m)[22m[33m 3216[2mms[22m[39m
+       [32m✓[39m loads apiSlice[32m 8[2mms[22m[39m
+[31m       [31m×[31m directly triggers fetch via store[39m[32m 55[2mms[22m[39m
+[31m       [31m×[31m prioritizes userId prop over localStorage[39m[33m 1050[2mms[22m[39m
+[31m       [31m×[31m falls back to localStorage if prop is missing[39m[33m 1021[2mms[22m[39m
+[31m       [31m×[31m uses empty string if neither are present[39m[33m 1021[2mms[22m[39m
+[31m       [31m×[31m uses userId prop in headers[39m[32m 58[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 5 
+[49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m 
+app/components/UserPropagation.test.tsx[2m > 
+[22mUser Identity Propagation[2m > 
+[22mFeedPanel[2m > [22mdirectly triggers 
+fetch via store
+[31m[1mAssertionError[22m: expected 
+"vi.fn()" to be called with arguments: [ …(2) 
+][90m
+
+Received: 
+
+[1m  1st vi.fn() call:
+
+[22m[2m  [[22m
+[32m-   StringContaining 
+"/api/proxy/feed",[90m
+[32m-   ObjectContaining {[90m
+[32m-     "headers": ObjectContaining {[90m
+[32m-       "X-User-ID": "direct-user",[90m
+[31m+   Request {[90m
+[31m+     Symbol(dispatcher): undefined,[90m
+[31m+     Symbol(state): {[90m
+[31m+       "body": null,[90m
+[31m+       "cache": "default",[90m
+[31m+       "client": 
+EnvironmentSettingsObjectBase {[90m
+[31m+         "policyContainer": {[90m
+[31m+           "referrerPolicy": 
+"strict-origin-when-cross-origin",[90m
+[31m+         },[90m
+[31m+       },[90m
+[31m+       "credentials": "include",[90m
+[31m+       "cryptoGraphicsNonceMetadata": 
+"",[90m
+[31m+       "destination": "",[90m
+[31m+       "done": false,[90m
+[31m+       "headersList": HeadersList {[90m
+[31m+         "cookies": null,[90m
+[31m+         Symbol(headers map): Map {[90m
+[31m+           "x-user-id" => {[90m
+[31m+             "name": "X-User-ID",[90m
+[31m+             "value": 
+"direct-user",[90m
+[31m+           },[90m
+[31m+           "x-device-id" => {[90m
+[31m+             "name": "X-Device-ID",[90m
+[31m+             "value": 
+"7af88cec-709a-4a5c-8daf-ad9efc69ef52",[90m
+[31m+           },[90m
+[31m+           "accept" => {[90m
+[31m+             "name": "accept",[90m
+[31m+             "value": 
+"application/json",[90m
+[31m+           },[90m
+[31m+         },[90m
+[31m+         Symbol(headers map sorted): 
+null,[90m
+[31m+       },[90m
+[31m+       "historyNavigation": false,[90m
+[31m+       "initiator": "",[90m
+[31m+       "integrity": "",[90m
+[31m+       "keepalive": false,[90m
+[31m+       "localURLsOnly": false,[90m
+[31m+       "method": "GET",[90m
+[31m+       "mode": "cors",[90m
+[31m+       "origin": "client",[90m
+[31m+       "parserMetadata": "",[90m
+[31m+       "policyContainer": "client",[90m
+[31m+       "preventNoCacheCacheControlHeader
+Modification": false,[90m
+[31m+       "priority": null,[90m
+[31m+       "redirect": "follow",[90m
+[31m+       "redirectCount": 0,[90m
+[31m+       "referrer": "client",[90m
+[31m+       "referrerPolicy": "",[90m
+[31m+       "reloadNavigation": false,[90m
+[31m+       "replacesClientId": "",[90m
+[31m+       "reservedClient": null,[90m
+[31m+       "responseTainting": "basic",[90m
+[31m+       "serviceWorkers": "all",[90m
+[31m+       "taintedOrigin": false,[90m
+[31m+       "timingAllowFailed": false,[90m
+[31m+       "unsafeRequest": false,[90m
+[31m+       "url": 
+"http://localhost/api/proxy/feed",[90m
+[31m+       "urlList": [[90m
+[31m+         
+"http://localhost/api/proxy/feed",[90m
+[31m+       ],[90m
+[31m+       "useCORSPreflightFlag": 
+false,[90m
+[31m+       "useCredentials": false,[90m
+[31m+       "userActivation": false,[90m
+[31m+       "window": "client",[90m
+[2m      },[22m
+[31m+     Symbol(signal): AbortSignal {[90m
+[31m+       Symbol(kEvents): Map {},[90m
+[31m+       
+Symbol(events.maxEventTargetListeners): 
+0,[90m
+[31m+       
+Symbol(events.maxEventTargetListenersWarned): 
+false,[90m
+[31m+       Symbol(kHandlers): Map {},[90m
+[31m+       Symbol(kAborted): false,[90m
+[31m+       Symbol(kReason): undefined,[90m
+[31m+       Symbol(kComposite): false,[90m
+[2m      },[22m
+[31m+     Symbol(abortController): 
+AbortController {},[90m
+[31m+     Symbol(headers): Headers {},[90m
+[31m+   },[90m
+[31m+   undefined,[90m
+[2m  ][22m
+[31m[90m
+
+Number of calls: [1m1[22m
+[31m[39m
+[36m [2m❯[22m app/components/UserPropagatio
+n.test.tsx:[2m122:34[22m[39m
+    [90m120| [39m            
+[35mconst[39m { store } [33m=[39m [34mren
+derWithProvider[39m([33m<[39m[33mdiv[39m
+[33m>[39m[33m<[39m[33m/[39m[33mdiv[39m
+[33m>[39m)[33m;[39m
+    [90m121| [39m            await store.dis
+patch(apiSlice.endpoints.getFeed.initiate('…
+    [90m122| [39m            [34mexpect[39
+m(global[33m.[39mfetch)[33m.[39m[34mtoHav
+eBeenCalledWith[39m(
+    [90m   | [39m                           
+      [31m^[39m
+    [90m123| [39m                expect[33m
+.[39m[34mstringContaining[39m([32m'/api/pr
+oxy/feed'[39m)[33m,[39m
+    [90m124| [39m                
+expect[33m.[39m[34mobjectContaining[39m({
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯[22m[
+39m
+
+[41m[1m FAIL [22m[49m 
+app/components/UserPropagation.test.tsx[2m > 
+[22mUser Identity Propagation[2m > 
+[22mFeedPanel[2m > [22mprioritizes userId 
+prop over localStorage
+[31m[1mAssertionError[22m[39m: expected 
+"vi.fn()" to be called with arguments: [ …(2) 
+][90m
+
+Received: 
+
+[1m  1st vi.fn() call:
+
+[22m[2m  [[22m
+[32m-   StringContaining 
+"/api/proxy/feed",[90m
+[32m-   ObjectContaining {[90m
+[32m-     "headers": ObjectContaining {[90m
+[32m-       "X-User-ID": "prop-user",[90m
+[31m+   Request {[90m
+[31m+     Symbol(dispatcher): undefined,[90m
+[31m+     Symbol(state): {[90m
+[31m+       "body": null,[90m
+[31m+       "cache": "default",[90m
+[31m+       "client": 
+EnvironmentSettingsObjectBase {[90m
+[31m+         "policyContainer": {[90m
+[31m+           "referrerPolicy": 
+"strict-origin-when-cross-origin",[90m
+[31m+         },[90m
+[31m+       },[90m
+[31m+       "credentials": "include",[90m
+[31m+       "cryptoGraphicsNonceMetadata": 
+"",[90m
+[31m+       "destination": "",[90m
+[31m+       "done": false,[90m
+[31m+       "headersList": HeadersList {[90m
+[31m+         "cookies": null,[90m
+[31m+         Symbol(headers map): Map {[90m
+[31m+           "x-user-id" => {[90m
+[31m+             "name": "X-User-ID",[90m
+[31m+             "value": 
+"stored-user",[90m
+[31m+           },[90m
+[31m+           "x-device-id" => {[90m
+[31m+             "name": "X-Device-ID",[90m
+[31m+             "value": 
+"c3f81223-9b2f-4884-803f-94def76ff62b",[90m
+[31m+           },[90m
+[31m+           "accept" => {[90m
+[31m+             "name": "accept",[90m
+[31m+             "value": 
+"application/json",[90m
+[31m+           },[90m
+[31m+         },[90m
+[31m+         Symbol(headers map sorted): 
+null,[90m
+[31m+       },[90m
+[31m+       "historyNavigation": false,[90m
+[31m+       "initiator": "",[90m
+[31m+       "integrity": "",[90m
+[31m+       "keepalive": false,[90m
+[31m+       "localURLsOnly": false,[90m
+[31m+       "method": "GET",[90m
+[31m+       "mode": "cors",[90m
+[31m+       "origin": "client",[90m
+[31m+       "parserMetadata": "",[90m
+[31m+       "policyContainer": "client",[90m
+[31m+       "preventNoCacheCacheControlHeader
+Modification": false,[90m
+[31m+       "priority": null,[90m
+[31m+       "redirect": "follow",[90m
+[31m+       "redirectCount": 0,[90m
+[31m+       "referrer": "client",[90m
+[31m+       "referrerPolicy": "",[90m
+[31m+       "reloadNavigation": false,[90m
+[31m+       "replacesClientId": "",[90m
+[31m+       "reservedClient": null,[90m
+[31m+       "responseTainting": "basic",[90m
+[31m+       "serviceWorkers": "all",[90m
+[31m+       "taintedOrigin": false,[90m
+[31m+       "timingAllowFailed": false,[90m
+[31m+       "unsafeRequest": false,[90m
+[31m+       "url": 
+"http://localhost/api/proxy/feed",[90m
+[31m+       "urlList": [[90m
+[31m+         
+"http://localhost/api/proxy/feed",[90m
+[31m+       ],[90m
+[31m+       "useCORSPreflightFlag": 
+false,[90m
+[31m+       "useCredentials": false,[90m
+[31m+       "userActivation": false,[90m
+[31m+       "window": "client",[90m
+[2m      },[22m
+[31m+     Symbol(signal): AbortSignal {[90m
+[31m+       Symbol(kEvents): Map {},[90m
+[31m+       
+Symbol(events.maxEventTargetListeners): 
+0,[90m
+[31m+       
+Symbol(events.maxEventTargetListenersWarned): 
+false,[90m
+[31m+       Symbol(kHandlers): Map {},[90m
+[31m+       Symbol(kAborted): false,[90m
+[31m+       Symbol(kReason): undefined,[90m
+[31m+       Symbol(kComposite): false,[90m
+[2m      },[22m
+[31m+     Symbol(abortController): 
+AbortController {},[90m
+[31m+     Symbol(headers): Headers {},[90m
+[31m+   },[90m
+[31m+   undefined,[90m
+[2m  ][22m
+[39m[90m
+
+Number of calls: [1m1[22m
+[39m
+
+Ignored nodes: comments, script, style
+[36m<html>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex-1 flex 
+flex-col overflow-y-auto h-full 
+scrollbar-thin scrollbar-thumb-[#9DBEF8] 
+scrollbar-track-transparent"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"sticky top-0 
+z-10 p-4 mb-2 border-b border-[#9DBEF8]/30 
+flex justify-between items-center 
+bg-white"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"text-xl 
+font-bold text-[#003580] tracking-tight"[39m
+            [36m>[39m
+              [0mInsight Stream[0m
+            [36m</h2>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex 
+items-center gap-2"[39m
+          [36m>[39m
+            [36m<button[39m
+              
+[33mclass[39m=[32m"text-[10px] px-3 py-1.5 
+rounded-full font-medium transition-all 
+duration-300 border bg-[#EEF5FF] 
+text-[#003580] border-[#9DBEF8] 
+hover:bg-white hover:shadow-sm"[39m
+            [36m>[39m
+              [0mDebug[0m
+            [36m</button>[39m
+            [36m<div>[39m
+              [0mMockUserMenuInline[0m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"space-y-4 
+px-4 pb-20"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"text-center 
+text-[#003580]/40 py-12 italic text-sm"[39m
+          [36m>[39m
+            [0mQuiet... for now.[0m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</body>[39m
+[36m</html>[39m
+[36m [2m❯[22m app/components/UserPropagatio
+n.test.tsx:[2m142:38[22m[39m
+    [90m140| [39m            [90m// We 
+wait for fetch to be called.[39m
+    [90m141| [39m            
+[35mawait[39m [34mwaitFor[39m(() 
+[33m=>[39m {
+    [90m142| [39m                [34mexpect
+[39m(global[33m.[39mfetch)[33m.[39m[34mt
+oHaveBeenCalledWith[39m(
+    [90m   | [39m                           
+          [31m^[39m
+    [90m143| [39m                    expect
+[33m.[39m[34mstringContaining[39m([32m'/ap
+i/proxy/feed'[39m)[33m,[39m
+    [90m144| [39m                    
+expect[33m.[39m[34mobjectContaining[39m({
+[90m [2m❯[22m 
+runWithExpensiveErrorDiagnosticsDisabled node_
+modules/@testing-library/dom/dist/config.js:[
+2m47:12[22m[39m
+[90m [2m❯[22m checkCallback node_modules/@t
+esting-library/dom/dist/wait-for.js:[2m124:77
+[22m[39m
+[90m [2m❯[22m 
+Timeout.checkRealTimersCallback node_modules/@
+testing-library/dom/dist/wait-for.js:[2m118:1
+6[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯[22m[
+39m
+
+[41m[1m FAIL [22m[49m 
+app/components/UserPropagation.test.tsx[2m > 
+[22mUser Identity Propagation[2m > 
+[22mFeedPanel[2m > [22mfalls back to 
+localStorage if prop is missing
+[31m[1mAssertionError[22m[39m: expected 
+"vi.fn()" to be called with arguments: [ …(2) 
+][90m
+
+Received: 
+
+[1m  1st vi.fn() call:
+
+[22m[2m  [[22m
+[32m-   StringContaining 
+"/api/proxy/feed",[90m
+[32m-   ObjectContaining {[90m
+[32m-     "headers": ObjectContaining {[90m
+[32m-       "X-User-ID": "stored-user",[90m
+[31m+   Request {[90m
+[31m+     Symbol(dispatcher): undefined,[90m
+[31m+     Symbol(state): {[90m
+[31m+       "body": null,[90m
+[31m+       "cache": "default",[90m
+[31m+       "client": 
+EnvironmentSettingsObjectBase {[90m
+[31m+         "policyContainer": {[90m
+[31m+           "referrerPolicy": 
+"strict-origin-when-cross-origin",[90m
+[31m+         },[90m
+[31m+       },[90m
+[31m+       "credentials": "include",[90m
+[31m+       "cryptoGraphicsNonceMetadata": 
+"",[90m
+[31m+       "destination": "",[90m
+[31m+       "done": false,[90m
+[31m+       "headersList": HeadersList {[90m
+[31m+         "cookies": null,[90m
+[31m+         Symbol(headers map): Map {[90m
+[31m+           "x-user-id" => {[90m
+[31m+             "name": "X-User-ID",[90m
+[31m+             "value": 
+"stored-user",[90m
+[31m+           },[90m
+[31m+           "x-device-id" => {[90m
+[31m+             "name": "X-Device-ID",[90m
+[31m+             "value": 
+"840f0d62-893e-40f3-ba9b-167abdb65bb2",[90m
+[31m+           },[90m
+[31m+           "accept" => {[90m
+[31m+             "name": "accept",[90m
+[31m+             "value": 
+"application/json",[90m
+[31m+           },[90m
+[31m+         },[90m
+[31m+         Symbol(headers map sorted): 
+null,[90m
+[31m+       },[90m
+[31m+       "historyNavigation": false,[90m
+[31m+       "initiator": "",[90m
+[31m+       "integrity": "",[90m
+[31m+       "keepalive": false,[90m
+[31m+       "localURLsOnly": false,[90m
+[31m+       "method": "GET",[90m
+[31m+       "mode": "cors",[90m
+[31m+       "origin": "client",[90m
+[31m+       "parserMetadata": "",[90m
+[31m+       "policyContainer": "client",[90m
+[31m+       "preventNoCacheCacheControlHeader
+Modification": false,[90m
+[31m+       "priority": null,[90m
+[31m+       "redirect": "follow",[90m
+[31m+       "redirectCount": 0,[90m
+[31m+       "referrer": "client",[90m
+[31m+       "referrerPolicy": "",[90m
+[31m+       "reloadNavigation": false,[90m
+[31m+       "replacesClientId": "",[90m
+[31m+       "reservedClient": null,[90m
+[31m+       "responseTainting": "basic",[90m
+[31m+       "serviceWorkers": "all",[90m
+[31m+       "taintedOrigin": false,[90m
+[31m+       "timingAllowFailed": false,[90m
+[31m+       "unsafeRequest": false,[90m
+[31m+       "url": 
+"http://localhost/api/proxy/feed",[90m
+[31m+       "urlList": [[90m
+[31m+         
+"http://localhost/api/proxy/feed",[90m
+[31m+       ],[90m
+[31m+       "useCORSPreflightFlag": 
+false,[90m
+[31m+       "useCredentials": false,[90m
+[31m+       "userActivation": false,[90m
+[31m+       "window": "client",[90m
+[2m      },[22m
+[31m+     Symbol(signal): AbortSignal {[90m
+[31m+       Symbol(kEvents): Map {},[90m
+[31m+       
+Symbol(events.maxEventTargetListeners): 
+0,[90m
+[31m+       
+Symbol(events.maxEventTargetListenersWarned): 
+false,[90m
+[31m+       Symbol(kHandlers): Map {},[90m
+[31m+       Symbol(kAborted): false,[90m
+[31m+       Symbol(kReason): undefined,[90m
+[31m+       Symbol(kComposite): false,[90m
+[2m      },[22m
+[31m+     Symbol(abortController): 
+AbortController {},[90m
+[31m+     Symbol(headers): Headers {},[90m
+[31m+   },[90m
+[31m+   undefined,[90m
+[2m  ][22m
+[39m[90m
+
+Number of calls: [1m1[22m
+[39m
+
+Ignored nodes: comments, script, style
+[36m<html>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex-1 flex 
+flex-col overflow-y-auto h-full 
+scrollbar-thin scrollbar-thumb-[#9DBEF8] 
+scrollbar-track-transparent"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"sticky top-0 
+z-10 p-4 mb-2 border-b border-[#9DBEF8]/30 
+flex justify-between items-center 
+bg-white"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"text-xl 
+font-bold text-[#003580] tracking-tight"[39m
+            [36m>[39m
+              [0mInsight Stream[0m
+            [36m</h2>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex 
+items-center gap-2"[39m
+          [36m>[39m
+            [36m<button[39m
+              
+[33mclass[39m=[32m"text-[10px] px-3 py-1.5 
+rounded-full font-medium transition-all 
+duration-300 border bg-[#EEF5FF] 
+text-[#003580] border-[#9DBEF8] 
+hover:bg-white hover:shadow-sm"[39m
+            [36m>[39m
+              [0mDebug[0m
+            [36m</button>[39m
+            [36m<div>[39m
+              [0mMockUserMenuInline[0m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"space-y-4 
+px-4 pb-20"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"text-center 
+text-[#003580]/40 py-12 italic text-sm"[39m
+          [36m>[39m
+            [0mQuiet... for now.[0m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</body>[39m
+[36m</html>[39m
+[36m [2m❯[22m app/components/UserPropagatio
+n.test.tsx:[2m159:38[22m[39m
+    [90m157| [39m
+    [90m158| [39m            
+[35mawait[39m [34mwaitFor[39m(() 
+[33m=>[39m {
+    [90m159| [39m                [34mexpect
+[39m(global[33m.[39mfetch)[33m.[39m[34mt
+oHaveBeenCalledWith[39m(
+    [90m   | [39m                           
+          [31m^[39m
+    [90m160| [39m                    expect
+[33m.[39m[34mstringContaining[39m([32m'/ap
+i/proxy/feed'[39m)[33m,[39m
+    [90m161| [39m                    
+expect[33m.[39m[34mobjectContaining[39m({
+[90m [2m❯[22m 
+runWithExpensiveErrorDiagnosticsDisabled node_
+modules/@testing-library/dom/dist/config.js:[
+2m47:12[22m[39m
+[90m [2m❯[22m checkCallback node_modules/@t
+esting-library/dom/dist/wait-for.js:[2m124:77
+[22m[39m
+[90m [2m❯[22m 
+Timeout.checkRealTimersCallback node_modules/@
+testing-library/dom/dist/wait-for.js:[2m118:1
+6[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯[22m[
+39m
+
+[41m[1m FAIL [22m[49m 
+app/components/UserPropagation.test.tsx[2m > 
+[22mUser Identity Propagation[2m > 
+[22mFeedPanel[2m > [22muses empty string 
+if neither are present
+[31m[1mAssertionError[22m[39m: expected 
+"vi.fn()" to be called with arguments: [ …(2) 
+][90m
+
+Received: 
+
+[1m  1st vi.fn() call:
+
+[22m[2m  [[22m
+[32m-   StringContaining 
+"/api/proxy/feed",[90m
+[32m-   Any<Object>,[90m
+[31m+   Request {[90m
+[31m+     Symbol(dispatcher): undefined,[90m
+[31m+     Symbol(state): {[90m
+[31m+       "body": null,[90m
+[31m+       "cache": "default",[90m
+[31m+       "client": 
+EnvironmentSettingsObjectBase {[90m
+[31m+         "policyContainer": {[90m
+[31m+           "referrerPolicy": 
+"strict-origin-when-cross-origin",[90m
+[31m+         },[90m
+[31m+       },[90m
+[31m+       "credentials": "include",[90m
+[31m+       "cryptoGraphicsNonceMetadata": 
+"",[90m
+[31m+       "destination": "",[90m
+[31m+       "done": false,[90m
+[31m+       "headersList": HeadersList {[90m
+[31m+         "cookies": null,[90m
+[31m+         Symbol(headers map): Map {[90m
+[31m+           "x-device-id" => {[90m
+[31m+             "name": "X-Device-ID",[90m
+[31m+             "value": 
+"daa5a378-e197-4238-9403-1a26470b076e",[90m
+[31m+           },[90m
+[31m+           "accept" => {[90m
+[31m+             "name": "accept",[90m
+[31m+             "value": 
+"application/json",[90m
+[31m+           },[90m
+[31m+         },[90m
+[31m+         Symbol(headers map sorted): 
+null,[90m
+[31m+       },[90m
+[31m+       "historyNavigation": false,[90m
+[31m+       "initiator": "",[90m
+[31m+       "integrity": "",[90m
+[31m+       "keepalive": false,[90m
+[31m+       "localURLsOnly": false,[90m
+[31m+       "method": "GET",[90m
+[31m+       "mode": "cors",[90m
+[31m+       "origin": "client",[90m
+[31m+       "parserMetadata": "",[90m
+[31m+       "policyContainer": "client",[90m
+[31m+       "preventNoCacheCacheControlHeader
+Modification": false,[90m
+[31m+       "priority": null,[90m
+[31m+       "redirect": "follow",[90m
+[31m+       "redirectCount": 0,[90m
+[31m+       "referrer": "client",[90m
+[31m+       "referrerPolicy": "",[90m
+[31m+       "reloadNavigation": false,[90m
+[31m+       "replacesClientId": "",[90m
+[31m+       "reservedClient": null,[90m
+[31m+       "responseTainting": "basic",[90m
+[31m+       "serviceWorkers": "all",[90m
+[31m+       "taintedOrigin": false,[90m
+[31m+       "timingAllowFailed": false,[90m
+[31m+       "unsafeRequest": false,[90m
+[31m+       "url": 
+"http://localhost/api/proxy/feed",[90m
+[31m+       "urlList": [[90m
+[31m+         
+"http://localhost/api/proxy/feed",[90m
+[31m+       ],[90m
+[31m+       "useCORSPreflightFlag": 
+false,[90m
+[31m+       "useCredentials": false,[90m
+[31m+       "userActivation": false,[90m
+[31m+       "window": "client",[90m
+[31m+     },[90m
+[31m+     Symbol(signal): AbortSignal {[90m
+[31m+       Symbol(kEvents): Map {},[90m
+[31m+       
+Symbol(events.maxEventTargetListeners): 
+0,[90m
+[31m+       
+Symbol(events.maxEventTargetListenersWarned): 
+false,[90m
+[31m+       Symbol(kHandlers): Map {},[90m
+[31m+       Symbol(kAborted): false,[90m
+[31m+       Symbol(kReason): undefined,[90m
+[31m+       Symbol(kComposite): false,[90m
+[31m+     },[90m
+[31m+     Symbol(abortController): 
+AbortController {},[90m
+[31m+     Symbol(headers): Headers {},[90m
+[31m+   },[90m
+[31m+   undefined,[90m
+[2m  ][22m
+[39m[90m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m5 failed[39m[22m[2m | [22m[1m[32m1 passed[39m[22m[90m (6)[39m
+[2m   Start at [22m 11:11:23
+Number of calls: [1m1[22m
+[39m
+
+Ignored nodes: comments, script, style
+[36m<html>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex-1 flex 
+flex-col overflow-y-auto h-full 
+scrollbar-thin scrollbar-thumb-[#9DBEF8] 
+scrollbar-track-transparent"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"sticky top-0 
+z-10 p-4 mb-2 border-b border-[#9DBEF8]/30 
+flex justify-between items-center 
+bg-white"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"text-xl 
+font-bold text-[#003580] tracking-tight"[39m
+            [36m>[39m
+              [0mInsight Stream[0m
+            [36m</h2>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex 
+items-center gap-2"[39m
+          [36m>[39m
+            [36m<button[39m
+              
+[33mclass[39m=[32m"text-[10px] px-3 py-1.5 
+rounded-full font-medium transition-all 
+duration-300 border bg-[#EEF5FF] 
+text-[#003580] border-[#9DBEF8] 
+hover:bg-white hover:shadow-sm"[39m
+            [36m>[39m
+              [0mDebug[0m
+            [36m</button>[39m
+            [36m<div>[39m
+              [0mMockUserMenuInline[0m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"space-y-4 
+px-4 pb-20"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"text-center 
+text-[#003580]/40 py-12 italic text-sm"[39m
+          [36m>[39m
+            [0mQuiet... for now.[0m
+[2m   Duration [22m 5.85s[2m (transform 323ms, setup 0ms, import 1.24s, tests 3.22s, environment 1.15s)[22m
+
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</body>[39m
+[36m</html>[39m
+[36m [2m❯[22m app/components/UserPropagatio
+n.test.tsx:[2m195:38[22m[39m
+    [90m193| [39m
+    [90m194| [39m            
+[35mawait[39m [34mwaitFor[39m(() 
+[33m=>[39m {
+    [90m195| [39m                [34mexpect
+[39m(global[33m.[39mfetch)[33m.[39m[34mt
+oHaveBeenCalledWith[39m(
+    [90m   | [39m                           
+          [31m^[39m
+    [90m196| [39m                    expect
+[33m.[39m[34mstringContaining[39m([32m'/ap
+i/proxy/feed'[39m)[33m,[39m
+    [90m197| [39m                    expect
+[33m.[39m[34many[39m([33mObject[39m)
+[90m [2m❯[22m 
+runWithExpensiveErrorDiagnosticsDisabled node_
+modules/@testing-library/dom/dist/config.js:[
+2m47:12[22m[39m
+[90m [2m❯[22m checkCallback node_modules/@t
+esting-library/dom/dist/wait-for.js:[2m124:77
+[22m[39m
+[90m [2m❯[22m 
+Timeout.checkRealTimersCallback node_modules/@
+testing-library/dom/dist/wait-for.js:[2m118:1
+6[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯[22m[
+39m
+
+[41m[1m FAIL [22m[49m 
+app/components/UserPropagation.test.tsx[2m > 
+[22mUser Identity Propagation[2m > 
+[22mChatPanel[2m > [22muses userId prop in 
+headers
+[31m[1mTypeError[22m: 
+messagesEndRef.current?.scrollIntoView is not 
+a function[39m
+[36m [2m❯[22m scrollToBottom app/components
+/ChatPanel.tsx:[2m71:33[22m[39m
+    [90m 69| [39m
+    [90m 70| [39m    [35mconst[39m 
+scrollToBottom [33m=[39m () [33m=>[39m {
+    [90m 71| [39m        messagesEndRef[33m
+.[39mcurrent[33m?.[39m[34mscrollIntoView[
+39m({ behavior[33m:[39m [32m"smooth"[39m 
+})[33m;[39m
+    [90m   | [39m                           
+     [31m^[39m
+    [90m 72| [39m    }[33m;[39m
+    [90m 73| [39m
+[90m [2m❯[22m app/components/ChatPanel.tsx:
+[2m75:9[22m[39m
+[90m [2m❯[22m 
+Object.react_stack_bottom_frame node_modules/r
+eact-dom/cjs/react-dom-client.development.js:
+[2m25989:20[22m[39m
+[90m [2m❯[22m runWithFiberInDEV node_module
+s/react-dom/cjs/react-dom-client.development.j
+s:[2m874:13[22m[39m
+[90m [2m❯[22m commitHookEffectListMount nod
+e_modules/react-dom/cjs/react-dom-client.devel
+opment.js:[2m13249:29[22m[39m
+[90m [2m❯[22m 
+commitHookPassiveMountEffects node_modules/rea
+ct-dom/cjs/react-dom-client.development.js:[2
+m13336:11[22m[39m
+[90m [2m❯[22m commitPassiveMountOnFiber nod
+e_modules/react-dom/cjs/react-dom-client.devel
+opment.js:[2m15484:13[22m[39m
+[90m [2m❯[22m 
+recursivelyTraversePassiveMountEffects node_mo
+dules/react-dom/cjs/react-dom-client.developme
+nt.js:[2m15439:11[22m[39m
+[90m [2m❯[22m commitPassiveMountOnFiber nod
+e_modules/react-dom/cjs/react-dom-client.devel
+opment.js:[2m15718:11[22m[39m
+[90m [2m❯[22m 
+recursivelyTraversePassiveMountEffects node_mo
+dules/react-dom/cjs/react-dom-client.developme
+nt.js:[2m15439:11[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯[22m[
+39m
+

@@ -34,17 +34,17 @@ const baseQuery = fetchBaseQuery({
   prepareHeaders: (headers, { getState }) => {
     const state = getState() as RootState;
     const userId = state.user.user?.id;
-    
+
     if (userId) {
       headers.set('X-User-ID', userId.toString());
     }
-    
+
     // Get device ID
     const deviceId = getDeviceId();
     if (deviceId) {
       headers.set('X-Device-ID', deviceId);
     }
-    
+
     // Get LiteLLM API key from localStorage
     if (typeof window !== 'undefined') {
       const litellmApiKey = localStorage.getItem('litellm_api_key');
@@ -52,7 +52,7 @@ const baseQuery = fetchBaseQuery({
         headers.set('X-LiteLLM-API-Key', litellmApiKey);
       }
     }
-    
+
     return headers;
   },
   credentials: 'include',
@@ -68,7 +68,7 @@ export const apiSlice = createApi({
       queryFn: async () => {
         try {
           console.log('[Auth] Fetching user from:', `${AUTH_BASE}/api/auth/me`);
-          
+
           // Add timeout to prevent hanging
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
@@ -201,7 +201,7 @@ export const apiSlice = createApi({
         }
       },
     }),
-    
+
     // Chat endpoint - streaming response (custom queryFn for streaming)
     sendChatMessage: builder.mutation<Response, { input: string }>({
       queryFn: async ({ input }, { getState }) => {
@@ -242,9 +242,9 @@ export const apiSlice = createApi({
       },
       invalidatesTags: ['Chat', 'Feed'],
     }),
-    
+
     // Feed endpoint - GET
-    getFeed: builder.query<any[], void>({
+    getFeed: builder.query<any[], string | undefined>({
       query: () => ({
         url: `${PROXY_BASE}/feed`,
         method: 'GET',

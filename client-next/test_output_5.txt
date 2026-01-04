@@ -1,0 +1,433 @@
+﻿
+[1m[46m RUN [49m[22m [36mv4.0.16 [39m[90mC:/Users/Antigravity/AiGuardian/client-next[39m
+
+node.exe : [90mstderr[2m | 
+app/components/FeedPanel.test.tsx[2m > 
+[22m[2mFeedPanel[2m > [22m[2mrenders 
+loading state initially
+At C:\nvm4w\nodejs\npx.ps1:29 char:3
++   & $NODE_EXE $NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( 
+   [90mstderr[2m...state initially:String)  
+   [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandEr 
+   ror
+ 
+[22m[39m[FeedPanel] usage: effectiveUserId: 
+test-user useMock: [33mfalse[39m NODE_ENV: 
+test
+Mock useGetFeedQuery (hoisted) called. 
+Returns: "null/undefined"
+[FeedPanel] feedData: [90mundefined[39m
+
+[90mstdout[2m | app/components/FeedPanel.test.tsx[2m > [22m[2mFeedPanel[2m > [22m[2mfetches and displays feed items
+[22m[39mSetting mock implementation for fetches and displays feed items
+Feed data received from RTK Query: [
+  {
+    id: [32m'1'[39m,
+    card_type: [32m'article'[39m,
+    priority: [32m'medium'[39m,
+    timestamp: [32m'2026-01-04T05:44:40.185Z'[39m,
+    source_node: [32m'TestNode'[39m,
+    data: {
+      title: [32m'Test Article'[39m,
+      summary: [32m'Test summary content'[39m,
+      category: [32m'Tips'[39m
+    }
+  }
+]
+
+[90mstderr[2m | 
+app/components/FeedPanel.test.tsx[2m > 
+[22m[2mFeedPanel[2m > [22m[2mfetches and 
+displays feed items
+[22m[39m[FeedPanel] usage: effectiveUserId: 
+test-user useMock: [33mfalse[39m NODE_ENV: 
+test
+Mock useGetFeedQuery (hoisted) called. 
+Returns: 1
+[FeedPanel] feedData: [{"id":"1","card_type":"
+article","priority":"medium","timestamp":"2026
+-01-04T05:44:40.185Z","source_node":"TestNode"
+,"data":{"title":"Test 
+Article","summary":"Test summary 
+content","category":"Tips"}}]
+[FeedPanel] usage: effectiveUserId: test-user 
+useMock: [33mfalse[39m NODE_ENV: test
+Mock useGetFeedQuery (hoisted) called. 
+Returns: 1
+[FeedPanel] feedData: [{"id":"1","card_type":"
+article","priority":"medium","timestamp":"2026
+-01-04T05:44:40.185Z","source_node":"TestNode"
+,"data":{"title":"Test 
+Article","summary":"Test summary 
+content","category":"Tips"}}]
+
+[90mstderr[2m | 
+app/components/FeedPanel.test.tsx[2m > 
+[22m[2mFeedPanel[2m > [22m[2mshows error 
+state on fetch failure
+[22m[39m[FeedPanel] usage: effectiveUserId: 
+test-user useMock: [33mfalse[39m NODE_ENV: 
+test
+Mock useGetFeedQuery (hoisted) called. 
+Returns: "null/undefined"
+[FeedPanel] feedData: [90mundefined[39m
+Feed API error: { status: [33m500[39m, 
+data: { message: [32m'Failed to fetch 
+feed'[39m } }
+[FeedPanel] usage: effectiveUserId: test-user 
+useMock: [33mfalse[39m NODE_ENV: test
+Mock useGetFeedQuery (hoisted) called. 
+Returns: "null/undefined"
+[FeedPanel] feedData: [90mundefined[39m
+
+[90mstdout[2m | app/components/FeedPanel.test.tsx[2m > [22m[2mFeedPanel[2m > [22m[2mshows empty state when no items
+[22m[39mFeed data received from RTK Query: []
+
+[90mstderr[2m | 
+app/components/FeedPanel.test.tsx[2m > 
+[22m[2mFeedPanel[2m > [22m[2mshows empty 
+state when no items
+[22m[39m[FeedPanel] usage: effectiveUserId: 
+test-user useMock: [33mfalse[39m NODE_ENV: 
+test
+Mock useGetFeedQuery (hoisted) called. 
+Returns: 0
+[FeedPanel] feedData: []
+[FeedPanel] usage: effectiveUserId: test-user 
+useMock: [33mfalse[39m NODE_ENV: test
+Mock useGetFeedQuery (hoisted) called. 
+Returns: 0
+[FeedPanel] feedData: []
+
+[90mstdout[2m | app/components/FeedPanel.test.tsx[2m > [22m[2mFeedPanel[2m > [22m[2mconfigures polling interval
+[22m[39mFeed data received from RTK Query: []
+
+[90mstderr[2m | 
+app/components/FeedPanel.test.tsx[2m > 
+[22m[2mFeedPanel[2m > [22m[2mconfigures 
+polling interval
+[22m[39m[FeedPanel] usage: effectiveUserId: 
+test-user useMock: [33mfalse[39m NODE_ENV: 
+test
+Mock useGetFeedQuery (hoisted) called. 
+Returns: 0
+[FeedPanel] feedData: []
+[FeedPanel] usage: effectiveUserId: test-user 
+useMock: [33mfalse[39m NODE_ENV: test
+Mock useGetFeedQuery (hoisted) called. 
+Returns: 0
+[FeedPanel] feedData: []
+
+[90mstdout[2m | app/components/FeedPanel.test.tsx[2m > [22m[2mFeedPanel[2m > [22m[2mrenders different card types correctly
+[22m[39mFeed data received from RTK Query: [
+  {
+    id: [32m'1'[39m,
+    card_type: [32m'weather'[39m,
+    priority: [32m'medium'[39m,
+    timestamp: [32m'2026-01-04T05:44:55.240Z'[39m,
+    source_node: [32m'CheckWeather'[39m,
+    data: {
+      condition: [32m'Sunny'[39m,
+      temp: [32m'25°C'[39m,
+      description: [32m'Clear skies'[39m,
+      location: [32m'Test City'[39m
+    }
+  },
+  {
+    id: [32m'2'[39m,
+    card_type: [32m'safe_alert'[39m,
+    priority: [32m'high'[39m,
+    timestamp: [32m'2026-01-04T05:44:55.240Z'[39m,
+    source_node: [32m'NewsAlert'[39m,
+    data: { message: [32m'Safety warning'[39m, level: [32m'warning'[39m }
+  }
+]
+
+[90mstderr[2m | 
+app/components/FeedPanel.test.tsx[2m > 
+[22m[2mFeedPanel[2m > [22m[2mrenders 
+different card types correctly
+[22m[39m[FeedPanel] usage: effectiveUserId: 
+test-user useMock: [33mfalse[39m NODE_ENV: 
+test
+Mock useGetFeedQuery (hoisted) called. 
+Returns: 2
+[FeedPanel] feedData: [{"id":"1","card_type":"
+weather","priority":"medium","timestamp":"2026
+-01-04T05:44:55.240Z","source_node":"CheckWeat
+her","data":{"condition":"Sunny","temp":"25°C"
+,"description":"Clear skies","location":"Test 
+City"}},{"id":"2","card_type":"safe_alert","pr
+iority":"high","timestamp":"2026-01-04T05:44:5
+5.240Z","source_node":"NewsAlert","data":{"mes
+sage":"Safety warning","level":"warning"}}]
+[FeedPanel] usage: effectiveUserId: test-user 
+useMock: [33mfalse[39m NODE_ENV: test
+Mock useGetFeedQuery (hoisted) called. 
+Returns: 2
+[FeedPanel] feedData: [{"id":"1","card_type":"
+weather","priority":"medium","timestamp":"2026
+-01-04T05:44:55.240Z","source_node":"CheckWeat
+her","data":{"condition":"Sunny","temp":"25°C"
+,"description":"Clear skies","location":"Test 
+City"}},{"id":"2","card_type":"safe_alert","pr
+iority":"high","timestamp":"2026-01-04T05:44:5
+5.240Z","source_node":"NewsAlert","data":{"mes
+sage":"Safety warning","level":"warning"}}]
+
+ [31m❯[39m app/components/FeedPanel.test.tsx [2m([22m[2m6 tests[22m[2m | [22m[31m5 failed[39m[2m)[22m[33m 20104[2mms[22m[39m
+     [32m✓[39m renders loading state initially[32m 46[2mms[22m[39m
+[31m     [31m×[31m fetches and displays feed items[39m[33m 5008[2mms[22m[39m
+[31m     [31m×[31m shows error state on fetch failure[39m[33m 5015[2mms[22m[39m
+[31m     [31m×[31m shows empty state when no items[39m[33m 5017[2mms[22m[39m
+[31m     [31m×[31m configures polling interval[39m[32m 15[2mms[22m[39m
+[31m     [31m×[31m renders different card types correctly[39m[33m 5002[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 5 
+[49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m 
+app/components/FeedPanel.test.tsx[2m > 
+[22mFeedPanel[2m > [22mfetches and 
+displays feed items
+[31m[1mError[22m: Test timed out in 5000ms.
+If this is a long-running test, pass a 
+timeout value as the last argument or 
+configure it globally with "testTimeout".[39m
+[36m [2m❯[22m app/components/FeedPanel.test
+.tsx:[2m83:5[22m[39m
+    [90m 81| [39m    })[33m;[39m
+    [90m 82| [39m
+    [90m 83| [39m    
+[34mit[39m([32m'fetches and displays feed 
+items'[39m[33m,[39m [35masync[39m () 
+[33m=>[39m {
+    [90m   | [39m    [31m^[39m
+    [90m 84| [39m        [35mconst[39m 
+mockFeed [33m=[39m [
+    [90m 85| [39m            {
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯[22m[
+39m
+
+[41m[1m FAIL [22m[49m 
+app/components/FeedPanel.test.tsx[2m > 
+[22mFeedPanel[2m > [22mshows error state 
+on fetch failure
+[31m[1mError[22m: Test timed out in 5000ms.
+If this is a long-running test, pass a 
+timeout value as the last argument or 
+configure it globally with "testTimeout".[39m
+[36m [2m❯[22m app/components/FeedPanel.test
+.tsx:[2m114:5[22m[39m
+    [90m112| [39m    })[33m;[39m
+    [90m113| [39m
+    [90m114| [39m    
+[34mit[39m([32m'shows error state on fetch 
+failure'[39m[33m,[39m [35masync[39m () 
+[33m=>[39m {
+    [90m   | [39m    [31m^[39m
+    [90m115| [39m        mockUseGetFeedQuery
+[33m.[39m[34mmockReturnValue[39m({
+    [90m116| [39m            
+data[33m:[39m undefined[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯[22m[
+39m
+
+[41m[1m FAIL [22m[49m 
+app/components/FeedPanel.test.tsx[2m > 
+[22mFeedPanel[2m > [22mshows empty state 
+when no items
+[31m[1mError[22m: Test timed out in 5000ms.
+If this is a long-running test, pass a 
+timeout value as the last argument or 
+configure it globally with "testTimeout".[39m
+[36m [2m❯[22m app/components/FeedPanel.test
+.tsx:[2m129:5[22m[39m
+    [90m127| [39m    })[33m;[39m
+    [90m128| [39m
+    [90m129| [39m    
+[34mit[39m([32m'shows empty state when no 
+items'[39m[33m,[39m [35masync[39m () 
+[33m=>[39m {
+    [90m   | [39m    [31m^[39m
+    [90m130| [39m        mockUseGetFeedQuery
+[33m.[39m[34mmockReturnValue[39m({
+    [90m131| [39m            
+data[33m:[39m [][33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯[22m[
+39m
+
+[41m[1m FAIL [22m[49m 
+app/components/FeedPanel.test.tsx[2m > 
+[22mFeedPanel[2m > [22mconfigures polling 
+interval
+[31m[1mAssertionError[22m: expected 
+"vi.fn()" to be called with arguments: [ 
+undefined, ObjectContaining{…} ][90m
+
+Received: 
+
+[1m  1st vi.fn() call:
+
+[22m[2m  [[22m
+[32m-   undefined,[90m
+[32m-   ObjectContaining {[90m
+[31m+   "test-user",[90m
+[31m+   {[90m
+[2m      "pollingInterval": 3000,[22m
+[31m+     "skip": false,[90m
+[2m    },[22m
+[2m  ][22m
+
+[1m  2nd vi.fn() call:
+
+[22m[2m  [[22m
+[32m-   undefined,[90m
+[32m-   ObjectContaining {[90m
+[31m+   "test-user",[90m
+[31m+   {[90m
+[2m      "pollingInterval": 3000,[22m
+[31m+     "skip": false,[90m
+[2m    },[22m
+[2m  ][22m
+
+[1m  3rd vi.fn() call:
+
+[22m[2m  [[22m
+[32m-   undefined,[90m
+[32m-   ObjectContaining {[90m
+[31m+   "test-user",[90m
+[31m+   {[90m
+[2m      "pollingInterval": 3000,[22m
+[31m+     "skip": false,[90m
+[2m    },[22m
+[2m  ][22m
+
+[1m  4th vi.fn() call:
+
+[22m[2m  [[22m
+[32m-   undefined,[90m
+[32m-   ObjectContaining {[90m
+[31m+   "test-user",[90m
+[31m+   {[90m
+[2m      "pollingInterval": 3000,[22m
+[31m+     "skip": false,[90m
+[2m    },[22m
+[2m  ][22m
+
+[1m  5th vi.fn() call:
+
+[22m[2m  [[22m
+[32m-   undefined,[90m
+[32m-   ObjectContaining {[90m
+[31m+   "test-user",[90m
+[31m+   {[90m
+[2m      "pollingInterval": 3000,[22m
+[31m+     "skip": false,[90m
+[2m    },[22m
+[2m  ][22m
+
+[1m  6th vi.fn() call:
+
+[22m[2m  [[22m
+[32m-   undefined,[90m
+[32m-   ObjectContaining {[90m
+[31m+   "test-user",[90m
+[31m+   {[90m
+[2m      "pollingInterval": 3000,[22m
+[31m+     "skip": false,[90m
+[2m    },[22m
+[2m  ][22m
+
+[1m  7th vi.fn() call:
+
+[22m[2m  [[22m
+[32m-   undefined,[90m
+[32m-   ObjectContaining {[90m
+[31m+   "test-user",[90m
+[31m+   {[90m
+[2m      "pollingInterval": 3000,[22m
+[31m+     "skip": false,[90m
+[2m    },[22m
+[2m  ][22m
+
+[1m  8th vi.fn() call:
+
+[22m[2m  [[22m
+[32m-   undefined,[90m
+[32m-   ObjectContaining {[90m
+[31m+   "test-user",[90m
+[31m+   {[90m
+[2m      "pollingInterval": 3000,[22m
+[31m+     "skip": false,[90m
+[2m    },[22m
+[2m  ][22m
+
+[1m  9th vi.fn() call:
+
+[22m[2m  [[22m
+[32m-   undefined,[90m
+[32m-   ObjectContaining {[90m
+[31m+   "test-user",[90m
+[31m+   {[90m
+[2m      "pollingInterval": 3000,[22m
+[31m+     "skip": false,[90m
+[2m    },[22m
+[2m  ][22m
+[31m[90m
+
+Number of calls: [1m9[22m
+[31m[39m
+[36m [2m❯[22m app/components/FeedPanel.test
+.tsx:[2m148:37[22m[39m
+    [90m146| [39m        [34mrender[39m([
+33m<[39m[33mFeedPanel[39m 
+[33m/[39m[33m>[39m)[33m;[39m
+    [90m147| [39m
+    [90m148| [39m        expect(mockUseGetFe
+edQuery).toHaveBeenCalledWith(undefined, ex…
+    [90m   | [39m                           
+         [31m^[39m
+    [90m149| [39m            
+pollingInterval[33m:[39m [34m3000[39m
+    [90m150| [39m        }))[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯[22m[
+39m
+
+[41m[1m FAIL [22m[49m 
+app/components/FeedPanel.test.tsx[2m > 
+[22mFeedPanel[2m > [22mrenders different 
+card types correctly
+[31m[1mError[22m: Test timed out in 5000ms.
+If this is a long-running test, pass a 
+timeout value as the last argument or 
+configure it globally with "testTimeout".[39m
+[36m [2m❯[22m app/components/FeedPanel.test
+.tsx:[2m153:5[22m[39m
+    [90m151| [39m    })[33m;[39m
+    [90m152| [39m
+    [90m153| [39m    
+[34mit[39m([32m'renders different card 
+types correctly'[39m[33m,[39m 
+[35masync[39m () [33m=>[39m {
+    [90m   | [39m    [31m^[39m
+    [90m154| [39m        [35mconst[39m 
+mockFeed [33m=[39m [
+    [90m155| [39m            {
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯[22m[
+39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m5 failed[39m[22m[2m | [22m[1m[32m1 passed[39m[22m[90m (6)[39m
+[2m   Start at [22m 11:14:38
+[2m   Duration [22m 22.16s[2m (transform 257ms, setup 0ms, import 686ms, tests 20.10s, environment 1.12s)[22m
+

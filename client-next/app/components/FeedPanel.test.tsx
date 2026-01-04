@@ -16,21 +16,41 @@ vi.mock('../utils/device', () => ({
     getDeviceId: () => 'test-device-id',
 }));
 
-// Mock Redux Hooks
-const mockUseAppSelector = vi.fn();
+// Mock framer-motion
+vi.mock('framer-motion', () => ({
+    motion: {
+        div: ({ children }: any) => <div>{children}</div>,
+    },
+}));
+
+// Mock Child Components
+vi.mock('./WeatherCard', () => ({ default: (props: any) => <div>MockWeatherCard {props.condition} {props.location}</div> }));
+vi.mock('./AlertWidget', () => ({ default: (props: any) => <div>MockAlertWidget {props.message}</div> }));
+vi.mock('./VideoCard', () => ({ default: (props: any) => <div>MockVideoCard {props.title}</div> }));
+vi.mock('./ArticleCard', () => ({ default: (props: any) => <div>MockArticleCard {props.title} {props.summary}</div> }));
+vi.mock('./JsonViewer', () => ({ default: () => <div>MockJsonViewer</div> }));
+vi.mock('./UserMenuInline', () => ({ default: () => <div>MockUserMenuInline</div> }));
+
+// Mock RTK Query API
+const { mockUseGetFeedQuery, mockUseAppSelector } = vi.hoisted(() => ({
+    mockUseGetFeedQuery: vi.fn(),
+    mockUseAppSelector: vi.fn(),
+}));
+
+vi.mock('../store/api/apiSlice', () => ({
+    useGetFeedQuery: (...args: any[]) => {
+        const res = mockUseGetFeedQuery(...args);
+        console.error('Mock useGetFeedQuery (hoisted) called. Returns:', JSON.stringify(res?.data?.length ?? 'null/undefined'));
+        return res;
+    },
+}));
+
 vi.mock('../store/hooks', () => ({
     useAppSelector: (selector: any) => mockUseAppSelector(selector),
 }));
 
-// Mock RTK Query API
-const mockUseGetFeedQuery = vi.fn();
-vi.mock('../store/api/apiSlice', () => ({
-    useGetFeedQuery: (...args: any[]) => mockUseGetFeedQuery(...args),
-}));
-
 describe('FeedPanel', () => {
     beforeEach(() => {
-        vi.useFakeTimers();
         // Default mocks
         mockUseAppSelector.mockReturnValue({ id: 'test-user', name: 'Test User' });
         mockUseGetFeedQuery.mockReturnValue({
@@ -43,7 +63,6 @@ describe('FeedPanel', () => {
 
     afterEach(() => {
         vi.restoreAllMocks();
-        vi.useRealTimers();
     });
 
     it('renders loading state initially', () => {
@@ -75,12 +94,13 @@ describe('FeedPanel', () => {
             },
         ];
 
-        mockUseGetFeedQuery.mockReturnValue({
+        console.log('Setting mock implementation for fetches and displays feed items');
+        mockUseGetFeedQuery.mockImplementation(() => ({
             data: mockFeed,
             isLoading: false,
             error: null,
             refetch: vi.fn(),
-        });
+        }));
 
         render(<FeedPanel />);
 
@@ -121,6 +141,7 @@ describe('FeedPanel', () => {
 
     // Note: Auto-refresh is handled by RTK Query's pollingInterval, verifying that passed param is correct
     it('configures polling interval', async () => {
+        mockUseAppSelector.mockReturnValue(null);
         render(<FeedPanel />);
 
         expect(mockUseGetFeedQuery).toHaveBeenCalledWith(undefined, expect.objectContaining({

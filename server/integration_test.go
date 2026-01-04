@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"guardian-gateway/pkg/api"
 	"guardian-gateway/pkg/fastgraph/runtime"
 	"guardian-gateway/pkg/session"
 
@@ -23,12 +24,20 @@ func TestIntegration_RouterWiring(t *testing.T) {
 	mockEngine.MockRun = func(agentPath, input string, memory *runtime.MemoryConfig, onEvent func(string)) error {
 		return nil
 	}
-	engine = mockEngine
+
+	// Mock LLM func
+	mockLLM := func(history []map[string]interface{}, systemPrompt, apiKey string) (string, error) {
+		return "{}", nil
+	}
+
+	// Initialize API Server
+	// Pass nil store as we don't mock Postgres here (ChatStreamHandler handles nil store gracefully)
+	server := api.NewServer(mockEngine, nil, mockLLM)
 
 	// Setup Router (Real Setup)
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	r.POST("/api/chat/stream", ChatStreamHandler)
+	r.POST("/api/chat/stream", server.ChatStreamHandler)
 
 	// Create Request
 	reqBody := []byte(`{"input": "Integration Test", "agent_path": "mock.m"}`)
@@ -40,5 +49,6 @@ func TestIntegration_RouterWiring(t *testing.T) {
 
 	// Verify Wiring
 	assert.Equal(t, 200, w.Code)
+	// ChatStreamHandler returns SSE events. "event:done" should be present if logic flow completes.
 	assert.Contains(t, w.Body.String(), "event:done")
 }
