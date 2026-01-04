@@ -194,6 +194,8 @@ jobs:
           service: 'guardian-client'
           image: '${{ env.ARTIFACT_REGISTRY }}/guardian-client:${{ github.sha }}'
           region: '${{ env.GCP_REGION }}'
+          env_vars: |
+            BACKEND_API_URL=https://guardian-gateway-x6n5sofwia-uc.a.run.app
 
   # ------------------------------------------------------------------
   # AWS BACKEND (DISABLED - Using Google Cloud only)
