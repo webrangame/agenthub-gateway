@@ -2,8 +2,6 @@ package store
 
 import (
 	"bytes"
-	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -20,53 +18,6 @@ type UserLiteLLMKey struct {
 	CreatedAt  time.Time
 	LastUsedAt *time.Time
 	MaxBudget  float64
-}
-
-// GetUserLiteLLMKey retrieves a user's LiteLLM key from the database
-func (s *PostgresStore) GetUserLiteLLMKey(ctx context.Context, userID string) (string, error) {
-	var key string
-	var lastUsedAt sql.NullTime
-
-	fmt.Printf("🔍 DB: Querying key for userID: %s\n", userID)
-	query := `SELECT litellm_key, last_used_at FROM user_litellm_keys WHERE user_id = $1`
-	err := s.DB.QueryRowContext(ctx, query, userID).Scan(&key, &lastUsedAt)
-
-	if err == sql.ErrNoRows {
-		fmt.Printf("ℹ️ DB: No key found for userID: %s (this is normal for new users)\n", userID)
-		return "", nil // Key not found
-	}
-	if err != nil {
-		fmt.Printf("❌ DB: Error querying key for userID %s: %v\n", userID, err)
-		return "", fmt.Errorf("failed to query user key: %w", err)
-	}
-
-	key = strings.TrimSpace(key)
-	if key == "" {
-		fmt.Printf("⚠️ DB: Key found for userID %s but it's empty\n", userID)
-		return "", nil // Treat empty key as not found
-	}
-
-	fmt.Printf("✅ DB: Found key for userID: %s (length: %d)\n", userID, len(key))
-
-	// Update last_used_at
-	_, _ = s.DB.ExecContext(ctx, `UPDATE user_litellm_keys SET last_used_at = NOW() WHERE user_id = $1`, userID)
-
-	return key, nil
-}
-
-// StoreUserLiteLLMKey saves a user's LiteLLM key to the database
-func (s *PostgresStore) StoreUserLiteLLMKey(ctx context.Context, userID, key, keyName string, maxBudget float64) error {
-	query := `
-		INSERT INTO user_litellm_keys (user_id, litellm_key, key_name, max_budget, created_at)
-		VALUES ($1, $2, $3, $4, NOW())
-		ON CONFLICT (user_id) DO UPDATE 
-		SET litellm_key = EXCLUDED.litellm_key, key_name = EXCLUDED.key_name
-	`
-	_, err := s.DB.ExecContext(ctx, query, userID, key, keyName, maxBudget)
-	if err != nil {
-		return fmt.Errorf("failed to store user key: %w", err)
-	}
-	return nil
 }
 
 // GenerateLiteLLMKey calls the LiteLLM proxy to generate a new virtual key for a user
