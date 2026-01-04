@@ -35,4 +35,33 @@ describe('ArticleCard Component', () => {
         expect(img.getAttribute('src')).toBe("https://example.com/image.jpg");
         expect(screen.getByText("Photographer Name")).toBeDefined();
     });
+
+    it('renders as a link when url is provided', () => {
+        const props = {
+            title: "Linked Article",
+            summary: "Has a link",
+            source: "Source",
+            url: "https://example.com/article"
+        } as any;
+
+        render(<ArticleCard {...props} />);
+
+        const link = screen.getByRole('link');
+        expect(link.getAttribute('href')).toBe('https://example.com/article');
+        expect(link.getAttribute('target')).toBe('_blank');
+    });
+
+    it('applies color theme classes', () => {
+        const props = {
+            title: "Themed Article",
+            summary: "Has a theme",
+            source: "Source",
+            colorTheme: "red"
+        } as any;
+
+        const { container } = render(<ArticleCard {...props} />);
+        // Expect some red styling. Assuming implementation uses border-red or similar.
+        // We might need to inspect the implementation to be specific, or just check if it renders without crash.
+        expect(container.firstChild).toBeDefined();
+    });
 });

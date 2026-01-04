@@ -11,9 +11,9 @@ export default function Home() {
   const [authenticated, setAuthenticated] = useState(false);
   const [authCheckComplete, setAuthCheckComplete] = useState(false);
   const dispatch = useAppDispatch();
-  
+
   // Use RTK Query to fetch user data
-  const { data: authData, isLoading: authLoading, error: authError } = useGetAuthMeQuery(
+  const { data: authData, isLoading: authLoading, error: authError, refetch: refetchAuth } = useGetAuthMeQuery(
     undefined,
     {
       skip: process.env.NODE_ENV === 'development', // Skip in dev mode
@@ -26,16 +26,17 @@ export default function Home() {
       const params = new URLSearchParams(window.location.search);
       const redirectParam = params.get('redirect');
       // If we have a redirect param, it means we came back from login
-      // Clear it from URL and trigger auth check
+      // Clear it from URL and force auth refetch
       if (redirectParam) {
+        console.log('[Auth] Redirect parameter detected, clearing URL and refetching auth');
         window.history.replaceState({}, '', window.location.pathname);
-        // Force refetch auth
+        // Force refetch auth after a short delay to ensure cookies are available
         setTimeout(() => {
-          window.location.reload();
-        }, 500);
+          refetchAuth();
+        }, 300);
       }
     }
-  }, []);
+  }, [refetchAuth]);
 
   useEffect(() => {
     // Mark auth check as complete once we have a response (success or error)
@@ -44,10 +45,33 @@ export default function Home() {
     }
 
     if (authData?.user) {
+      console.log('[Auth] ✅ User authenticated:', { id: authData.user.id, email: authData.user.email });
       dispatch(setUser(authData.user));
       setAuthenticated(true);
     } else if (authError) {
-      console.log('[Auth] Error fetching user:', authError);
+      // Log detailed error information
+      const errorStatus = 'error' in (authError as any) ? (authError as any).error : null;
+      const errorMessage = errorStatus && typeof errorStatus === 'object' && 'error' in errorStatus
+        ? String((errorStatus as any).error)
+        : errorStatus && typeof errorStatus === 'object' && 'data' in errorStatus
+          ? String((errorStatus as any).data)
+          : 'Unknown error';
+
+      console.error('[Auth] ❌ Error fetching user:', {
+        error: authError,
+        status: errorStatus,
+        message: errorMessage
+      });
+
+      // If it's a CORS or network error, provide helpful message
+      if (errorMessage?.includes('CORS') || errorMessage?.includes('Failed to fetch') || errorMessage?.includes('timed out')) {
+        console.error('[Auth] 🔍 Troubleshooting steps:');
+        console.error('[Auth] 1. Check browser console for CORS errors');
+        console.error('[Auth] 2. Verify market.niyogen.com allows travel.niyogen.com origin');
+        console.error('[Auth] 3. Check if cookies are set with Domain=.niyogen.com');
+        console.error('[Auth] 4. Verify /api/auth/me endpoint is accessible');
+      }
+
       dispatch(clearUser());
       setAuthenticated(false);
     }
@@ -58,7 +82,7 @@ export default function Home() {
   };
 
   const [authLogoutMutation] = useAuthLogoutMutation();
-  
+
   const handleLogout = async () => {
     try {
       await authLogoutMutation().unwrap();
@@ -95,18 +119,23 @@ export default function Home() {
 
   // Show loading only if we're still checking auth (with timeout)
   const shouldShowLoading = authLoading || (process.env.NODE_ENV !== 'development' && !authCheckComplete && !authError);
-  
+
   // Add timeout: if loading for more than 5 seconds, show login page
   useEffect(() => {
     if (shouldShowLoading) {
+      console.log('[Auth] Waiting for auth response...', { authLoading, authCheckComplete, hasError: !!authError });
       const timeout = setTimeout(() => {
-        console.warn('[Auth] Timeout waiting for auth response, showing login page');
+        console.warn('[Auth] Timeout waiting for auth response after 5 seconds, showing login page');
+        console.warn('[Auth] This might indicate:');
+        console.warn('[Auth] 1. CORS issue preventing the request from completing');
+        console.warn('[Auth] 2. Network connectivity issue');
+        console.warn('[Auth] 3. market.niyogen.com/api/auth/me endpoint is not responding');
         setAuthCheckComplete(true);
         setAuthenticated(false);
       }, 5000);
       return () => clearTimeout(timeout);
     }
-  }, [shouldShowLoading]);
+  }, [shouldShowLoading, authLoading, authCheckComplete, authError]);
 
   if (shouldShowLoading) {
     return (

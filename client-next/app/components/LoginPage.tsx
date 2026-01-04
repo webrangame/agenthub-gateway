@@ -3,6 +3,8 @@
 import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { setUsername } from '../utils/auth';
+import { useAppDispatch } from '../store/hooks';
+import { setUser } from '../store/slices/userSlice';
 
 interface LoginPageProps {
     onLogin: () => void;
@@ -12,6 +14,7 @@ const AUTH_BASE = process.env.NEXT_PUBLIC_AUTH_BASE_URL?.replace(/\/$/, '') || '
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     const [showVip, setShowVip] = React.useState(false);
+    const dispatch = useAppDispatch();
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -36,6 +39,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         if (typeof window !== 'undefined') {
             localStorage.setItem('userid', 'dev-user-123');
         }
+        // Dispatch mock user to Redux state
+        dispatch(setUser({
+            id: 123,
+            email: 'dev@example.com',
+            name: 'Developer',
+            phoneNumber: null,
+            createdAt: new Date().toISOString(),
+            billingAddress: null
+        }));
         onLogin();
     };
 
