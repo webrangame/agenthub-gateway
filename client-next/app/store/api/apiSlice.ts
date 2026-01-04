@@ -8,16 +8,15 @@ const API_BASE_URL = process.env.NODE_ENV === 'development'
   : (process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://3.80.195.233:8081');
 const PROXY_BASE = '/api/proxy';
 
-import { v4 as uuidv4 } from 'uuid';
-
 // Helper to get device ID (using same logic as utils/device.ts)
 const getDeviceId = (): string => {
   if (typeof window === 'undefined') return '';
   const DEVICE_ID_KEY = 'ai_guardian_device_id';
   let deviceId = localStorage.getItem(DEVICE_ID_KEY);
   if (!deviceId) {
-    // Use uuid
+    // Use uuid if available, otherwise generate simple ID
     try {
+      const { v4: uuidv4 } = require('uuid');
       deviceId = uuidv4();
     } catch {
       deviceId = `device-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -29,25 +28,23 @@ const getDeviceId = (): string => {
   return deviceId || '';
 };
 
-// Custom base query with logging
-const baseQueryRaw = fetchBaseQuery({
-  baseUrl: (typeof window === 'undefined' || process.env.NODE_ENV === 'test') ? 'http://localhost' : '/',
+// Base query with automatic X-User-ID header injection
+const baseQuery = fetchBaseQuery({
+  baseUrl: '/',
   prepareHeaders: (headers, { getState }) => {
-    console.error('[apiSlice] prepareHeaders called');
     const state = getState() as RootState;
-    const userId = state.user.user?.id || (typeof window !== 'undefined' ? localStorage.getItem('userid') : null);
-
-
-
-    if (userId && !headers.has('X-User-ID')) {
+    const userId = state.user.user?.id;
+    
+    if (userId) {
       headers.set('X-User-ID', userId.toString());
     }
-
+    
+    // Get device ID
     const deviceId = getDeviceId();
     if (deviceId) {
       headers.set('X-Device-ID', deviceId);
     }
-
+    
     // Get LiteLLM API key from localStorage
     if (typeof window !== 'undefined') {
       const litellmApiKey = localStorage.getItem('litellm_api_key');
@@ -55,23 +52,11 @@ const baseQueryRaw = fetchBaseQuery({
         headers.set('X-LiteLLM-API-Key', litellmApiKey);
       }
     }
-
-    console.error('[apiSlice] Headers prepared:', Object.fromEntries(headers.entries()));
+    
     return headers;
-  },
-  fetchFn: async (input, init) => {
-    // Defer to global fetch for testing mocking support
-    return fetch(input, init);
   },
   credentials: 'include',
 });
-
-const baseQuery: typeof baseQueryRaw = async (args, api, extraOptions) => {
-  console.error('[apiSlice] baseQuery executing for args:', args);
-  const result = await baseQueryRaw(args, api, extraOptions);
-  console.error('[apiSlice] baseQuery result:', result);
-  return result;
-};
 
 export const apiSlice = createApi({
   reducerPath: 'api',
@@ -82,22 +67,60 @@ export const apiSlice = createApi({
     getAuthMe: builder.query<{ user: User }, void>({
       queryFn: async () => {
         try {
+          console.log('[Auth] Fetching user from:', `${AUTH_BASE}/api/auth/me`);
+          
+          // Add timeout to prevent hanging
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
           const response = await fetch(`${AUTH_BASE}/api/auth/me`, {
             method: 'GET',
             credentials: 'include',
+            signal: controller.signal,
             headers: {
               'Accept': 'application/json',
               'Content-Type': 'application/json',
             },
           });
 
+          clearTimeout(timeoutId);
+
+          console.log('[Auth] Response status:', response.status);
+          console.log('[Auth] Response headers:', {
+            'access-control-allow-origin': response.headers.get('access-control-allow-origin'),
+            'access-control-allow-credentials': response.headers.get('access-control-allow-credentials'),
+          });
+
           if (!response.ok) {
-            return { error: { status: response.status, data: 'Failed to fetch user' } };
+            // 401 means not authenticated, which is expected for logged out users
+            if (response.status === 401) {
+              console.log('[Auth] 401 - Not authenticated (expected for logged out users)');
+              return { error: { status: response.status, data: 'Not authenticated' } };
+            }
+            const errorText = await response.text().catch(() => 'Unknown error');
+            console.error('[Auth] Non-200 response:', response.status, errorText);
+            return { error: { status: response.status, data: errorText || 'Failed to fetch user' } };
           }
 
           const data = await response.json();
+          console.log('[Auth] User data received:', { id: data?.user?.id, email: data?.user?.email });
           return { data };
-        } catch (error) {
+        } catch (error: any) {
+          // Handle abort/timeout
+          if (error.name === 'AbortError') {
+            console.error('[Auth] Request timed out after 10 seconds');
+            return { error: { status: 'FETCH_ERROR', error: 'Request timed out' } };
+          }
+          // Handle CORS errors
+          if (error.message?.includes('CORS') || error.message?.includes('Failed to fetch')) {
+            console.error('[Auth] CORS or network error:', error);
+            console.error('[Auth] This usually means:');
+            console.error('[Auth] 1. market.niyogen.com does not allow travel.niyogen.com origin');
+            console.error('[Auth] 2. Cookies are not set with Domain=.niyogen.com');
+            console.error('[Auth] 3. CORS headers are missing or incorrect');
+            return { error: { status: 'FETCH_ERROR', error: 'CORS or network error. Please check if market.niyogen.com allows travel.niyogen.com origin.' } };
+          }
+          console.error('[Auth] Unexpected error:', error);
           return { error: { status: 'FETCH_ERROR', error: String(error) } };
         }
       },
@@ -178,14 +201,13 @@ export const apiSlice = createApi({
         }
       },
     }),
-
+    
     // Chat endpoint - streaming response (custom queryFn for streaming)
-    sendChatMessage: builder.mutation<Response, { input: string; userId?: string }>({
-      queryFn: async ({ input, userId: propUserId }, { getState }) => {
+    sendChatMessage: builder.mutation<Response, { input: string }>({
+      queryFn: async ({ input }, { getState }) => {
         try {
           const state = getState() as RootState;
-          // Priority: Prop > Redux > LocalStorage
-          const userId = propUserId || state.user.user?.id;
+          const userId = state.user.user?.id;
           const deviceId = getDeviceId();
           const litellmApiKey = typeof window !== 'undefined' ? localStorage.getItem('litellm_api_key') : null;
 
@@ -220,21 +242,13 @@ export const apiSlice = createApi({
       },
       invalidatesTags: ['Chat', 'Feed'],
     }),
-
+    
     // Feed endpoint - GET
-    getFeed: builder.query<any[], string | void>({
-      query: (userId) => {
-        console.log('[apiSlice] getFeed query called with userId:', userId);
-        const headers: Record<string, string> = {};
-        if (userId) {
-          headers['X-User-ID'] = userId;
-        }
-        return {
-          url: `${PROXY_BASE}/feed`,
-          method: 'GET',
-          headers,
-        };
-      },
+    getFeed: builder.query<any[], void>({
+      query: () => ({
+        url: `${PROXY_BASE}/feed`,
+        method: 'GET',
+      }),
       providesTags: ['Feed'],
     }),
 

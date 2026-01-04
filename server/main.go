@@ -96,6 +96,9 @@ func main() {
 	// Agent Routes
 	r.POST("/api/agent/upload", server.UploadAgentHandler)
 
+	// GET /api/feed/stream (SSE)
+	r.GET("/api/feed/stream", server.FeedStreamHandler)
+
 	// Chat Route (Streaming)
 	r.POST("/api/chat/stream", server.ChatStreamHandler)
 

@@ -45,33 +45,32 @@ const UserMenuInline: React.FC<UserMenuInlineProps> = ({ onLogout }) => {
     }, [isOpen]);
 
     const handleLogout = async () => {
+        setIsOpen(false);
         try {
             await authLogoutMutation().unwrap();
-            dispatch(clearUser());
-            // Clear localStorage
-            if (typeof window !== 'undefined') {
-                localStorage.removeItem('userid');
-                localStorage.removeItem('litellm_api_key');
-                localStorage.removeItem('litellm_key_info');
-                localStorage.removeItem('user_info');
-                localStorage.removeItem('username');
-            }
         } catch (error) {
             console.error('Logout error:', error);
-            // Clear user state even if API call fails
-            dispatch(clearUser());
-            if (typeof window !== 'undefined') {
-                localStorage.removeItem('userid');
-                localStorage.removeItem('litellm_api_key');
-                localStorage.removeItem('litellm_key_info');
-                localStorage.removeItem('user_info');
-                localStorage.removeItem('username');
-            }
+            // Continue with logout even if API call fails
         }
+        dispatch(clearUser());
+        // Clear localStorage
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('userid');
+            localStorage.removeItem('litellm_api_key');
+            localStorage.removeItem('litellm_key_info');
+            localStorage.removeItem('user_info');
+            localStorage.removeItem('username');
+            // Clear all cookies by setting them to expire
+            document.cookie.split(";").forEach((c) => {
+                document.cookie = c
+                    .replace(/^ +/, "")
+                    .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+            });
+        }
+        // Call onLogout callback which will handle redirect
         if (onLogout) {
             onLogout();
         }
-        setIsOpen(false);
     };
 
     const handleChangePassword = () => {

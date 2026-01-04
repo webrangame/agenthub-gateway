@@ -19,6 +19,65 @@ import (
 	"golang.org/x/text/language"
 )
 
+// FeedStreamHandler godoc
+// @Summary      Feed Stream (SSE)
+// @Description  Streams feed update notifications (client should re-fetch /api/feed on events)
+// @Tags         feed
+// @Produce      text/event-stream
+// @Success      200  {string}  string  "SSE Stream"
+// @Router       /api/feed/stream [get]
+func (s *Server) FeedStreamHandler(c *gin.Context) {
+	// Identify User (Hybrid: Auth User > Device > IP)
+	ownerID := c.GetHeader("X-User-ID")
+	if ownerID == "" {
+		ownerID = c.GetHeader("X-Device-ID")
+	}
+	if ownerID == "" {
+		ownerID = c.ClientIP()
+	}
+
+	// SSE headers
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache")
+	c.Writer.Header().Set("Connection", "keep-alive")
+	c.Writer.Header().Set("X-Accel-Buffering", "no")
+	c.Status(http.StatusOK)
+
+	flusher, ok := c.Writer.(http.Flusher)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "streaming unsupported"})
+		return
+	}
+
+	ch := make(chan struct{}, 32)
+	s.SubscribeFeed(ownerID, ch)
+	defer s.UnsubscribeFeed(ownerID, ch)
+
+	writeEvent := func(w http.ResponseWriter, eventName string, data string) {
+		// SSE format: "event: <name>\ndata: <payload>\n\n"
+		fmt.Fprintf(w, "event: %s\n", eventName)
+		fmt.Fprintf(w, "data: %s\n\n", data)
+		flusher.Flush()
+	}
+
+	// Initial event so the client can fetch immediately.
+	writeEvent(c.Writer, "feed_updated", "{}")
+
+	heartbeat := time.NewTicker(25 * time.Second)
+	defer heartbeat.Stop()
+
+	for {
+		select {
+		case <-c.Request.Context().Done():
+			return
+		case <-ch:
+			writeEvent(c.Writer, "feed_updated", "{}")
+		case <-heartbeat.C:
+			writeEvent(c.Writer, "ping", "{}")
+		}
+	}
+}
+
 // HealthHandler godoc
 // @Summary      Health Check
 // @Description  Get service health status

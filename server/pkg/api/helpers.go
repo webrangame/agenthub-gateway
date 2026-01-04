@@ -8,12 +8,11 @@ import (
 	"guardian-gateway/pkg/logic"
 	"guardian-gateway/pkg/store"
 	"os"
-
-	"gopkg.in/yaml.v2"
+	"time"
 )
 
 // ProcessAndSaveFeed processes an event and saves it to the DB
-func (s *Server) ProcessAndSaveFeed(ctx context.Context, deviceID string, eventJSON string, destination string, nodeImages map[string]string) {
+func (s *Server) ProcessAndSaveFeed(ctx context.Context, ownerID string, eventJSON string, destination string, nodeImages map[string]string) {
 	fmt.Printf("DEBUG: ProcessAndSaveFeed - Event: %s\n", eventJSON)
 
 	// 1. Parse Event
@@ -87,31 +86,54 @@ func (s *Server) ProcessAndSaveFeed(ctx context.Context, deviceID string, eventJ
 	}
 
 	// Use Upsert to handle "sticky" updates for same node
-	if err := s.Store.UpsertCard(ctx, deviceID, card); err != nil {
+	if err := s.Store.UpsertCard(ctx, ownerID, card); err != nil {
 		fmt.Printf("Error saving card to DB: %v\n", err)
 	} else {
+		// Notify SSE subscribers
+		s.PublishFeedUpdate(ownerID)
 		fmt.Printf("Saved card to DB: %v (Priority: %s)\n", card.Data["title"], card.Priority)
 	}
 }
 
-// LoadMemoryConfig loads memory configuration
+// LoadMemoryConfig loads memory configuration from env
 func LoadMemoryConfig() *runtime.MemoryConfig {
-	data, err := os.ReadFile("policy.yaml")
-	if err != nil {
+	projectID := os.Getenv("VERTEX_PROJECT_ID")
+	// Only enable if project ID is set, or forcing a specific store
+	if projectID == "" {
 		return nil
 	}
-	var policy struct {
-		Memory runtime.MemoryConfig `yaml:"memory"`
+	return &runtime.MemoryConfig{
+		Enabled:    true,
+		Store:      "inmemory", // Fallback to inmemory until Vertex allowlist is approved/binary supports it
+		ProjectID:  projectID,
+		Location:   os.Getenv("VERTEX_LOCATION"),
+		CorpusName: os.Getenv("VERTEX_CORPUS_NAME"),
 	}
-	if err := yaml.Unmarshal(data, &policy); err != nil {
-		return nil
-	}
-	return &policy.Memory
 }
 
 // StartScheduledExecution starts a scheduled agent
+// StartScheduledExecution starts a scheduled agent
 func (s *Server) StartScheduledExecution(agentPath string, schedule *runtime.ScheduleInfo) {
-	fmt.Printf("Starting scheduled execution for %s (Every %s)\n", agentPath, schedule.Interval)
-	// TODO: Implement actual cron/ticker
-	// For now, just run once as checking
+	interval, err := time.ParseDuration(schedule.Interval)
+	if err != nil {
+		fmt.Println("Error parsing interval:", err)
+		return
+	}
+
+	fmt.Printf("SCHEDULE: Starting %s every %s\n", agentPath, schedule.Interval)
+	ticker := time.NewTicker(interval)
+	for range ticker.C {
+		fmt.Println("SCHEDULE: Triggering proactive run...")
+		// Per-run image cache
+		nodeImages := make(map[string]string)
+		// We need a dummy context/user for proactive runs?
+		// For now we broadcast to "system_broadcast" or similar if logic supports it,
+		// OR we iterate all users?
+		// 'develop' implementation used: processAndSaveFeed(..., "system_broadcast", ...)
+		if err := s.Engine.Run(agentPath, "Proactive Check", LoadMemoryConfig(), func(eventJSON string) {
+			s.ProcessAndSaveFeed(context.Background(), "system_broadcast", eventJSON, "", nodeImages)
+		}); err != nil {
+			fmt.Printf("Error running scheduled check for %s: %v\n", agentPath, err)
+		}
+	}
 }
