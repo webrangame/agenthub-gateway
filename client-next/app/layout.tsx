@@ -24,6 +24,8 @@ export default function RootLayout({
       <head>
         <script src="https://market.niyogen.com/token-checker.js"></script>
         <script dangerouslySetInnerHTML={{ __html: 'TokenChecker.init();' }} />
+        <script src="https://market.niyogen.com/agent-checker.js"></script>
+        <script dangerouslySetInnerHTML={{ __html: "AgentChecker.init({ agentId: 'trip-guardian-v3' });" }} />
       </head>
       <body className={`${inter.variable} antialiased`}>
         <StoreProvider>
